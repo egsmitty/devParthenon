@@ -257,7 +257,9 @@ function renderRedeem(): void {
   if (!state) return;
   const { quiz } = state;
   const idx = state.redeemQueue[0];
-  const q = quiz.sections[idx].question;
+  // Redemption uses the parallel variant ("Test B"), not the primary
+  // question, so the concept is re-tested rather than the memorized answer.
+  const q = quiz.sections[idx].altQuestion;
   const remaining = state.redeemQueue.length;
   const cap = Math.round(REDEMPTION_CAP * 100);
 
@@ -266,7 +268,7 @@ function renderRedeem(): void {
     <div class="modal-progress">Redemption Round
       &middot; ${remaining} question${remaining === 1 ? "" : "s"} left
       &middot; up to +${cap}% recoverable</div>
-    <div class="check-label">Second chance</div>
+    <div class="check-label">Second chance &middot; a different question, same concept</div>
     <div class="question-text">${rich(q.question)}</div>
     <div class="options">${optionsMarkup(q.options)}</div>
     <div class="feedback-slot"></div>

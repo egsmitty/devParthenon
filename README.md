@@ -12,7 +12,17 @@ Each module feeds at most three short paragraphs before an interactive check.
 Every wrong answer explains *why* it's wrong (aimed at real interview traps
 like `key={index}`, StrictMode double-invocation, and SSR `window` access),
 plus an interview tip. A pillar unlocks only after its prerequisite is passed
-with **≥ 80%**. A searchable jargon glossary lives in the sidebar.
+with **≥ 85%**. A searchable jargon glossary lives in the sidebar.
+
+**Redemption Round (the fail-safe).** Finish a quiz within 15 points of the
+85% line and you get a second chance: each question you missed is re-asked as
+a **parallel "Test B" variant** — the same concept and interview trap, but a
+different scenario and answer, so you can't pass by memorizing the first
+answer. Correcting a variant earns its points back, capped at +15% total.
+Land more than 15 points short and the module must be retaken; your best
+score is always preserved. Every question also carries a distinct Test B, and
+correct-answer positions are evenly distributed across all four options so
+"the answer is always B" is never a strategy.
 
 ## Stack
 

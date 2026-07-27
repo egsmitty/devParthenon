@@ -14,20 +14,39 @@
         "id": "f1",
         "question": "HTTP is described as a *stateless* protocol. What does that actually mean?",
         "options": [
-          "The server crashes if it tries to store any data between requests",
           "Each request is independent; the server retains no built-in memory of previous requests from the same client",
           "The client cannot send data to the server, only receive it",
-          "State can only be stored on the client, never on the server"
+          "State can only be stored on the client, never on the server",
+          "The server crashes if it tries to store any data between requests"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "Statelessness means the protocol itself carries no memory between requests. Each request must contain everything needed to handle it — which is exactly why cookies, sessions, and tokens exist: they re-introduce continuity on top of a stateless protocol.",
         "optionExplanations": [
-          "Servers store data constantly (databases, caches). Statelessness is a property of the protocol, not a restriction on server storage.",
           "Correct — the protocol has no built-in memory; continuity is layered on with cookies, sessions, or tokens.",
           "Clients send data all the time — form submissions, JSON bodies, uploaded files. That has nothing to do with statelessness.",
-          "Servers absolutely store state (that is what databases are). The protocol just doesn't carry it between requests automatically."
+          "Servers absolutely store state (that is what databases are). The protocol just doesn't carry it between requests automatically.",
+          "Servers store data constantly (databases, caches). Statelessness is a property of the protocol, not a restriction on server storage."
         ],
         "interviewTip": "A favorite follow-up is 'so how does login work over a stateless protocol?' Be ready to explain cookies and session/token round-tripping in one breath."
+      },
+      "altQuestion": {
+        "id": "f1-alt",
+        "question": "You load a product page, then reload it a second later while logged in, and the server still 'knows' you and your cart. Given that HTTP is stateless, how does the server actually recognize you on that second request?",
+        "options": [
+          "The server keeps a persistent open connection to your browser and reads your identity directly off it",
+          "The reload request carries something the client re-sends — a `Cookie` header or token — that the server uses to look you up again",
+          "Statelessness only applies to the first request; every request after the first is automatically stateful",
+          "The browser tags each request with a permanent hardware ID that the server trusts"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Because the protocol remembers nothing, the *client* must re-present its identity on every single request — typically a session cookie or bearer token the server uses to re-load your session and cart from storage. Continuity is rebuilt each time, not preserved by the protocol.",
+        "optionExplanations": [
+          "HTTP does not hold an open identity-bearing line; even keep-alive TCP connections carry independent, self-contained requests with no inherent memory of who you are.",
+          "Correct — the client re-sends a cookie or token on every request, and the server re-derives your identity and cart from it.",
+          "Statelessness applies to every request equally; there is no 'first request' exception that flips the protocol into a stateful mode.",
+          "Browsers send no permanent trusted hardware ID; identity rides in cookies/tokens the app issues, precisely because the protocol itself carries none."
+        ],
+        "interviewTip": "Turn it around: 'the protocol forgets, so the client must remind it every request.' Naming the exact carrier — cookie or Authorization header — shows you know where the continuity physically lives."
       }
     },
     {
@@ -55,6 +74,25 @@
           "DELETE removes the resource identified by the URL. Charging money is creating a charge record, not deleting anything."
         ],
         "interviewTip": "Mentioning idempotency keys when discussing POST retries is a strong signal you've thought about real-world API failure modes."
+      },
+      "altQuestion": {
+        "id": "f2-alt",
+        "question": "A mobile app lets a user edit their whole profile by sending the full profile object to `/users/42/profile`. If the request times out and the app silently re-sends the identical body, which method makes that automatic retry inherently safe — no duplicate side effects — without any extra de-duplication logic?",
+        "options": [
+          "`PATCH`, because it is always safe to apply repeatedly by definition",
+          "`GET`, because reads can be repeated freely",
+          "`POST`, because it is the standard verb for sending a body of data",
+          "`PUT`, because replacing the resource with the same body twice leaves it in the same final state"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "`PUT` replaces the resource at a known URL with the supplied representation. Applying the identical replacement twice yields the same final state as applying it once — that is idempotency, so a blind retry is safe without an idempotency key. The resource already has a URL (`/users/42/profile`), which is exactly what `PUT` requires.",
+        "optionExplanations": [
+          "`PATCH` is not guaranteed idempotent — a partial update like 'increment balance by 10' applied twice diverges; safety depends on the patch's semantics, not the method.",
+          "`GET` is safe to repeat but it only reads; it cannot perform the profile edit the scenario requires, so it is the wrong tool entirely.",
+          "`POST` is not idempotent; a re-sent `POST` may create a second record or re-trigger an action, so an automatic retry is unsafe by default.",
+          "Correct — `PUT` is a full replacement to a known URL; repeating the same replacement leaves identical state, so the retry is inherently safe."
+        ],
+        "interviewTip": "Don't lump `PATCH` in with `PUT` as 'both safe to retry' — `PATCH` is idempotent only if the patch itself is. That distinction is a common trap."
       }
     },
     {
@@ -68,20 +106,39 @@
         "id": "f3",
         "question": "A logged-in user with a valid session tries to open the admin dashboard, but they are not an admin. Which status code should the server return?",
         "options": [
-          "401 Unauthorized",
           "403 Forbidden",
           "404 Not Found",
-          "500 Internal Server Error"
+          "500 Internal Server Error",
+          "401 Unauthorized"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "The user is authenticated (we know who they are) but not authorized (their role doesn't permit this). That is precisely 403 Forbidden. Despite its confusing name, 401 'Unauthorized' actually means unauthenticated.",
         "optionExplanations": [
-          "401 means the request lacks valid credentials — 'log in and try again'. This user is already logged in; logging in again changes nothing.",
           "Correct — authenticated but lacking permission is 403.",
           "404 is defensible only as a deliberate strategy to hide the resource's existence (GitHub does this for private repos) — but as the straightforward semantic answer, it's wrong.",
-          "Nothing failed on the server. 5xx codes mean the server itself errored, which would page an on-call engineer for what is actually normal access control."
+          "Nothing failed on the server. 5xx codes mean the server itself errored, which would page an on-call engineer for what is actually normal access control.",
+          "401 means the request lacks valid credentials — 'log in and try again'. This user is already logged in; logging in again changes nothing."
         ],
         "interviewTip": "Say the mnemonic out loud in interviews: '401 = who are you? 403 = I know who you are, and no.' Bonus points for noting some APIs return 404 to avoid leaking resource existence."
+      },
+      "altQuestion": {
+        "id": "f3-alt",
+        "question": "An API client calls a protected endpoint but its access token has fully expired, so the server can no longer establish who the caller is. Following HTTP semantics, which status code most precisely signals 'your credentials are missing or invalid — re-authenticate'?",
+        "options": [
+          "400 Bad Request",
+          "401 Unauthorized",
+          "429 Too Many Requests",
+          "403 Forbidden"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "An expired token means the request effectively lacks valid credentials, so the server cannot identify the caller. That is the exact meaning of 401 — despite the word 'Unauthorized', it signals *unauthenticated*: re-present valid credentials and try again.",
+        "optionExplanations": [
+          "400 is for a syntactically malformed or unparseable request. An expired token is a well-formed request with an authentication problem, not a parsing problem.",
+          "Correct — missing or invalid credentials the server can't authenticate is 401; the client should refresh or re-obtain a token.",
+          "429 signals rate limiting — too many requests in a window. Token expiry has nothing to do with request volume.",
+          "403 means the identity is known but not permitted; here the identity can't even be established, so re-authenticating is the fix, which is 401's message, not 403's."
+        ],
+        "interviewTip": "Flip the primary question's trap: here the credentials are the problem, so it's 401, not 403. Note that 401 responses should include a `WWW-Authenticate` header telling the client how to authenticate."
       }
     },
     {
@@ -95,20 +152,39 @@
         "id": "f4",
         "question": "You change your site's A record to point at a new server, but some visitors still reach the old server for hours. Why?",
         "options": [
+          "The A record only applies to new visitors who have never seen the site",
           "The old server is intercepting the traffic meant for the new one",
           "Resolvers and operating systems cache DNS answers until the record's TTL expires",
-          "DNS changes require a browser update to take effect",
-          "The A record only applies to new visitors who have never seen the site"
+          "DNS changes require a browser update to take effect"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "DNS answers are cached at many layers — the OS, the router, the ISP's resolver — each honoring the TTL that was on the record when it was fetched. Until those caches expire, they keep serving the old IP. This is why you lower the TTL *before* a planned migration.",
         "optionExplanations": [
+          "DNS has no concept of new vs returning visitors; it's purely name-to-address lookup with caching.",
           "The old server does nothing active — traffic reaches it because cached answers still name its IP.",
           "Correct — layered caching plus TTL is the entire mechanism behind 'propagation delay'.",
-          "Browsers have small DNS caches but need no update; the delay lives in resolver caches, not software versions.",
-          "DNS has no concept of new vs returning visitors; it's purely name-to-address lookup with caching."
+          "Browsers have small DNS caches but need no update; the delay lives in resolver caches, not software versions."
         ],
         "interviewTip": "The pro move in a systems interview: 'before migrating, drop the TTL to 60 seconds a day in advance, migrate, then raise it back.'"
+      },
+      "altQuestion": {
+        "id": "f4-alt",
+        "question": "You want to point `blog.example.com` at a third-party host that manages its own rotating set of IP addresses, so you never have to update an IP yourself when they change servers. Which DNS record type is designed for this 'alias one name to another name' job?",
+        "options": [
+          "An `MX` record pointing at the host",
+          "A `TXT` record containing the host's domain name",
+          "An `A` record listing all of the host's current IP addresses",
+          "A `CNAME` record aliasing `blog.example.com` to the host's own domain name"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "A `CNAME` aliases one name to another name, so `blog.example.com` resolves by following through to the provider's hostname — and whatever IPs *they* map that name to are used automatically. You never touch an IP, which is exactly the delegation you want.",
+        "optionExplanations": [
+          "`MX` records route email to mail servers; they have nothing to do with resolving a web hostname to an address.",
+          "`TXT` holds arbitrary text (like verification strings) and is never followed as an address alias by resolvers doing name resolution.",
+          "An `A` record hard-codes specific IPs, so you'd have to edit it every time the provider rotates servers — the opposite of hands-off.",
+          "Correct — `CNAME` aliases your name to the provider's name, so their IP changes flow through without you editing anything."
+        ],
+        "interviewTip": "Know the classic `CNAME` gotcha: you can't put a `CNAME` on a zone apex (`example.com` itself) alongside other required records — which is why providers offer `ALIAS`/`ANAME` or flattening for the root domain."
       }
     },
     {
@@ -122,20 +198,39 @@
         "id": "f5",
         "question": "Why is repeatedly updating the real DOM inside a loop (e.g. appending 1,000 rows one at a time) considered a performance mistake?",
         "options": [
-          "The DOM can only hold a limited number of elements before erroring",
           "Each mutation can force the browser to recalculate styles, layout, and paint, so unbatched updates multiply that expensive work",
           "JavaScript loops are inherently slow regardless of what the body does",
-          "The DOM is read-only during loops and silently drops the writes"
+          "The DOM is read-only during loops and silently drops the writes",
+          "The DOM can only hold a limited number of elements before erroring"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "The cost isn't the loop — it's that every insertion can invalidate layout and trigger reflow/repaint. Batching (build a DocumentFragment, append once) or diffing (React) collapses 1,000 potential reflows into one.",
         "optionExplanations": [
-          "There is no meaningful hard cap; huge DOMs get slow, but they don't error at a limit.",
           "Correct — reflow and repaint are the expensive steps, and unbatched mutations repeat them needlessly.",
           "Plain JS loops execute millions of iterations per second; the loop is innocent, the per-iteration DOM work is guilty.",
-          "The DOM is fully writable at any time; nothing is dropped — that's why all 1,000 slow reflows actually happen."
+          "The DOM is fully writable at any time; nothing is dropped — that's why all 1,000 slow reflows actually happen.",
+          "There is no meaningful hard cap; huge DOMs get slow, but they don't error at a limit."
         ],
         "interviewTip": "If asked 'why does React exist', anchor your answer here: real-DOM mutations are expensive, so React batches state changes and commits a minimal diff."
+      },
+      "altQuestion": {
+        "id": "f5-alt",
+        "question": "In a loop over a list, your code writes `el.style.width` to grow an element and then immediately reads `el.offsetHeight` on each iteration, and the page becomes janky. What specific pattern is making this so slow?",
+        "options": [
+          "Reading `offsetHeight` allocates a large copy of the DOM each time it runs",
+          "Interleaving a write with a read of a layout property forces a synchronous reflow every iteration — 'layout thrashing'",
+          "`style.width` is an invalid property, so the browser retries the assignment repeatedly",
+          "Reading and writing the DOM in the same function is disallowed and silently throttled by the browser"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The browser batches style writes and flushes layout lazily — but reading a geometry property like `offsetHeight` forces it to compute layout *now* to give an accurate answer. Doing that read right after a write, every iteration, defeats batching and triggers a synchronous reflow each time. This is layout thrashing; the fix is to batch all reads, then all writes.",
+        "optionExplanations": [
+          "Reading `offsetHeight` copies nothing; it returns a number. The cost is the forced layout recalculation it triggers, not any allocation.",
+          "Correct — write-then-read of a layout property forces a synchronous reflow per iteration, the definition of layout thrashing.",
+          "`style.width` is perfectly valid; there is no invalid-property retry loop involved.",
+          "Reading and writing the DOM together is fully allowed; nothing is throttled or blocked — it just forces expensive synchronous layouts."
+        ],
+        "interviewTip": "Name the fix crisply: 'batch reads, then batch writes' — or reach for `requestAnimationFrame` / `getBoundingClientRect` measured up front. Saying 'layout thrashing' by name signals real DOM-performance depth."
       }
     },
     {
@@ -149,20 +244,39 @@
         "id": "f6",
         "question": "Put these page-load steps in the order they occur: (A) browser paints pixels, (B) DNS lookup, (C) HTML parsed into DOM, (D) HTTP request sent.",
         "options": [
-          "B → D → C → A",
-          "D → B → A → C",
           "B → C → D → A",
-          "C → B → D → A"
+          "C → B → D → A",
+          "B → D → C → A",
+          "D → B → A → C"
         ],
-        "correctAnswerIndex": 0,
+        "correctAnswerIndex": 2,
         "rationale": "You can't send a request without an IP (DNS first), can't parse a response you haven't requested (request before parse), and can't paint a tree you haven't built (parse before paint). B → D → C → A.",
         "optionExplanations": [
-          "Correct — resolve the name, send the request, parse the response into the DOM, paint.",
-          "The request can't be addressed before DNS gives you an IP, and painting can't precede having a DOM to paint.",
           "There is no HTML to parse before the HTTP response arrives — the request must come before parsing.",
-          "Parsing HTML first is impossible; the HTML only exists client-side after DNS + request + response."
+          "Parsing HTML first is impossible; the HTML only exists client-side after DNS + request + response.",
+          "Correct — resolve the name, send the request, parse the response into the DOM, paint.",
+          "The request can't be addressed before DNS gives you an IP, and painting can't precede having a DOM to paint."
         ],
         "interviewTip": "'Walk me through what happens when you hit Enter on a URL' is a top-5 interview question. Practice narrating this chain in under 90 seconds, then offer to zoom into any step."
+      },
+      "altQuestion": {
+        "id": "f6-alt",
+        "question": "For an HTTPS page load, order these four events as they actually occur: (W) TLS handshake completes, (X) browser establishes the TCP connection, (Y) server sends back the HTML response, (Z) browser sends the HTTP GET request.",
+        "options": [
+          "W → X → Z → Y",
+          "X → Z → W → Y",
+          "Z → X → W → Y",
+          "X → W → Z → Y"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "TCP is established first (X), then the TLS handshake runs on top of that connection to secure it (W), and only over the now-encrypted channel does the browser send the HTTP GET (Z), after which the server returns the HTML (Y). You can't encrypt a connection you haven't opened, and you can't send an HTTPS request before the channel is secured.",
+        "optionExplanations": [
+          "TLS cannot complete before a TCP connection exists to carry the handshake; the connection must come first.",
+          "This puts the request before TLS finishes, meaning the HTTP GET would travel unencrypted — which defeats HTTPS and isn't how the browser sequences it.",
+          "This sends the GET before TCP is even established, which is impossible — there is no connection to send over yet.",
+          "Correct — TCP connect, then TLS handshake over it, then the encrypted GET, then the HTML response."
+        ],
+        "interviewTip": "For HTTPS, remember the layering: TCP first, TLS on top, HTTP inside. Bonus depth: mention that TLS 1.3 cut the handshake to one round trip, and that QUIC/HTTP/3 folds transport and crypto setup together to save round trips."
       }
     }
   ]

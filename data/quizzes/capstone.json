@@ -14,20 +14,39 @@
         "id": "c1",
         "question": "Which portfolio signals the most to a hiring manager reviewing 50 candidates in an afternoon?",
         "options": [
-          "Eight repositories of completed tutorial projects, none deployed",
           "One deployed full-stack app with auth, a database, tests, and a README explaining the architecture decisions — plus source they can skim",
           "A repository with 2,000 GitHub stars forked from a popular project",
-          "A private repo described verbally as very impressive"
+          "A private repo described verbally as very impressive",
+          "Eight repositories of completed tutorial projects, none deployed"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "Reviewers spend minutes, not hours. A live URL proves you can ship; the README proves you can communicate; tests and auth prove engineering maturity; and everything in it becomes interview material you control. Depth on one project beats breadth on many.",
         "optionExplanations": [
-          "Tutorial multiplicity signals following instructions, not making decisions — and 'none deployed' means no proof any of it runs.",
           "Correct — deployable depth plus written reasoning is the strongest cheap-to-verify signal.",
           "A fork's stars belong to the original project; reviewers check.",
-          "Unverifiable claims carry zero weight in a screening pass."
+          "Unverifiable claims carry zero weight in a screening pass.",
+          "Tutorial multiplicity signals following instructions, not making decisions — and 'none deployed' means no proof any of it runs."
         ],
         "interviewTip": "Every project on your resume should survive the question 'what was the hardest bug in it?' If you can't tell that story with specifics, the project isn't interview-ready."
+      },
+      "altQuestion": {
+        "id": "c1-alt",
+        "question": "A bootcamp grad asks you to review two versions of their portfolio before applications. Version A is a single expense-tracker: deployed at a URL, with login, a Postgres backend, Stripe test payments, a handful of `Jest` tests, and a README documenting why they chose each tool. Version B is twelve repositories — clones of Twitter, Netflix, Spotify, and others — each following a well-known YouTube course, none deployed, all with default `create-react-app` READMEs. Which do you tell them leads with, and why?",
+        "options": [
+          "Version B, because twelve projects demonstrate more breadth and stamina than a single app",
+          "Version A, because a live URL plus payments, tests, and documented reasoning is depth a reviewer can verify in minutes — and every part of it seeds interview conversation",
+          "Version B, because recognizable app clones prove they can rebuild real products",
+          "Neither leads; tell them to combine all thirteen into one mega-repo so nothing is wasted"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Reviewers reward verifiable depth over volume. Version A ships, handles money and auth, has tests, and hands the reviewer a written rationale — each of which is a follow-up question the candidate already scripted answers for. Twelve un-deployed course clones signal instruction-following, not decision-making, and none can be confirmed to actually run.",
+        "optionExplanations": [
+          "Breadth of clones reads as following twelve tutorials, not making twelve decisions — and 'none deployed' means none is proven to run.",
+          "Correct — one deployed, tested, documented app with real features is the strongest quickly-verifiable signal and self-generates interview material.",
+          "Rebuilding a course's clone of a famous app proves you can follow that course, not that you designed anything.",
+          "A mega-repo of course clones dilutes the one strong project into noise; consolidation doesn't add engineering signal."
+        ],
+        "interviewTip": "Steer the reviewer toward the project you can talk about for twenty minutes. One app you know cold beats a dozen you'd have to re-read to discuss."
       }
     },
     {
@@ -41,20 +60,39 @@
         "id": "c2",
         "question": "In the form-submission walkthrough, the interviewer interrupts: 'the network request fails — what should the UI have already been doing, and what happens now?' What's the strongest answer?",
         "options": [
+          "The page reloads automatically so state resets cleanly",
           "The UI freezes until the request eventually succeeds via retries",
           "The UI showed a pending state on submit; on failure it surfaces an error, re-enables the form preserving the user's input, and (if optimistic) rolls back the optimistic update",
-          "Errors are logged to the console for debugging",
-          "The page reloads automatically so state resets cleanly"
+          "Errors are logged to the console for debugging"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "Failure handling is where full-stack maturity shows: pending feedback during flight, an actionable error on failure, no destroyed user input, and rollback if you rendered success speculatively. Interviewers deliberately inject the failure case to see if your happy path was the whole plan.",
         "optionExplanations": [
+          "A reload obliterates the user's typed data to simplify the developer's life — backwards priorities, and interviewers notice.",
           "An indefinitely frozen UI with silent retries is the exact experience users describe as 'the site is broken'.",
           "Correct — pending state, visible recovery path, preserved input, optimistic rollback.",
-          "Console logs help you; the user is still staring at a button that did nothing.",
-          "A reload obliterates the user's typed data to simplify the developer's life — backwards priorities, and interviewers notice."
+          "Console logs help you; the user is still staring at a button that did nothing."
         ],
         "interviewTip": "Volunteer the failure path before being asked — 'and if this request fails, here's what the user sees.' Unprompted failure handling is one of the strongest signals you can send."
+      },
+      "altQuestion": {
+        "id": "c2-alt",
+        "question": "You're walking an interviewer through 'what happens when a user clicks Delete on a row in this table', and you've just described optimistically removing the row from the client list before the `DELETE` request returns. The interviewer leans in: 'the server responds `409 Conflict` because someone else already deleted it — walk me through the client from here.' What's the strongest continuation?",
+        "options": [
+          "Roll the row back into the table and surface a red 'Delete failed' error, forcing the user to retry the delete",
+          "Re-issue the `DELETE` in a retry loop until the server returns `200`",
+          "Treat `409` as success since the row is gone either way, and leave the optimistic removal in place with no message",
+          "Because the intended end-state (row absent) already holds, reconcile: keep the row removed, but confirm via a refetch or by treating `409` as an idempotent success, and inform the user the item was already deleted rather than showing a scary error"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "The subtlety is that `409 Conflict` here means the desired outcome already happened — the row is genuinely gone. Blindly rolling back (as you would for a true failure) reintroduces a row that no longer exists and confuses the user; blindly retrying hammers a request that can never succeed. Mature handling recognizes the delete as effectively idempotent, keeps the optimistic state, and communicates calmly.",
+        "optionExplanations": [
+          "Rolling back restores a row the server confirms no longer exists, and demanding a retry of an impossible delete is exactly the wrong reflex.",
+          "A retry loop against a `409` can never reach `200` — the resource is already deleted; this spins forever.",
+          "Silently treating it as success is close, but leaving the user with no acknowledgement misses that the optimistic assumption ('I did this') was actually wrong — a brief 'already removed' note is the honest UX.",
+          "Correct — recognize the row is truly gone, keep it removed (idempotent reconcile), and message 'already deleted' instead of a false error or a phantom rollback."
+        ],
+        "interviewTip": "When asked about a failure response, first ask 'does this status actually mean my goal failed?' A `409` on a delete often means you already won — treat it accordingly instead of reflexively rolling back."
       }
     },
     {
@@ -68,20 +106,39 @@
         "id": "c3",
         "question": "In a debugging interview, a page shows stale data after saving. What's the strongest FIRST move?",
         "options": [
-          "Explain three frameworks that would have prevented this and suggest a rewrite",
           "Reproduce it and isolate the layer: check DevTools — did the save request fire and succeed, and does the subsequent read return old or new data?",
           "Add a hard page-reload after every save so data is always fresh",
-          "Clear all caching everywhere in the app"
+          "Clear all caching everywhere in the app",
+          "Explain three frameworks that would have prevented this and suggest a rewrite"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "One DevTools check bisects the entire system: if the write succeeded and the read returns fresh data, it's a client cache/state bug; if the read returns stale data, it's server/cache-side. Diagnosis before treatment — and narrated bisection is exactly what the round is scoring.",
         "optionExplanations": [
-          "Proposing a rewrite before locating the bug signals you fix problems by avoiding them — the round is testing the opposite.",
           "Correct — reproduce, then bisect at the network boundary. Smallest step, maximum information.",
           "A blind reload may mask the symptom without touching the cause — and you still don't know what the cause was.",
-          "Shotgun cache-clearing might even work, but you've learned nothing and can't explain the fix — which, in an interview, is the actual failure."
+          "Shotgun cache-clearing might even work, but you've learned nothing and can't explain the fix — which, in an interview, is the actual failure.",
+          "Proposing a rewrite before locating the bug signals you fix problems by avoiding them — the round is testing the opposite."
         ],
         "interviewTip": "Say your bisection out loud: 'this check tells me whether the problem is in front of or behind the API.' Interviewers score the search strategy, not just the found bug."
+      },
+      "altQuestion": {
+        "id": "c3-alt",
+        "question": "In a live debugging round, a user reports that intermittently their uploaded profile image shows up rotated 90 degrees, but only sometimes, and you can't reproduce it on your own machine. You have DevTools, the server logs, and a couple of the offending image files. What's the strongest FIRST move to shrink an intermittent, hard-to-reproduce bug like this?",
+        "options": [
+          "Ship a client-side CSS `transform: rotate` toggle so users can straighten images themselves",
+          "Make it reproducible by narrowing the trigger: gather the affected files and look for what they share — e.g. EXIF orientation metadata from certain phone cameras — so an 'intermittent' bug becomes a deterministic one you can bisect",
+          "Add a `try/catch` around the upload handler and log the error, then wait for it to happen again in production",
+          "Assume the image library is buggy and swap it for a different one to see if the problem goes away"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The first job with an intermittent bug is to destroy the intermittency — find the hidden variable that separates the failing cases from the passing ones. Affected images sharing EXIF orientation flags (common from phone cameras) turns 'sometimes' into 'always, when EXIF orientation != 1', which you can then reproduce and bisect. You can't binary-search a bug you can't trigger on demand.",
+        "optionExplanations": [
+          "A CSS toggle papers over the symptom, leaves the root cause unknown, and doesn't help you find what distinguishes the failing uploads.",
+          "Correct — turn intermittent into deterministic by finding what the failing inputs share, then you can reproduce and bisect.",
+          "Logging and waiting cedes control of the repro to chance; you already hold sample files that can reveal the pattern now.",
+          "Swapping the library is changing something before you've localized the fault — and it may not even be the library's fault."
+        ],
+        "interviewTip": "With flaky or intermittent bugs, say 'my first goal is a reliable reproduction' — then hunt the variable that splits failing from passing cases. Interviewers score that instinct heavily."
       }
     },
     {
@@ -95,20 +152,39 @@
         "id": "c4",
         "question": "Asked to 'design an API for a todo app with sharing', what should you do FIRST?",
         "options": [
+          "Pick the deployment platform and CI setup",
           "Choose the database engine, since everything depends on it",
           "Clarify requirements: single user or teams? What does 'sharing' mean — read-only links, invitations, roles? Scale expectations?",
-          "Start writing the OpenAPI spec for CRUD endpoints",
-          "Pick the deployment platform and CI setup"
+          "Start writing the OpenAPI spec for CRUD endpoints"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "'Sharing' could mean a public read-only link (trivial) or team workspaces with roles (a whole permission model) — designs that differ by an order of magnitude. Questions-first is explicitly what the round rewards; several interview rubrics literally allocate points to it.",
         "optionExplanations": [
+          "Deployment is real but last; it constrains nothing about the API's shape.",
           "The database choice *follows from* the data shape and access patterns — which you don't know yet.",
           "Correct — scope determines design; two minutes of questions redirect the whole answer.",
-          "CRUD endpoints written before understanding 'sharing' will be rewritten mid-interview — visibly.",
-          "Deployment is real but last; it constrains nothing about the API's shape."
+          "CRUD endpoints written before understanding 'sharing' will be rewritten mid-interview — visibly."
         ],
         "interviewTip": "Open every design answer with: 'Before I design, can I ask three questions?' It's practically a cheat code — it buys thinking time and scores rubric points simultaneously."
+      },
+      "altQuestion": {
+        "id": "c4-alt",
+        "question": "The interviewer says: 'Design the backend for a feature that lets users export their data as a report.' Before touching entities, endpoints, or storage, which opening move best fits how these rounds are scored?",
+        "options": [
+          "Sketch the S3 bucket and file-naming scheme where the generated reports will live",
+          "Propose the specific PDF-rendering library you'd pull in",
+          "Immediately decide between generating the report synchronously in the request versus a background job queue",
+          "Ask scoping questions: how large is a typical export, is a CSV enough or do they need a formatted PDF, must it be instant or can it be emailed when ready, and roughly how often will users trigger it?"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "The answer bifurcates entirely on scope: a small instant CSV is a synchronous endpoint returning a file, while a large formatted PDF is a background job with a queue, status polling, and an email-when-done flow. Whether you even need async processing is precisely what the clarifying questions determine — and questions-first is what the rubric explicitly rewards.",
+        "optionExplanations": [
+          "Storage layout follows from whether you even persist reports, which follows from the sync/async decision you haven't scoped yet.",
+          "Naming a specific library is a premature implementation detail before you know the format is even a PDF.",
+          "Sync-vs-async is the key architectural fork, but you can't choose it responsibly until you know export size and latency tolerance — which are exactly the unanswered questions.",
+          "Correct — size, format, latency tolerance, and frequency determine whether this is a simple endpoint or a whole async pipeline; scope before structure."
+        ],
+        "interviewTip": "When a brief hides a sync-vs-async fork ('export', 'report', 'notify', 'process'), your first questions should target size and latency — they decide the entire shape of the design."
       }
     },
     {
@@ -122,20 +198,39 @@
         "id": "c5",
         "question": "Asked 'tell me about a hard bug you fixed', which answer structure lands best?",
         "options": [
-          "A tour of every technology the project used, to establish depth",
           "STAR with specifics: the symptom, how you isolated it (the actual steps), the root cause, the fix, and what changed afterward — e.g. a test or process added",
           "An honest statement that you rarely encounter bugs",
-          "A detailed complaint about the legacy code that caused it"
+          "A detailed complaint about the legacy code that caused it",
+          "A tour of every technology the project used, to establish depth"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "Interviewers want evidence of process under adversity: reproduce → isolate → root cause → fix → prevent. The 'prevention' ending (a regression test, a lint rule, a runbook) is what elevates a good story to a great one — it shows you close loops.",
         "optionExplanations": [
-          "Technology tours dodge the question; the interviewer asked about *a bug*, singular and concrete.",
           "Correct — structured, specific, ending in systemic improvement.",
           "Claiming bug-free work reads as either inexperience or unawareness — every working engineer has war stories.",
-          "Blame-centered stories transfer the spotlight from your skills to your grievances; interviewers imagine being your teammate."
+          "Blame-centered stories transfer the spotlight from your skills to your grievances; interviewers imagine being your teammate.",
+          "Technology tours dodge the question; the interviewer asked about *a bug*, singular and concrete."
         ],
         "interviewTip": "End every debugging story with the sentence 'and to make sure it never came back, I ___.' Regression test, monitoring alert, documentation — the loop-closer is the star of the story."
+      },
+      "altQuestion": {
+        "id": "c5-alt",
+        "question": "A behavioral interviewer asks: 'Tell me about a time you disagreed with a teammate's technical decision.' Which response structure lands best?",
+        "options": [
+          "Explain that you generally defer to whoever is more senior, so disagreements rarely turn into real conflict",
+          "STAR with specifics: the situation and the decision at stake, the concern you raised and how (data, a spike, a small prototype), the action you took to resolve it collaboratively, and the outcome — including what you'd have owned if you'd been wrong",
+          "Recount how you were proven right and the teammate eventually admitted the mistake",
+          "Describe a general philosophy of always writing clean, testable code so disagreements don't arise"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The question probes how you handle disagreement, not whether you win it. A strong STAR answer shows you surfaced a concern with evidence, engaged collaboratively rather than combatively, and stayed accountable to the outcome regardless of who was 'right'. The graceful acknowledgement that you might have been wrong is what signals real maturity.",
+        "optionExplanations": [
+          "Reflexively deferring to seniority dodges the question and signals you avoid the very engagement they're testing for.",
+          "Correct — situation, evidence-based concern, collaborative action, and an accountable outcome that owns the possibility of being wrong.",
+          "A 'and I was right, they admitted it' story centers winning over collaboration; interviewers imagine disagreeing with you and being made to feel it.",
+          "Reciting a coding philosophy sidesteps the concrete interpersonal story the question explicitly asked for."
+        ],
+        "interviewTip": "For 'disagreement' questions, make the hero move collaboration under uncertainty, not being proven right. 'We ran a quick spike to settle it with data' beats 'I told them so' every time."
       }
     }
   ]

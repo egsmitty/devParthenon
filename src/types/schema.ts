@@ -43,7 +43,14 @@ export interface QuizQuestion {
 export interface LessonSection {
   heading: string;
   paragraphs: string[];
+  /** Primary check ("Test A"), shown on the first pass through the module. */
   question: QuizQuestion;
+  /**
+   * Parallel variant ("Test B") of the same concept with a different
+   * scenario and answer. Shown in the Redemption Round so a learner can't
+   * pass by memorizing the primary answer — they must understand the idea.
+   */
+  altQuestion: QuizQuestion;
 }
 
 export interface QuizModule {

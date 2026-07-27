@@ -171,19 +171,34 @@ describe("data integrity", () => {
           section.paragraphs.length >= 1 && section.paragraphs.length <= 3,
           `${quiz.id}/${section.heading}: chunked-feeding law (1-3 paragraphs)`
         );
-        const q = section.question;
-        assert.ok(q.options.length >= 2, `${q.id}: needs options`);
-        assert.ok(
-          q.correctAnswerIndex >= 0 && q.correctAnswerIndex < q.options.length,
-          `${q.id}: correctAnswerIndex out of range`
+        const checkQuestion = (q, label) => {
+          assert.ok(q, `${quiz.id}/${section.heading}: ${label} required`);
+          assert.equal(q.options.length, 4, `${q.id}: must have exactly 4 options`);
+          assert.ok(
+            q.correctAnswerIndex >= 0 && q.correctAnswerIndex < q.options.length,
+            `${q.id}: correctAnswerIndex out of range`
+          );
+          assert.equal(
+            q.optionExplanations.length,
+            q.options.length,
+            `${q.id}: every option needs a why-wrong/why-right explanation`
+          );
+          assert.ok(q.rationale.length > 0, `${q.id}: rationale required`);
+          assert.ok(q.interviewTip.length > 0, `${q.id}: interviewTip required`);
+        };
+        checkQuestion(section.question, "question (Test A)");
+        checkQuestion(section.altQuestion, "altQuestion (Test B)");
+        // The variant must be genuinely different, not a copy.
+        assert.notEqual(
+          section.altQuestion.id,
+          section.question.id,
+          `${section.question.id}: altQuestion needs a distinct id`
         );
-        assert.equal(
-          q.optionExplanations.length,
-          q.options.length,
-          `${q.id}: every option needs a why-wrong/why-right explanation`
+        assert.notEqual(
+          section.altQuestion.question.trim(),
+          section.question.question.trim(),
+          `${section.question.id}: altQuestion must pose a different question`
         );
-        assert.ok(q.rationale.length > 0, `${q.id}: rationale required`);
-        assert.ok(q.interviewTip.length > 0, `${q.id}: interviewTip required`);
       }
     }
   });

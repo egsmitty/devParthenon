@@ -14,20 +14,39 @@
         "id": "db1",
         "question": "Posts can have many tags, and tags apply to many posts. What's the standard relational way to model this?",
         "options": [
+          "Duplicate each post row once per tag it has",
           "A tags column on posts holding a comma-separated string of tag names",
           "A join table post_tags(post_id, tag_id) with foreign keys to both tables",
-          "A posts column on tags holding an array of post ids",
-          "Duplicate each post row once per tag it has"
+          "A posts column on tags holding an array of post ids"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "Many-to-many decomposes into two one-to-many relationships through a join table. Each row of post_tags is one fact — 'this post has this tag' — indexable, constrainable, and queryable from both directions.",
         "optionExplanations": [
+          "Duplicating post rows destroys the primary key's meaning and multiplies every future update.",
           "Comma-separated strings can't be foreign-keyed, can't be indexed usefully, and 'find posts tagged X' becomes string parsing in SQL — the classic anti-pattern.",
           "Correct — the join table is *the* relational answer to many-to-many.",
-          "Arrays of ids can't enforce referential integrity, and querying 'tags for post 42' means scanning arrays in every tag row.",
-          "Duplicating post rows destroys the primary key's meaning and multiplies every future update."
+          "Arrays of ids can't enforce referential integrity, and querying 'tags for post 42' means scanning arrays in every tag row."
         ],
         "interviewTip": "Schema-design interviews almost always contain a hidden many-to-many. Say 'join table' early and draw it — it's often the main thing being tested."
+      },
+      "altQuestion": {
+        "id": "db1-alt",
+        "question": "In a music app, a `song` can appear on many `playlist`s, and each `playlist` holds many `song`s. A junior dev proposes adding a `playlist_ids` integer column to the `songs` table. What's the correct relational model, and what's wrong with the proposal?",
+        "options": [
+          "Add both a `playlist_ids` column on `songs` and a `song_ids` column on `playlists` to cover both directions",
+          "Store the relationship as a JSON blob on `playlists` for flexibility",
+          "The proposal is fine as long as `playlist_ids` is indexed",
+          "Introduce a `playlist_songs(playlist_id, song_id)` join table; the proposed column can't be foreign-keyed or queried from the playlist side without scanning every song"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "A many-to-many between songs and playlists resolves into a join table whose every row is one membership fact. A single scalar column on `songs` can hold only one playlist id per row, and even packing many ids into it forfeits referential integrity and any efficient 'which songs are on playlist 7' lookup.",
+        "optionExplanations": [
+          "Two mirror columns duplicate the same relationship in two unsynchronized places, doubling the update surface and inviting them to disagree.",
+          "A JSON blob can't be foreign-keyed, can't enforce that referenced songs exist, and turns 'playlists containing song X' into full-table JSON parsing.",
+          "Indexing a single integer column doesn't make it hold many values, and one song belongs to many playlists — the column can't represent the relationship at all.",
+          "Correct — the join table is the canonical resolution of many-to-many, queryable and constrainable from both sides."
+        ],
+        "interviewTip": "When two entities each own 'many' of the other, resist any single-column shortcut. Name the join table and note it can carry its own columns (e.g. `position`, `added_at`) — that extra insight signals depth."
       }
     },
     {
@@ -41,20 +60,39 @@
         "id": "db2",
         "question": "A 'signups vs activity' report must list ALL users with their order counts — including users with zero orders. Which query shape is right?",
         "options": [
-          "users INNER JOIN orders ... GROUP BY users.id",
           "users LEFT JOIN orders ... GROUP BY users.id with COUNT(orders.id)",
           "Two separate queries concatenated with UNION",
-          "orders LEFT JOIN users ... GROUP BY orders.id"
+          "orders LEFT JOIN users ... GROUP BY orders.id",
+          "users INNER JOIN orders ... GROUP BY users.id"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "LEFT JOIN preserves every user; those without orders get NULL order columns, and COUNT(orders.id) counts non-NULL values — yielding 0 for them. INNER JOIN would silently drop exactly the zero-order users the report exists to find.",
         "optionExplanations": [
-          "INNER JOIN excludes users with no matching order — the report's most interesting rows vanish, and nothing errors to warn you.",
           "Correct — and the detail matters: COUNT(orders.id), not COUNT(*), which would count the NULL row as 1.",
           "A UNION of 'users with orders' and 'users without' can be forced to work but is a contorted rewrite of what LEFT JOIN says directly.",
-          "This direction preserves all *orders* (which all have users anyway) and groups by the wrong entity."
+          "This direction preserves all *orders* (which all have users anyway) and groups by the wrong entity.",
+          "INNER JOIN excludes users with no matching order — the report's most interesting rows vanish, and nothing errors to warn you."
         ],
         "interviewTip": "'When would you use a LEFT JOIN over an INNER JOIN?' — give the concrete report: 'all users including those with zero orders.' The COUNT(column) vs COUNT(*) NULL subtlety is a bonus point interviewers notice."
+      },
+      "altQuestion": {
+        "id": "db2-alt",
+        "question": "A dashboard needs the number of published comments for every blog `article`, and articles with no comments yet must show `0`. A teammate writes `articles LEFT JOIN comments ... GROUP BY articles.id` but uses `COUNT(*)`, and complaints come in that commentless articles show `1`. What actually went wrong?",
+        "options": [
+          "`LEFT JOIN` was the wrong choice; an `INNER JOIN` would have shown the correct zero counts",
+          "`COUNT(*)` counts the single NULL-filled placeholder row that `LEFT JOIN` produces for a matchless article as `1`; `COUNT(comments.id)` counts only non-NULL and yields `0`",
+          "`GROUP BY articles.id` is invalid and silently returns 1 per group",
+          "The counts are off because `HAVING` was needed instead of `GROUP BY`"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "For an article with no comments, `LEFT JOIN` still emits one row with every `comments` column NULL. `COUNT(*)` counts rows regardless of NULLs, so it counts that placeholder as 1. `COUNT(comments.id)` counts only non-NULL values of that column, correctly returning 0.",
+        "optionExplanations": [
+          "`INNER JOIN` would drop the commentless articles entirely — the dashboard would show them as missing, not as 0, which is a worse failure.",
+          "Correct — the join shape was right; the bug is `COUNT(*)` versus `COUNT(comments.id)` over the NULL placeholder row.",
+          "Grouping by the primary key of the left table is valid and standard; it isn't the cause and doesn't force a count of 1.",
+          "`HAVING` filters groups after aggregation; it wouldn't fix an inflated per-group count, and none was needed here."
+        ],
+        "interviewTip": "The `COUNT(*)` vs `COUNT(column)` trap is a favorite because both 'look right'. Say it out loud: over a `LEFT JOIN`, count the joined table's key column, never `*`."
       }
     },
     {
@@ -68,20 +106,39 @@
         "id": "db3",
         "question": "A query filtering `WHERE user_id = ? AND created_at > ?` is slow. The table has an index on (created_at, user_id). The DBA suggests (user_id, created_at) instead. Why would column order matter?",
         "options": [
+          "(created_at, user_id) is invalid SQL and was never being used",
           "It doesn't — column order in a composite index is purely cosmetic",
           "With user_id first, the index groups all of one user's rows together, letting the range scan on created_at run within that narrow slice; equality columns should precede range columns",
-          "Indexes can only ever use their first column",
-          "(created_at, user_id) is invalid SQL and was never being used"
+          "Indexes can only ever use their first column"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "A B-tree sorts by the first column, then the second within it. Leading with the equality filter (user_id) narrows to one contiguous slice, and the range on created_at scans just that slice. Leading with the range column scatters the target user's rows across the whole date range.",
         "optionExplanations": [
+          "It's valid and may even get partially used — just poorly for this query shape.",
           "Order is one of the most consequential choices in index design — the leftmost-prefix rule depends on it entirely.",
           "Correct — the rule of thumb: equality columns first, then the range column.",
-          "Composite indexes serve multi-column lookups all the time; the constraint is the leftmost prefix, not first-column-only.",
-          "It's valid and may even get partially used — just poorly for this query shape."
+          "Composite indexes serve multi-column lookups all the time; the constraint is the leftmost prefix, not first-column-only."
         ],
         "interviewTip": "'How would you speed up this slow query?' — the professional answer starts with 'first I'd run EXPLAIN', then discusses index shape. Leading with evidence beats leading with a guess."
+      },
+      "altQuestion": {
+        "id": "db3-alt",
+        "question": "A table has a composite index on `(tenant_id, status, created_at)`. Three queries run against it: (A) `WHERE tenant_id = ?`, (B) `WHERE status = ? AND created_at > ?`, (C) `WHERE tenant_id = ? AND status = ?`. Which query can the index NOT accelerate, and why?",
+        "options": [
+          "Query C, because an index needs all three columns present to be used at all",
+          "All three are accelerated equally; column order in the index is irrelevant",
+          "Query A, because a single-column filter can never use a three-column index",
+          "Query B, because it skips the leading `tenant_id` column and the leftmost-prefix rule means the index can't be seeked without it"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "A B-tree composite index is sorted by its leading column first. Query B filters on `status` and `created_at` but never constrains `tenant_id`, so it can't use the sorted structure to seek — the leftmost prefix is missing. A uses the prefix `(tenant_id)`, and C uses the prefix `(tenant_id, status)`, so both are served.",
+        "optionExplanations": [
+          "An index does not require every column to be present; any contiguous prefix from the left suffices, so C's two-column prefix works.",
+          "Column order is decisive here — it's the entire reason B fails while A and C succeed.",
+          "Query A filters exactly the leading column, which is the shortest valid leftmost prefix — the index accelerates it well.",
+          "Correct — B omits the leading `tenant_id`, breaking the leftmost-prefix requirement, so the index can't be seeked for it."
+        ],
+        "interviewTip": "Reframe leftmost-prefix as 'you may drop columns from the right, never from the left.' Being able to classify several queries against one index quickly is exactly the drill interviewers run."
       }
     },
     {
@@ -95,20 +152,39 @@
         "id": "db4",
         "question": "An order checkout does three writes: create order, decrement inventory, record payment. The server can crash at any moment. What guarantees the database never ends up with an order whose inventory was never decremented?",
         "options": [
-          "Run the three writes in quick succession to minimize the risk window",
           "Wrap all three in a single transaction so a crash before COMMIT rolls back every write",
           "Add a try/catch and log any errors for manual cleanup",
-          "Use three separate databases so failures stay isolated"
+          "Use three separate databases so failures stay isolated",
+          "Run the three writes in quick succession to minimize the risk window"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 0,
         "rationale": "Atomicity is precisely this guarantee: until COMMIT, none of the writes are permanent; a crash mid-way leaves the database as if nothing happened. Shrinking timing windows or logging for cleanup are mitigations — a transaction is the actual solution.",
         "optionExplanations": [
-          "A smaller window is still a window; under real traffic, 'rare' inconsistency becomes 'weekly' inconsistency.",
           "Correct — atomic commit/rollback is what transactions are for.",
           "try/catch can't catch a process crash or power loss, and 'manual cleanup' means a human reconciling corrupted money data.",
-          "Splitting across databases makes atomicity *harder* (now you need distributed transactions) — the opposite of a fix."
+          "Splitting across databases makes atomicity *harder* (now you need distributed transactions) — the opposite of a fix.",
+          "A smaller window is still a window; under real traffic, 'rare' inconsistency becomes 'weekly' inconsistency."
         ],
         "interviewTip": "When 'transaction' comes up, name-drop the boundary decision too: keep transactions short and never hold one open across an external API call — that's where senior candidates differentiate."
+      },
+      "altQuestion": {
+        "id": "db4-alt",
+        "question": "A signup flow inserts a `user` row, then inserts a matching `wallet` row seeded with a starting balance. In production, some users exist with no wallet at all. The code already wraps both inserts in `db.transaction(async (tx) => {...})`. Which ACID property is being violated, and what's the most likely cause?",
+        "options": [
+          "Durability is failing; the committed wallet rows are being lost after the fact",
+          "Atomicity is likely being defeated because the second insert runs on the outer connection instead of `tx`, so it isn't part of the transaction and its failure doesn't roll back the user insert",
+          "Isolation is the problem; another transaction is deleting the wallets concurrently",
+          "Consistency is fine and this is expected behavior for transactions"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Atomicity means all statements in the transaction commit or none do. If the wallet insert accidentally uses the outer `db` handle rather than the transaction's `tx` handle, it executes outside the atomic unit — so it can fail (or its enclosing scope can throw after it) while the user insert still commits, producing users without wallets.",
+        "optionExplanations": [
+          "Durability concerns committed data surviving crashes; here the wallet was never committed as part of the unit, so nothing durable was lost.",
+          "Correct — using `db` instead of `tx` for the inner write silently excludes it from the atomic unit, breaking all-or-nothing.",
+          "Isolation governs visibility of concurrent in-flight work; nothing here indicates a competing transaction deleting rows.",
+          "A partial result — user without wallet — is exactly what a correctly-scoped transaction is supposed to prevent, so this is not expected."
+        ],
+        "interviewTip": "The subtle real-world transaction bug isn't forgetting to open one — it's writing through the wrong handle inside it. Always thread `tx` (not the outer client) into every call in the block."
       }
     },
     {
@@ -122,20 +198,39 @@
         "id": "db5",
         "question": "A page lists 100 posts with author names. Logs show 101 queries per page load. What's happening, and what's the fix?",
         "options": [
+          "The ORM's cache is disabled; enabling it removes the repeat queries",
           "The connection pool is misconfigured; raise the pool size",
           "Classic N+1: one query for posts, then one per post for its author. Fix: eager-load the relation (Prisma include / Drizzle with) so it's one or two queries",
-          "The database is missing an index on posts.id",
-          "The ORM's cache is disabled; enabling it removes the repeat queries"
+          "The database is missing an index on posts.id"
         ],
-        "correctAnswerIndex": 1,
+        "correctAnswerIndex": 2,
         "rationale": "1 + 100 = the N+1 signature. Each author lookup happens lazily inside the render loop. Eager loading declares the relation need up front, letting the ORM emit a join (or one batched IN query) instead of a hundred round-trips.",
         "optionExplanations": [
+          "Caching may mask it for repeated authors, but the first cold load still storms the database — and correctness now depends on cache state.",
           "A bigger pool lets the 101 queries run more concurrently — you've optimized the symptom's throughput, not removed the 100 extra queries.",
           "Correct — recognize the 1+N count, name the pattern, eager-load the relation.",
-          "Each per-author query is likely already an indexed fast lookup; the cost is 100 round-trips, not 100 slow queries.",
-          "Caching may mask it for repeated authors, but the first cold load still storms the database — and correctness now depends on cache state."
+          "Each per-author query is likely already an indexed fast lookup; the cost is 100 round-trips, not 100 slow queries."
         ],
         "interviewTip": "N+1 is arguably the single most-tested ORM concept in interviews. Be able to define it in one sentence and give the fix in the next."
+      },
+      "altQuestion": {
+        "id": "db5-alt",
+        "question": "An API serializes 50 `order`s, and for each order accesses `order.customer.tier` and `order.shippingAddress.country`. Query logs show 101 queries per request. A developer adds `include: { customer: true }` and the count drops to 51, not 1. What's the remaining issue and the complete fix?",
+        "options": [
+          "The remaining 50 queries are caused by a missing index on `orders.id`",
+          "Dropping to 51 proves the ORM cache is now working; clearing it would restore 101",
+          "51 is already optimal; a second `include` would make it slower",
+          "Only the `customer` relation was eager-loaded, so `shippingAddress` is still lazily fetched per order (the leftover +50); add it to the same `include`/`with` so all relations load up front"
+        ],
+        "correctAnswerIndex": 3,
+        "rationale": "The original 101 was 1 + 50 (customer) + 50 (address). Eager-loading only `customer` collapses one of the two N-loops, leaving 1 + 50 = 51 from the still-lazy `shippingAddress` access. Including every accessed relation in the same query removes the remaining per-row round-trips.",
+        "optionExplanations": [
+          "The per-order lookups are keyed, indexed point reads; the cost is 50 extra round-trips, not a missing index.",
+          "The drop came from eager-loading `customer`, not caching; there's no cache toggle at play here.",
+          "51 still carries a full N+1 for the address relation; it is not optimal, and adding the second `include` reduces round-trips, not increases them.",
+          "Correct — a partial eager-load fixes only the relations named; every relation touched in the loop must be included."
+        ],
+        "interviewTip": "Partial fixes to N+1 are a classic trap: eager-loading one relation while another stays lazy. Enumerate every relation the serializer touches and include them all in a single fetch."
       }
     }
   ]
