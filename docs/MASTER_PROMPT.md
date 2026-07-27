@@ -77,6 +77,9 @@ Rules of engagement:
 6. Existing `progress.json` files in the wild must keep loading — bump
    `version` and migrate, never break.
 7. `npm test` and the smoke check are green before any commit.
+8. Committed progress survives every reload, relaunch, `npm run dev` rebuild,
+   and crash. In-progress module work must not silently vanish on a renderer
+   refresh (see §3.6).
 
 ---
 
@@ -180,6 +183,48 @@ progress, and let the app steer them toward weak spots.
 - Missing a concept moves it to the front of the Review deck; getting it right
   repeatedly pushes it back. Covered by `review.ts` unit tests.
 
+### 3.6 Dev-loop reload safety & live (mid-module) persistence — FOUNDATIONAL, DO FIRST
+
+Two concrete defects in the current build:
+- `npm run dev` (`npm run build && electron . --dev`) passes a `--dev` flag that
+  `main.ts` **ignores entirely** — no live reload, no DevTools. The
+  "live-reload mode" wording in `package.json` is inaccurate. Make the dev loop
+  honest: either implement real reload (watch `dist/`, `webContents.reload()`
+  or relaunch on change) or rename the script; and open DevTools when `--dev`
+  is present so a manual refresh is a first-class, expected action.
+- A renderer reload (Ctrl+R) or an app close/crash **mid-module** discards the
+  in-progress attempt — the learner restarts that module from section 1.
+  Committed scores are safe (atomic writes to `%APPDATA%`, re-read on init);
+  only the uncommitted, renderer-memory attempt is lost. Close that gap.
+
+Requirements:
+1. **Committed progress must survive** any reload, relaunch, dev rebuild, or
+   crash. Already true via atomic writes — *lock it in* with a test that saves a
+   score, simulates a reload (fresh `loadProgress`), and asserts persistence.
+2. **Live mid-module persistence.** Autosave the active attempt (node id,
+   current section index, chosen answers, redemption phase/queue, earned-back
+   points) as the learner advances — either to a separate atomic `attempt.json`
+   via a new `save-attempt` / `get-attempt` / `clear-attempt` IPC trio, or as an
+   `activeAttempt` field on `ProgressData`. On launch/reload, if an attempt
+   exists, offer **"Resume where you left off"** vs "Start over"; clear it on
+   module completion or explicit abandon. Autosave uses the same temp-file +
+   rename discipline — never a naive write.
+3. **Reload during dev must be clean**: `init()` re-running must not double-
+   register IPC/event listeners or leak, and must repaint the temple from disk
+   with zero console errors. Extend the smoke check to reload the window once
+   and re-assert (nodes present, temple rendered, no renderer errors).
+4. Don't let the dev live-reload watcher touch or race the save files.
+
+Acceptance:
+- Reloading (Ctrl+R) or killing the app mid-section and relaunching resumes the
+  exact section with prior answers and redemption state intact.
+- `npm run dev`, edit a renderer file, re-run — committed progress never lost;
+  the script's behavior matches its description.
+- A unit test proves committed scores survive a simulated reload; the smoke
+  check reloads once and stays error-free.
+
+This **supersedes** the "Resume mid-module" bullet in §5 and is Phase 1 in §8.
+
 ---
 
 ## 4. Feature C — Playwright visual + UX audit
@@ -232,8 +277,7 @@ power-hungry — gate it behind its own npm script, never the default test run.
 ## 5. Feature D — supporting polish (stretch, do after A–C)
 
 Pick up as budget allows; each is independently shippable:
-- **Resume mid-module**: persist an in-progress attempt (section index +
-  answers) so leaving a module doesn't restart it. Clear on completion/abandon.
+- **Resume mid-module**: *promoted to a foundational requirement — see §3.6.*
 - **Keyboard support**: `1–4` to answer, `Enter` to continue, `Esc` to close;
   proper focus trap and ARIA roles on the modal.
 - **Capstone as a real gauntlet**: make the pediment a timed, shuffled quiz that
@@ -265,6 +309,9 @@ Plus, for the relevant feature:
 npm run audit:ux    # Feature C only; screenshots + report generated
 npm run dist:win    # packaging still succeeds (see README winCodeSign note)
 ```
+Reload safety (§3.6): reload the renderer mid-module and confirm the attempt
+resumes; relaunch and confirm committed scores persist; the smoke check reloads
+once and stays error-free.
 Data sanity after any content change: a Node pass asserting every variant has
 4 options / 4 aligned explanations, `correctAnswerIndex` → "Correct —", and an
 even answer-index distribution.
@@ -272,15 +319,18 @@ even answer-index distribution.
 ---
 
 ## 8. Suggested execution order
-1. **Schema + selection refactor** (Feature A §2.1–2.2) with the normalizer, so
+1. **Dev-loop reload safety & live persistence** (§3.6) — foundational; makes
+   the dev/build loop honest and stops mid-module work from vanishing on
+   refresh. Gate green, commit.
+2. **Schema + selection refactor** (Feature A §2.1–2.2) with the normalizer, so
    nothing breaks while the pool is still size 2. Gate green, commit.
-2. **Author variants C/D** via parallel agents, run the distribution + alignment
+3. **Author variants C/D** via parallel agents, run the distribution + alignment
    script, extend the integrity test. Gate, commit.
-3. **Replayability** (Feature B): `version: 2` migration, `sectionStats`,
+4. **Replayability** (Feature B): `version: 2` migration, `sectionStats`,
    `review.ts` + tests, Practice affordance, Review deck. Gate, commit.
-4. **Playwright audit** (Feature C): harness, fixtures, screenshots, judging,
+5. **Playwright audit** (Feature C): harness, fixtures, screenshots, judging,
    then implement the high-severity UX fixes. Gate, commit.
-5. **Polish** (Feature D) as budget allows, one commit each.
+6. **Polish** (Feature D) as budget allows, one commit each.
 
 Deliver each phase working and verified. Report what you changed, what the
 audit found, and anything in §1.2 that a requested change would have forced —
