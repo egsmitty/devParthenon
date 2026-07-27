@@ -1,0 +1,169 @@
+{
+  "id": "foundation",
+  "title": "Web Foundations — The Stylobate",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "Clients and servers: who does what",
+      "paragraphs": [
+        "The web is a conversation between two roles. A client (usually a browser) asks for things. A server listens on a network address, receives those requests, and answers. Neither side keeps a phone line open — every exchange is a discrete request followed by a discrete response.",
+        "This matters because HTTP is stateless: the server does not inherently remember your previous request. Anything that feels like memory — being logged in, a shopping cart — is rebuilt on every request from data the client sends along (cookies, tokens) or data the server looks up (a database).",
+        "When an interviewer asks 'what happens when you type a URL and press Enter', this request/response boundary is the backbone of the answer."
+      ],
+      "question": {
+        "id": "f1",
+        "question": "HTTP is described as a *stateless* protocol. What does that actually mean?",
+        "options": [
+          "The server crashes if it tries to store any data between requests",
+          "Each request is independent; the server retains no built-in memory of previous requests from the same client",
+          "The client cannot send data to the server, only receive it",
+          "State can only be stored on the client, never on the server"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Statelessness means the protocol itself carries no memory between requests. Each request must contain everything needed to handle it — which is exactly why cookies, sessions, and tokens exist: they re-introduce continuity on top of a stateless protocol.",
+        "optionExplanations": [
+          "Servers store data constantly (databases, caches). Statelessness is a property of the protocol, not a restriction on server storage.",
+          "Correct — the protocol has no built-in memory; continuity is layered on with cookies, sessions, or tokens.",
+          "Clients send data all the time — form submissions, JSON bodies, uploaded files. That has nothing to do with statelessness.",
+          "Servers absolutely store state (that is what databases are). The protocol just doesn't carry it between requests automatically."
+        ],
+        "interviewTip": "A favorite follow-up is 'so how does login work over a stateless protocol?' Be ready to explain cookies and session/token round-tripping in one breath."
+      }
+    },
+    {
+      "heading": "Anatomy of an HTTP request",
+      "paragraphs": [
+        "An HTTP request is plain structured text: a method and path (`GET /products/42 HTTP/1.1`), then headers (key-value metadata like `Accept: application/json` or `Cookie: session=abc`), then optionally a body — the payload.",
+        "The method declares intent. `GET` reads and should never change anything. `POST` creates or triggers. `PUT` replaces a resource entirely, `PATCH` updates part of it, and `DELETE` removes it.",
+        "A useful lens is idempotency: `GET`, `PUT`, and `DELETE` can be safely retried — doing them twice leaves the world in the same state. `POST` is not idempotent, which is why your bank warns you not to click 'Pay' twice."
+      ],
+      "question": {
+        "id": "f2",
+        "question": "A payment API endpoint charges a card when called. A flaky network means the client may retry requests automatically. Which method choice best reflects HTTP semantics for 'create a new charge'?",
+        "options": [
+          "GET, because it's the simplest method and easy to test in a browser",
+          "PUT, because charges should be retryable",
+          "POST, with the server using an idempotency key to de-duplicate retries",
+          "DELETE, because it removes money from the account"
+        ],
+        "correctAnswerIndex": 2,
+        "rationale": "Creating a new resource is POST's job. Since POST is not idempotent, real payment APIs (like Stripe) let the client send an idempotency key so a retried POST doesn't create a second charge — the semantics stay honest and retries stay safe.",
+        "optionExplanations": [
+          "GET must never cause side effects. Browsers, proxies, and prefetchers freely repeat GETs — a GET that charges money could fire from a link preview.",
+          "PUT means 'replace the resource at this URL with this body'. A new charge has no URL yet, and blind retry-safety without an idempotency scheme is exactly the trap.",
+          "Correct — POST for creation, plus an idempotency key to make retries safe in practice.",
+          "DELETE removes the resource identified by the URL. Charging money is creating a charge record, not deleting anything."
+        ],
+        "interviewTip": "Mentioning idempotency keys when discussing POST retries is a strong signal you've thought about real-world API failure modes."
+      }
+    },
+    {
+      "heading": "Response status codes: the server's verdict",
+      "paragraphs": [
+        "Status codes are grouped by their first digit. 2xx: success (`200 OK`, `201 Created`, `204 No Content`). 3xx: redirection (`301` moved permanently, `302` moved temporarily, `304` not modified — use your cache). 4xx: the client did something wrong. 5xx: the server failed.",
+        "The 4xx family is the one interviewers probe. `400` malformed request, `401` not authenticated (who are you?), `403` authenticated but not allowed (I know who you are — no), `404` resource doesn't exist, `409` conflict, `429` too many requests.",
+        "The 401 vs 403 distinction trips people up constantly: 401 means 'log in first'; 403 means 'logging in won't help'."
+      ],
+      "question": {
+        "id": "f3",
+        "question": "A logged-in user with a valid session tries to open the admin dashboard, but they are not an admin. Which status code should the server return?",
+        "options": [
+          "401 Unauthorized",
+          "403 Forbidden",
+          "404 Not Found",
+          "500 Internal Server Error"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The user is authenticated (we know who they are) but not authorized (their role doesn't permit this). That is precisely 403 Forbidden. Despite its confusing name, 401 'Unauthorized' actually means unauthenticated.",
+        "optionExplanations": [
+          "401 means the request lacks valid credentials — 'log in and try again'. This user is already logged in; logging in again changes nothing.",
+          "Correct — authenticated but lacking permission is 403.",
+          "404 is defensible only as a deliberate strategy to hide the resource's existence (GitHub does this for private repos) — but as the straightforward semantic answer, it's wrong.",
+          "Nothing failed on the server. 5xx codes mean the server itself errored, which would page an on-call engineer for what is actually normal access control."
+        ],
+        "interviewTip": "Say the mnemonic out loud in interviews: '401 = who are you? 403 = I know who you are, and no.' Bonus points for noting some APIs return 404 to avoid leaking resource existence."
+      }
+    },
+    {
+      "heading": "DNS: from name to address",
+      "paragraphs": [
+        "Computers route packets to IP addresses, not names. DNS translates `example.com` into `93.184.216.34`. Your machine first checks local caches, then asks a resolver, which walks the hierarchy: root servers point to the `.com` TLD servers, which point to example.com's authoritative nameserver, which returns the record.",
+        "Records have types: `A` maps a name to an IPv4 address, `AAAA` to IPv6, `CNAME` aliases one name to another, `MX` routes mail, `TXT` holds arbitrary text (often domain-ownership proofs).",
+        "Every record carries a TTL — how long resolvers may cache it. Low TTLs mean fast propagation of changes but more lookup traffic; high TTLs the reverse. 'DNS propagation delay' is mostly just caches waiting for TTLs to expire."
+      ],
+      "question": {
+        "id": "f4",
+        "question": "You change your site's A record to point at a new server, but some visitors still reach the old server for hours. Why?",
+        "options": [
+          "The old server is intercepting the traffic meant for the new one",
+          "Resolvers and operating systems cache DNS answers until the record's TTL expires",
+          "DNS changes require a browser update to take effect",
+          "The A record only applies to new visitors who have never seen the site"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "DNS answers are cached at many layers — the OS, the router, the ISP's resolver — each honoring the TTL that was on the record when it was fetched. Until those caches expire, they keep serving the old IP. This is why you lower the TTL *before* a planned migration.",
+        "optionExplanations": [
+          "The old server does nothing active — traffic reaches it because cached answers still name its IP.",
+          "Correct — layered caching plus TTL is the entire mechanism behind 'propagation delay'.",
+          "Browsers have small DNS caches but need no update; the delay lives in resolver caches, not software versions.",
+          "DNS has no concept of new vs returning visitors; it's purely name-to-address lookup with caching."
+        ],
+        "interviewTip": "The pro move in a systems interview: 'before migrating, drop the TTL to 60 seconds a day in advance, migrate, then raise it back.'"
+      }
+    },
+    {
+      "heading": "The DOM: the page as a living tree",
+      "paragraphs": [
+        "When the browser parses HTML, it builds the DOM — a tree of node objects in memory. The HTML file is the blueprint; the DOM is the standing building. JavaScript never edits your HTML file; it mutates this tree, and the browser repaints to match.",
+        "Every DOM mutation can trigger style recalculation, layout (geometry), and paint. Touching the DOM is orders of magnitude more expensive than touching JavaScript objects — which is the entire reason virtual-DOM libraries like React exist: batch the changes, compute the minimal diff, touch the real DOM as little as possible.",
+        "The DOM is also live: `document.querySelector` hands you a reference into the tree itself, not a copy. Change it, and the page changes."
+      ],
+      "question": {
+        "id": "f5",
+        "question": "Why is repeatedly updating the real DOM inside a loop (e.g. appending 1,000 rows one at a time) considered a performance mistake?",
+        "options": [
+          "The DOM can only hold a limited number of elements before erroring",
+          "Each mutation can force the browser to recalculate styles, layout, and paint, so unbatched updates multiply that expensive work",
+          "JavaScript loops are inherently slow regardless of what the body does",
+          "The DOM is read-only during loops and silently drops the writes"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The cost isn't the loop — it's that every insertion can invalidate layout and trigger reflow/repaint. Batching (build a DocumentFragment, append once) or diffing (React) collapses 1,000 potential reflows into one.",
+        "optionExplanations": [
+          "There is no meaningful hard cap; huge DOMs get slow, but they don't error at a limit.",
+          "Correct — reflow and repaint are the expensive steps, and unbatched mutations repeat them needlessly.",
+          "Plain JS loops execute millions of iterations per second; the loop is innocent, the per-iteration DOM work is guilty.",
+          "The DOM is fully writable at any time; nothing is dropped — that's why all 1,000 slow reflows actually happen."
+        ],
+        "interviewTip": "If asked 'why does React exist', anchor your answer here: real-DOM mutations are expensive, so React batches state changes and commits a minimal diff."
+      }
+    },
+    {
+      "heading": "Putting it together: the life of a page load",
+      "paragraphs": [
+        "Full circle: you press Enter. DNS resolves the name to an IP. The browser opens a TCP connection (plus a TLS handshake for HTTPS) and sends an HTTP GET. The server responds with a status code, headers, and an HTML payload.",
+        "The browser parses HTML into the DOM, discovers linked CSS and JS, fetches those (more HTTP requests), builds render information, and paints. JavaScript then hooks into the DOM to make the page interactive.",
+        "Every pillar above this foundation is a deepening of one step: React and CSS live in the render/DOM phase, Next.js decides where HTML gets generated, Node is the server answering, databases are where the server gets its facts."
+      ],
+      "question": {
+        "id": "f6",
+        "question": "Put these page-load steps in the order they occur: (A) browser paints pixels, (B) DNS lookup, (C) HTML parsed into DOM, (D) HTTP request sent.",
+        "options": [
+          "B → D → C → A",
+          "D → B → A → C",
+          "B → C → D → A",
+          "C → B → D → A"
+        ],
+        "correctAnswerIndex": 0,
+        "rationale": "You can't send a request without an IP (DNS first), can't parse a response you haven't requested (request before parse), and can't paint a tree you haven't built (parse before paint). B → D → C → A.",
+        "optionExplanations": [
+          "Correct — resolve the name, send the request, parse the response into the DOM, paint.",
+          "The request can't be addressed before DNS gives you an IP, and painting can't precede having a DOM to paint.",
+          "There is no HTML to parse before the HTTP response arrives — the request must come before parsing.",
+          "Parsing HTML first is impossible; the HTML only exists client-side after DNS + request + response."
+        ],
+        "interviewTip": "'Walk me through what happens when you hit Enter on a URL' is a top-5 interview question. Practice narrating this chain in under 90 seconds, then offer to zoom into any step."
+      }
+    }
+  ]
+}

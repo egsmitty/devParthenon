@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "foundationCompleted": false,
+  "unlockedPillars": [],
+  "nodes": {
+    "foundation": {
+      "id": "foundation",
+      "category": "foundation",
+      "title": "Web Foundations",
+      "description": "Client/Server model, HTTP packets and methods, response codes, DNS resolution, and the DOM. The stylobate every pillar stands on.",
+      "status": "unlocked",
+      "score": null,
+      "prerequisites": [],
+      "quizFile": "foundation.json"
+    },
+    "pillar-react": {
+      "id": "pillar-react",
+      "category": "pillar",
+      "title": "React & UI Rendering Engine",
+      "description": "Components, props vs state, hooks, reconciliation, keys, and StrictMode behavior.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["foundation"],
+      "quizFile": "react.json"
+    },
+    "pillar-nextjs": {
+      "id": "pillar-nextjs",
+      "category": "pillar",
+      "title": "Next.js & Server Component Architectures",
+      "description": "App Router, Server vs Client Components, SSR/SSG/ISR, hydration, and data fetching.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["pillar-react"],
+      "quizFile": "nextjs.json"
+    },
+    "pillar-node": {
+      "id": "pillar-node",
+      "category": "pillar",
+      "title": "Node.js, APIs & Asynchronous Control Flow",
+      "description": "The event loop, promises and async/await, REST API design, middleware, and error handling.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["pillar-nextjs"],
+      "quizFile": "node.json"
+    },
+    "pillar-databases": {
+      "id": "pillar-databases",
+      "category": "pillar",
+      "title": "Databases, SQL & ORMs",
+      "description": "Relational modeling, joins, indexes, transactions, migrations, and Prisma/Drizzle.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["pillar-node"],
+      "quizFile": "databases.json"
+    },
+    "pillar-tailwind": {
+      "id": "pillar-tailwind",
+      "category": "pillar",
+      "title": "Tailwind CSS, Layouts & Stacking Contexts",
+      "description": "Utility-first workflow, flexbox and grid, responsive design, z-index, and stacking contexts.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["pillar-databases"],
+      "quizFile": "tailwind.json"
+    },
+    "pillar-git": {
+      "id": "pillar-git",
+      "category": "pillar",
+      "title": "Git Workflows, Testing & CI/CD",
+      "description": "Branching strategies, rebasing vs merging, Vitest, Playwright, and pipeline design.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": ["pillar-tailwind"],
+      "quizFile": "git_testing.json"
+    },
+    "pediment": {
+      "id": "pediment",
+      "category": "pediment",
+      "title": "Capstone Portfolio & Mock Interviews",
+      "description": "Portfolio project strategy and interview-style questions that draw on every pillar at once.",
+      "status": "locked",
+      "score": null,
+      "prerequisites": [
+        "pillar-react",
+        "pillar-nextjs",
+        "pillar-node",
+        "pillar-databases",
+        "pillar-tailwind",
+        "pillar-git"
+      ],
+      "quizFile": "capstone.json"
+    }
+  }
+}

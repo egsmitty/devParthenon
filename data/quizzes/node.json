@@ -1,0 +1,142 @@
+{
+  "id": "node",
+  "title": "Pillar III — Node.js, APIs & Async Control Flow",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "The event loop: one thread, no waiting",
+      "paragraphs": [
+        "Node runs your JavaScript on a single thread. It handles thousands of simultaneous connections anyway because I/O (disk, network, database) doesn't happen on that thread — Node hands the operation to the system, registers a callback, and moves on.",
+        "The event loop is the dispatcher: when the call stack is empty, it pulls completed callbacks from the queues and runs them. Microtasks (resolved promises) run before macrotasks (timers, I/O callbacks) — which is why `Promise.resolve().then(...)` beats `setTimeout(..., 0)`.",
+        "The corollary: CPU-heavy synchronous code is poison. While your JavaScript runs, nothing else runs — every pending request waits behind your loop."
+      ],
+      "question": {
+        "id": "d1",
+        "question": "An Express server handles one route that synchronously computes a huge report for 3 seconds. During those 3 seconds, what happens to other incoming requests?",
+        "options": [
+          "Node spawns a thread per request, so they proceed normally",
+          "They queue and wait — the single JS thread is busy, so the event loop can't dispatch anything until the computation finishes",
+          "Node automatically rejects them with 503 responses",
+          "They're handled fine because Express requests are isolated"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "One thread runs all JavaScript. A 3-second synchronous computation blocks the event loop, so every other request — even trivial health checks — waits the full 3 seconds. Fixes: chunk the work, move it to a worker thread, or push it to a job queue.",
+        "optionExplanations": [
+          "That's the Java/traditional model. Node's whole design is one JS thread plus non-blocking I/O — no thread per request.",
+          "Correct — 'blocking the event loop' means exactly this: everything stalls behind synchronous work.",
+          "Node sends nothing automatically; connections just sit in the queue, timing out at the client's discretion.",
+          "Express routes share the same single thread; isolation is logical, not computational."
+        ],
+        "interviewTip": "'How does Node handle concurrency with one thread?' — answer with the split: I/O concurrency comes free from the event loop; CPU concurrency requires worker threads or separate processes."
+      }
+    },
+    {
+      "heading": "Promises and async/await",
+      "paragraphs": [
+        "A promise is a placeholder for a value that isn't ready: pending, then either fulfilled or rejected. `async/await` is syntax over promises — `await` pauses that async function (not the thread!) until the promise settles.",
+        "The classic performance mistake is sequential awaiting of independent work: `const a = await getA(); const b = await getB();` takes the sum of both latencies. Independent operations should start together: `const [a, b] = await Promise.all([getA(), getB()]);` — now you pay only the slower one.",
+        "Know the combinators: `Promise.all` fails fast on the first rejection; `Promise.allSettled` waits for every result, success or failure; `Promise.race` settles with whichever finishes first."
+      ],
+      "question": {
+        "id": "d2",
+        "question": "getUser() takes ~200ms and getOrders() takes ~300ms; they don't depend on each other. `await getUser(); await getOrders();` takes ~500ms total. What change gets it to ~300ms?",
+        "options": [
+          "Wrap both awaits in a try/catch block",
+          "Start both promises first, then await together: `Promise.all([getUser(), getOrders()])`",
+          "Convert both functions to synchronous versions",
+          "Use process.nextTick to prioritize the calls"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Sequential awaits serialize independent I/O. Promise.all starts both immediately and resolves when the slowest settles — total time becomes max(200, 300) ≈ 300ms instead of the 500ms sum.",
+        "optionExplanations": [
+          "try/catch changes error handling, not scheduling — still 500ms.",
+          "Correct — concurrent start, single await, pay only the slowest.",
+          "Synchronous I/O would block the entire event loop for 500ms — dramatically worse for every other request.",
+          "process.nextTick reorders microtask timing by microseconds; it cannot overlap two network calls."
+        ],
+        "interviewTip": "Spotting 'sequential awaits on independent operations' in a code-review interview is a rehearsed scenario at many companies. Scan for it explicitly."
+      }
+    },
+    {
+      "heading": "Designing REST APIs",
+      "paragraphs": [
+        "REST URLs name resources with nouns; HTTP methods supply the verbs. `GET /users/42/orders` reads orders for user 42. `POST /orders` creates. Verbs in URLs (`/getUser`, `/createOrder`) are the RPC habit REST replaces.",
+        "Respond with codes that match what happened: `201 Created` (with a `Location` header) for creation, `204 No Content` for a successful delete, `400` for malformed input, `422` for well-formed input that fails validation, `404` for a missing resource.",
+        "Version your API (`/v1/...`) from day one, and never break the contract of a shipped version — clients you don't control are relying on the shape of your responses."
+      ],
+      "question": {
+        "id": "d3",
+        "question": "Which endpoint design best follows REST conventions for 'cancel order 42'?",
+        "options": [
+          "GET /cancelOrder?id=42",
+          "POST /orders/42/cancel  (or PATCH /orders/42 with a status change)",
+          "DELETE /orders/cancel/42",
+          "PUT /cancel with the order id in the body"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Cancellation is a state transition on order 42, not a read and usually not a removal — the order record persists as 'cancelled'. Modeling it as a sub-action POST or a PATCH of the status field keeps the resource-oriented grammar while expressing a domain action.",
+        "optionExplanations": [
+          "A GET with side effects is the cardinal REST sin — prefetchers and proxies re-issue GETs freely and would cancel orders on their own.",
+          "Correct — a state transition modeled on the resource. Both forms are accepted; be ready to defend either.",
+          "DELETE says the resource ceases to exist, but a cancelled order must remain queryable — plus the URL structure is scrambled.",
+          "PUT means replace the resource at this URL; '/cancel' isn't a resource, and hiding the id in the body breaks addressability."
+        ],
+        "interviewTip": "'How do you model actions that aren't CRUD?' is a designed-in follow-up. The phrase to offer: 'model the state transition, not the verb' — then mention both the sub-resource POST and the PATCH approach."
+      }
+    },
+    {
+      "heading": "Middleware and the request pipeline",
+      "paragraphs": [
+        "In Express-style frameworks, a request flows through a chain of middleware functions: `(req, res, next)`. Each can inspect or modify the request, end the response, or call `next()` to pass control down the chain. Order of registration is order of execution.",
+        "This is where cross-cutting concerns live: body parsing, logging, rate limiting, authentication, authorization. An auth middleware that finds no valid token responds 401 and simply never calls next() — short-circuiting the pipeline.",
+        "Error handling gets its own shape: a four-argument middleware `(err, req, res, next)` registered last. Async route errors must reach it — in Express 4 that means catching and calling `next(err)` (Express 5 forwards rejected promises automatically)."
+      ],
+      "question": {
+        "id": "d4",
+        "question": "A developer registers routes first and the authentication middleware after them: `app.use('/api', routes); app.use(authMiddleware);`. What's the consequence?",
+        "options": [
+          "Express detects the mistake and reorders them at startup",
+          "The routes run before auth ever executes — every /api endpoint is effectively unauthenticated",
+          "The auth middleware runs twice per request",
+          "Nothing — middleware order doesn't matter in Express"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Middleware executes in registration order. A request matching /api hits the route handler, which sends a response — the chain never reaches authMiddleware. Order-dependent security is why auth registration belongs above the routes it protects.",
+        "optionExplanations": [
+          "Express has no dependency analysis; registration order is the contract, and it trusts you.",
+          "Correct — and it fails open: everything works in testing, except nothing is protected.",
+          "It runs zero times for matched routes, not twice — the response ends the chain first.",
+          "Order is the single most important property of a middleware pipeline."
+        ],
+        "interviewTip": "Security bugs that 'fail open' (system works, protection silently absent) make strong interview stories. This ordering bug is a perfect concrete example to have in your pocket."
+      }
+    },
+    {
+      "heading": "Failing well: errors, timeouts, retries",
+      "paragraphs": [
+        "Every await can reject. Unhandled rejections in a server context mean crashed requests or, worse, a crashed process. Route-level try/catch (or a wrapper) funneling into a central error handler gives you one place for logging and consistent error responses.",
+        "Never trust an external call to return promptly — attach timeouts (AbortController) so a hung upstream doesn't pin your requests forever. Retry transient failures with exponential backoff, and only retry operations that are idempotent or de-duplicated.",
+        "Separate expected failures (validation, not-found — clean 4xx responses) from unexpected ones (bugs, upstream outages — 5xx, logged loudly with a correlation id, message kept vague to the client)."
+      ],
+      "question": {
+        "id": "d5",
+        "question": "A payment provider call occasionally hangs for minutes. The team adds an aggressive automatic retry (3 attempts, no backoff, no idempotency key). What's the biggest risk?",
+        "options": [
+          "The retries consume too much memory on the client",
+          "Duplicate charges: a 'hung' request may have actually succeeded server-side, and non-idempotent retries repeat it — while synchronized retry bursts hammer a struggling upstream",
+          "The TypeScript compiler will flag the retry loop as unsafe",
+          "Retrying is impossible with async/await"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "A timeout tells you the response didn't arrive — not that the operation didn't happen. Retrying a possibly-succeeded charge without an idempotency key risks charging twice. Backoff with jitter matters too: immediate uniform retries pile onto an already-degraded service.",
+        "optionExplanations": [
+          "Three retries hold trivial memory; the risk is on the money, not the RAM.",
+          "Correct — retry safety = idempotency + backoff. Both are missing here, and money makes the failure expensive.",
+          "Type checkers know nothing of retry semantics; this bug type-checks perfectly.",
+          "Retry loops with async/await are routine — a for-loop with try/catch and a delay."
+        ],
+        "interviewTip": "The distilled principle for system-design rounds: 'timeouts bound your waiting, retries need idempotency, backoff protects the upstream.' Three clauses, huge signal."
+      }
+    }
+  ]
+}

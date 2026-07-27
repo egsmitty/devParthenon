@@ -1,0 +1,18 @@
+import { contextBridge, ipcRenderer } from "electron";
+import type { ParthenonApi } from "../types/schema";
+
+const api: ParthenonApi = {
+  getProgress: () => ipcRenderer.invoke("get-progress"),
+  saveQuizScore: (nodeId, score) =>
+    ipcRenderer.invoke("save-quiz-score", nodeId, score),
+  resetProgress: () => ipcRenderer.invoke("reset-progress"),
+  getQuiz: (quizFile) => ipcRenderer.invoke("get-quiz", quizFile),
+  getGlossary: () => ipcRenderer.invoke("get-glossary"),
+  windowControl: (action) => ipcRenderer.send("window-control", action),
+  onMaximizeChange: (cb) =>
+    ipcRenderer.on("window-maximize-changed", (_e, isMax: boolean) =>
+      cb(isMax)
+    ),
+};
+
+contextBridge.exposeInMainWorld("parthenon", api);

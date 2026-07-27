@@ -1,0 +1,142 @@
+{
+  "id": "capstone",
+  "title": "The Pediment — Capstone & Mock Interviews",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "The portfolio project that gets interviews",
+      "paragraphs": [
+        "One deployed, polished, non-trivial project beats five tutorial clones. Hiring managers skim for: is it live at a URL, does the README explain what and why in 30 seconds, and does the code show real decisions — auth, a database, error states, tests.",
+        "Pick a project with genuine CRUD + auth + one hard feature (real-time updates, payments, file uploads, search). The hard feature is what generates interview conversation; the CRUD proves baseline competence.",
+        "Write the README like a case study: problem, stack with *reasons*, architecture sketch, tradeoffs you made, what you'd do next. That document is an interview script you wrote for yourself."
+      ],
+      "question": {
+        "id": "c1",
+        "question": "Which portfolio signals the most to a hiring manager reviewing 50 candidates in an afternoon?",
+        "options": [
+          "Eight repositories of completed tutorial projects, none deployed",
+          "One deployed full-stack app with auth, a database, tests, and a README explaining the architecture decisions — plus source they can skim",
+          "A repository with 2,000 GitHub stars forked from a popular project",
+          "A private repo described verbally as very impressive"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Reviewers spend minutes, not hours. A live URL proves you can ship; the README proves you can communicate; tests and auth prove engineering maturity; and everything in it becomes interview material you control. Depth on one project beats breadth on many.",
+        "optionExplanations": [
+          "Tutorial multiplicity signals following instructions, not making decisions — and 'none deployed' means no proof any of it runs.",
+          "Correct — deployable depth plus written reasoning is the strongest cheap-to-verify signal.",
+          "A fork's stars belong to the original project; reviewers check.",
+          "Unverifiable claims carry zero weight in a screening pass."
+        ],
+        "interviewTip": "Every project on your resume should survive the question 'what was the hardest bug in it?' If you can't tell that story with specifics, the project isn't interview-ready."
+      }
+    },
+    {
+      "heading": "Mock interview: the full-stack data flow",
+      "paragraphs": [
+        "Interviewers love one question that traverses every pillar: 'walk me through what happens when a user submits this form.' They're testing whether your knowledge is a connected system or isolated flashcards.",
+        "A complete answer crosses: the React event handler and controlled state → the HTTP request (method, JSON payload, auth header) → server validation and business logic → the database write (transaction?) → the response code → client state update and re-render.",
+        "Practice narrating it in 60–90 seconds with one concrete decision named at each hop — 'POST because it creates', '201 with the new id', 'optimistic update with rollback on failure'. Depth on request is the follow-up game."
+      ],
+      "question": {
+        "id": "c2",
+        "question": "In the form-submission walkthrough, the interviewer interrupts: 'the network request fails — what should the UI have already been doing, and what happens now?' What's the strongest answer?",
+        "options": [
+          "The UI freezes until the request eventually succeeds via retries",
+          "The UI showed a pending state on submit; on failure it surfaces an error, re-enables the form preserving the user's input, and (if optimistic) rolls back the optimistic update",
+          "Errors are logged to the console for debugging",
+          "The page reloads automatically so state resets cleanly"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Failure handling is where full-stack maturity shows: pending feedback during flight, an actionable error on failure, no destroyed user input, and rollback if you rendered success speculatively. Interviewers deliberately inject the failure case to see if your happy path was the whole plan.",
+        "optionExplanations": [
+          "An indefinitely frozen UI with silent retries is the exact experience users describe as 'the site is broken'.",
+          "Correct — pending state, visible recovery path, preserved input, optimistic rollback.",
+          "Console logs help you; the user is still staring at a button that did nothing.",
+          "A reload obliterates the user's typed data to simplify the developer's life — backwards priorities, and interviewers notice."
+        ],
+        "interviewTip": "Volunteer the failure path before being asked — 'and if this request fails, here's what the user sees.' Unprompted failure handling is one of the strongest signals you can send."
+      }
+    },
+    {
+      "heading": "Mock interview: debugging under observation",
+      "paragraphs": [
+        "Debugging rounds test process, not luck. The strong shape: reproduce it reliably, isolate the layer (client? network? server? database?), read the actual error, form one hypothesis, test it with the smallest possible change, repeat. Narrate every step out loud.",
+        "Binary search is the master move — cut the search space in half repeatedly. Does the bug appear with the API mocked? Then it's client-side. In the request payload in DevTools? Then the server received bad input. Each check eliminates half the system.",
+        "The anti-patterns interviewers screen out: changing several things at once, re-running unchanged code hoping for different results, and blaming the framework before checking your own code."
+      ],
+      "question": {
+        "id": "c3",
+        "question": "In a debugging interview, a page shows stale data after saving. What's the strongest FIRST move?",
+        "options": [
+          "Explain three frameworks that would have prevented this and suggest a rewrite",
+          "Reproduce it and isolate the layer: check DevTools — did the save request fire and succeed, and does the subsequent read return old or new data?",
+          "Add a hard page-reload after every save so data is always fresh",
+          "Clear all caching everywhere in the app"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "One DevTools check bisects the entire system: if the write succeeded and the read returns fresh data, it's a client cache/state bug; if the read returns stale data, it's server/cache-side. Diagnosis before treatment — and narrated bisection is exactly what the round is scoring.",
+        "optionExplanations": [
+          "Proposing a rewrite before locating the bug signals you fix problems by avoiding them — the round is testing the opposite.",
+          "Correct — reproduce, then bisect at the network boundary. Smallest step, maximum information.",
+          "A blind reload may mask the symptom without touching the cause — and you still don't know what the cause was.",
+          "Shotgun cache-clearing might even work, but you've learned nothing and can't explain the fix — which, in an interview, is the actual failure."
+        ],
+        "interviewTip": "Say your bisection out loud: 'this check tells me whether the problem is in front of or behind the API.' Interviewers score the search strategy, not just the found bug."
+      }
+    },
+    {
+      "heading": "Mock interview: system design lite",
+      "paragraphs": [
+        "Junior/mid system-design rounds aren't about designing Twitter — they're about structured thinking on a small brief: 'design a URL shortener' or 'design this app's API'. Structure: clarify requirements → sketch entities and API → data model → walk one request end-to-end → name bottlenecks and tradeoffs.",
+        "Clarifying first is heavily scored: how many users? read-heavy or write-heavy? does it need auth? Diving into tech choices before scoping requirements is the most common failure mode.",
+        "Every choice states a tradeoff: 'Postgres because the data is relational and consistency matters; if the read load explodes, I'd add a cache in front rather than switch databases.' Naming what you're giving up is what separates decisions from preferences."
+      ],
+      "question": {
+        "id": "c4",
+        "question": "Asked to 'design an API for a todo app with sharing', what should you do FIRST?",
+        "options": [
+          "Choose the database engine, since everything depends on it",
+          "Clarify requirements: single user or teams? What does 'sharing' mean — read-only links, invitations, roles? Scale expectations?",
+          "Start writing the OpenAPI spec for CRUD endpoints",
+          "Pick the deployment platform and CI setup"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "'Sharing' could mean a public read-only link (trivial) or team workspaces with roles (a whole permission model) — designs that differ by an order of magnitude. Questions-first is explicitly what the round rewards; several interview rubrics literally allocate points to it.",
+        "optionExplanations": [
+          "The database choice *follows from* the data shape and access patterns — which you don't know yet.",
+          "Correct — scope determines design; two minutes of questions redirect the whole answer.",
+          "CRUD endpoints written before understanding 'sharing' will be rewritten mid-interview — visibly.",
+          "Deployment is real but last; it constrains nothing about the API's shape."
+        ],
+        "interviewTip": "Open every design answer with: 'Before I design, can I ask three questions?' It's practically a cheat code — it buys thinking time and scores rubric points simultaneously."
+      }
+    },
+    {
+      "heading": "Behavioral rounds and closing the loop",
+      "paragraphs": [
+        "Behavioral questions ('tell me about a conflict', 'a project that failed') are answered with STAR: Situation, Task, Action, Result — 30 seconds of context, then concrete actions *you* took, then a measurable result and a lesson. Prepare five stories; they remix to cover most questions.",
+        "Tie stories to the temple you just built: a hydration bug you diagnosed, an N+1 you found in review, a flaky time-dependent test you made deterministic. Specific technical stories are memorable; generic teamwork platitudes are not.",
+        "And close the loop after every real interview: write down every question you stumbled on, and turn each into a drill. The candidates who improve fastest treat interviews as instrumented test runs of themselves."
+      ],
+      "question": {
+        "id": "c5",
+        "question": "Asked 'tell me about a hard bug you fixed', which answer structure lands best?",
+        "options": [
+          "A tour of every technology the project used, to establish depth",
+          "STAR with specifics: the symptom, how you isolated it (the actual steps), the root cause, the fix, and what changed afterward — e.g. a test or process added",
+          "An honest statement that you rarely encounter bugs",
+          "A detailed complaint about the legacy code that caused it"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Interviewers want evidence of process under adversity: reproduce → isolate → root cause → fix → prevent. The 'prevention' ending (a regression test, a lint rule, a runbook) is what elevates a good story to a great one — it shows you close loops.",
+        "optionExplanations": [
+          "Technology tours dodge the question; the interviewer asked about *a bug*, singular and concrete.",
+          "Correct — structured, specific, ending in systemic improvement.",
+          "Claiming bug-free work reads as either inexperience or unawareness — every working engineer has war stories.",
+          "Blame-centered stories transfer the spotlight from your skills to your grievances; interviewers imagine being your teammate."
+        ],
+        "interviewTip": "End every debugging story with the sentence 'and to make sure it never came back, I ___.' Regression test, monitoring alert, documentation — the loop-closer is the star of the story."
+      }
+    }
+  ]
+}

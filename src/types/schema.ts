@@ -1,0 +1,86 @@
+/**
+ * Shared type contracts for Dev Parthenon.
+ * Used by the Electron main process, the preload bridge, and the renderer.
+ */
+
+export type NodeStatus = "locked" | "unlocked" | "in_progress" | "completed";
+
+export type NodeCategory = "foundation" | "pillar" | "pediment";
+
+export interface ModuleNode {
+  id: string;
+  category: NodeCategory;
+  title: string;
+  description: string;
+  status: NodeStatus;
+  /** Best score achieved on the module quiz, 0..1. Null when never attempted. */
+  score: number | null;
+  /** Node ids that must all be "completed" before this node unlocks. */
+  prerequisites: string[];
+  /** File name inside data/quizzes/ that holds this module's lessons + quiz. */
+  quizFile: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  /** Why the correct answer is correct. */
+  rationale: string;
+  /**
+   * One entry per option, same order as options[]. Explains why each wrong
+   * choice is wrong — targeted at common interview traps.
+   */
+  optionExplanations: string[];
+  interviewTip: string;
+}
+
+/**
+ * A single "chunk" of a module: at most 3 short paragraphs of teaching,
+ * always followed by an interactive check (the anti-overwhelm law).
+ */
+export interface LessonSection {
+  heading: string;
+  paragraphs: string[];
+  question: QuizQuestion;
+}
+
+export interface QuizModule {
+  id: string;
+  title: string;
+  /** Fraction of questions that must be answered correctly to pass (0.8). */
+  passThreshold: number;
+  sections: LessonSection[];
+}
+
+export interface GlossaryEntry {
+  term: string;
+  definition: string;
+  tags: string[];
+}
+
+export interface ProgressData {
+  version: number;
+  foundationCompleted: boolean;
+  /** Ids of pillar nodes currently unlocked (or beyond). */
+  unlockedPillars: string[];
+  nodes: Record<string, ModuleNode>;
+}
+
+export interface SaveScoreResult {
+  progress: ProgressData;
+  passed: boolean;
+  newlyUnlocked: string[];
+}
+
+/** API surface exposed on window.parthenon by the preload script. */
+export interface ParthenonApi {
+  getProgress(): Promise<ProgressData>;
+  saveQuizScore(nodeId: string, score: number): Promise<SaveScoreResult>;
+  resetProgress(): Promise<ProgressData>;
+  getQuiz(quizFile: string): Promise<QuizModule>;
+  getGlossary(): Promise<GlossaryEntry[]>;
+  windowControl(action: "minimize" | "maximize" | "close"): void;
+  onMaximizeChange(cb: (isMaximized: boolean) => void): void;
+}

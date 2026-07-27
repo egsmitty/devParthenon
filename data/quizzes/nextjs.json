@@ -1,0 +1,142 @@
+{
+  "id": "nextjs",
+  "title": "Pillar II — Next.js & Server Component Architectures",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "Where does the HTML come from?",
+      "paragraphs": [
+        "Every rendering strategy answers one question: where and when is the HTML produced? CSR: in the browser, after a JS bundle loads. SSR: on the server, per request. SSG: on the server, once at build time. ISR: SSG plus scheduled regeneration.",
+        "Next.js lets you choose per route. A marketing page wants SSG (fast, cacheable, content rarely changes). A personalized dashboard wants SSR or client fetching (data differs per user, per request). A product catalog updated hourly is the ISR sweet spot.",
+        "The trade axis is freshness versus latency versus server cost. Memorize the axis, not a table — interviewers reward reasoning from constraints."
+      ],
+      "question": {
+        "id": "n1",
+        "question": "A news site's article pages must reflect edits within about a minute, get heavy traffic, and are identical for every visitor. Which strategy fits best?",
+        "options": [
+          "Pure CSR — fetch the article JSON in the browser",
+          "SSR on every request",
+          "SSG with ISR (revalidate around 60 seconds)",
+          "Static export rebuilt manually whenever an editor remembers"
+        ],
+        "correctAnswerIndex": 2,
+        "rationale": "Identical-for-everyone content is the static sweet spot, and ISR's revalidation window handles 'fresh within a minute' without paying a server render per request. Heavy traffic hits cached static HTML; regeneration happens at most once per window.",
+        "optionExplanations": [
+          "CSR gives crawlers and first paint an empty shell and pays a fetch on every view — worst of all worlds for public content pages.",
+          "SSR works but renders the same identical page thousands of times per minute — pure wasted compute versus caching it.",
+          "Correct — static delivery with automatic freshness is exactly what ISR was built for.",
+          "Manual rebuilds violate the one-minute freshness requirement the moment a human forgets."
+        ],
+        "interviewTip": "Frame rendering-strategy answers around three questions: Is the content per-user? How fresh must it be? What's the traffic? The strategy falls out of the answers."
+      }
+    },
+    {
+      "heading": "Hydration — and how it breaks",
+      "paragraphs": [
+        "Server-rendered HTML is a lifeless picture. Hydration is React running in the browser, re-rendering the same tree, and attaching listeners and state to the existing markup instead of rebuilding it.",
+        "The contract: the client's first render must produce the same output as the server's. Anything that differs between the two environments breaks it — `Date.now()`, `Math.random()`, locale-dependent formatting, or reading `window` at render time.",
+        "That last one has an extra sting: `window` doesn't exist in Node at all, so a top-scope or render-time `window` reference doesn't just mismatch — it throws `window is not defined` during the server render and can take the whole route down."
+      ],
+      "question": {
+        "id": "n2",
+        "question": "A component renders `<span>{new Date().toLocaleTimeString()}</span>`. In Next.js it triggers a hydration mismatch warning. What's the root cause?",
+        "options": [
+          "toLocaleTimeString is not available in Node.js",
+          "The server rendered one time, the client rendered milliseconds later (possibly in a different locale/timezone) — two different outputs for the 'same' render",
+          "Dates must always be wrapped in useEffect in React",
+          "The span element is not allowed to contain dynamic text"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Hydration compares server HTML against the client's first render. A wall-clock timestamp is different on every call — and locale/timezone can differ between server and browser too. Fix: render a stable placeholder, then set the time in useEffect (client-only, post-hydration), or pass a fixed server timestamp as a prop.",
+        "optionExplanations": [
+          "Node implements toLocaleTimeString fine; the function runs — it just returns a different value than the client's run.",
+          "Correct — nondeterministic output between the server pass and client pass is the definition of a hydration mismatch.",
+          "Not all dates — a stable date passed as a prop renders identically in both passes. The rule targets nondeterminism, not the Date type.",
+          "Spans hold dynamic text constantly; the element is irrelevant."
+        ],
+        "interviewTip": "Give the general law, not the instance: 'anything nondeterministic or environment-dependent — time, random, window, locale — must move out of the initial render, usually into useEffect.'"
+      }
+    },
+    {
+      "heading": "Server Components vs Client Components",
+      "paragraphs": [
+        "In the App Router, components are Server Components by default: they run only on the server, can query a database or read files directly, and ship zero JavaScript to the browser. Their code never reaches the client bundle.",
+        "Adding `'use client'` marks a component (and everything it imports) as a Client Component — it still gets server-rendered to HTML, but its code ships to the browser and hydrates. You need it for state, effects, event handlers, and browser APIs.",
+        "The composition rule: server can render client, but a Client Component cannot import a Server Component. It can, however, receive one as `children` — which is how you keep an interactive shell from dragging the whole subtree into the client bundle."
+      ],
+      "question": {
+        "id": "n3",
+        "question": "Which of these forces a component to be a Client Component in the App Router?",
+        "options": [
+          "Fetching data with async/await",
+          "Rendering a list with .map()",
+          "Using useState and an onClick handler",
+          "Importing a CSS file"
+        ],
+        "correctAnswerIndex": 2,
+        "rationale": "Interactivity is the dividing line. State, effects, event handlers, and browser APIs require JavaScript running in the browser — that's what 'use client' opts into. Data fetching, mapping, and styling all work fine (often better) on the server.",
+        "optionExplanations": [
+          "Server Components are the *preferred* place for async data fetching — an async component that awaits a query is the flagship pattern.",
+          ".map() is plain rendering logic, equally at home in either world.",
+          "Correct — state and event handlers only exist in the browser, so they demand a Client Component.",
+          "CSS imports work in Server Components; styles don't need client-side JS."
+        ],
+        "interviewTip": "A sharp line interviewers love: ''use client' doesn't mean renders on the client — it still SSRs. It means ships JavaScript to the client.'"
+      }
+    },
+    {
+      "heading": "Data fetching and caching in the App Router",
+      "paragraphs": [
+        "In Server Components you fetch where you render: `const data = await db.query(...)` right inside the async component. No useEffect-plus-loading-spinner dance, no API round-trip from the browser for the initial view.",
+        "Next.js layers caching on top: fetch results can be cached and tagged, routes can be static or dynamic, and `revalidatePath`/`revalidateTag` let a mutation surgically invalidate exactly the cached data it changed.",
+        "Server Actions close the write loop: a function marked `'use server'` can be passed to a form's `action`, runs on the server when submitted, mutates data, and revalidates — often with zero hand-written API endpoints."
+      ],
+      "question": {
+        "id": "n4",
+        "question": "After a Server Action creates a new post, the posts list page still shows the old list. What's the idiomatic App Router fix?",
+        "options": [
+          "Call router.refresh() in a setInterval so the page polls",
+          "Call revalidatePath('/posts') (or revalidateTag) inside the action after the write",
+          "Set every fetch to cache: 'no-store' across the whole app",
+          "Store the posts in localStorage and update it manually"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The list is stale because it was served from the cache. The action just changed that data, so the action is the right place to declare it: revalidatePath/revalidateTag invalidates precisely the affected cache entries, and the next render is fresh — no polling, no global cache surrender.",
+        "optionExplanations": [
+          "Polling burns requests to discover a change your own code just made — you already know the exact moment the data changed.",
+          "Correct — mutate, then revalidate the paths/tags that depend on the mutated data.",
+          "Disabling caching app-wide fixes one stale list by making every page slower forever — a sledgehammer with collateral damage.",
+          "localStorage creates a second source of truth on one device; the server and every other client still disagree."
+        ],
+        "interviewTip": "The pattern to articulate: 'mutations own their invalidations' — whoever writes the data revalidates the caches that read it."
+      }
+    },
+    {
+      "heading": "Routing, layouts, and the file system",
+      "paragraphs": [
+        "The App Router maps folders to URLs: `app/blog/[slug]/page.tsx` handles `/blog/hello-world`, with `params.slug` as the dynamic segment. `page.tsx` is the routable leaf; `layout.tsx` wraps it.",
+        "Layouts nest and — critically — persist: navigating between two blog posts re-renders the page, but the surrounding layout (nav bar, sidebar) keeps its DOM and state. State that must survive navigation belongs in a layout.",
+        "Special files fill out the contract: `loading.tsx` renders instantly (via Suspense) while the page's data streams in, `error.tsx` is a route-scoped error boundary, and `not-found.tsx` handles missing resources."
+      ],
+      "question": {
+        "id": "n5",
+        "question": "A search input lives in the nav bar. Users complain its text clears whenever they click a result and navigate. Where should the nav bar live to fix this?",
+        "options": [
+          "In each page.tsx so every route controls its own nav",
+          "In a shared layout.tsx, which persists (keeps DOM and state) across navigations within it",
+          "In a separate iframe so navigation can't touch it",
+          "In loading.tsx, which renders on every navigation"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Layouts don't remount on navigation between their child routes — that's their defining behavior. A nav bar (with its input state) inside the shared layout survives every page change beneath it.",
+        "optionExplanations": [
+          "Per-page nav bars remount on every navigation — that's precisely the state-clearing behavior being reported.",
+          "Correct — layout persistence is the mechanism for cross-navigation UI state.",
+          "An iframe technically works and is technically a crime: separate document, broken styling, accessibility pain.",
+          "loading.tsx is a transient Suspense fallback, visible only while a page loads — the opposite of persistent."
+        ],
+        "interviewTip": "'What's the difference between layout and template in the App Router?' — layout persists across navigations, template remounts each time. Knowing both exists marks real App Router experience."
+      }
+    }
+  ]
+}

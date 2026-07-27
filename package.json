@@ -1,0 +1,23 @@
+{
+  "name": "dev-parthenon",
+  "productName": "Dev Parthenon",
+  "version": "1.0.0",
+  "description": "A gamified offline desktop hub that takes a developer from web foundations to interview-ready full-stack mastery, rendered as a Greek Parthenon temple.",
+  "main": "dist/main/main.js",
+  "author": "Dev Parthenon",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && node scripts/copy-assets.js",
+    "generate-icon": "node scripts/generate-icon.js",
+    "dev": "npm run build && electron . --dev",
+    "start": "electron .",
+    "test": "npm run build && node --test tests/",
+    "dist:win": "npm run build && npm run generate-icon && electron-builder --win"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.3"
+  }
+}

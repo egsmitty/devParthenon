@@ -1,0 +1,142 @@
+{
+  "id": "git_testing",
+  "title": "Pillar VI — Git Workflows, Testing & CI/CD",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "Commits and branches: the mental model",
+      "paragraphs": [
+        "A git commit is a snapshot of the whole project plus a pointer to its parent commit — history is a chain of snapshots, not a pile of diffs. A branch is nothing but a movable label pointing at a commit; creating one is instant and free.",
+        "The working cycle: edit files (working directory), `git add` selects changes into the staging area, `git commit` seals the staged snapshot. The staging area exists so you can commit a *coherent subset* of your current mess.",
+        "Good commits are atomic — one logical change with a message explaining *why*. 'Fix login redirect for expired sessions' can be reviewed, reverted, and bisected; 'wip stuff' cannot."
+      ],
+      "question": {
+        "id": "g1",
+        "question": "What actually happens when you run `git branch feature-x`?",
+        "options": [
+          "The entire project is copied into a new directory for the branch",
+          "A new label is created pointing at the current commit — nothing is copied",
+          "All uncommitted changes move to the new branch automatically",
+          "A remote branch is created on origin"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Branches are ~40-byte pointers into the commit graph. That's why branching in git is instant and why workflows built on many short-lived branches are practical — there is no duplication to pay for.",
+        "optionExplanations": [
+          "That's how some pre-git systems felt; git branches share the same object store — zero copying.",
+          "Correct — a branch is a movable pointer, nothing more.",
+          "Uncommitted changes belong to the working directory, which is independent of branch pointers (they follow you until committed).",
+          "Nothing touches the network until you push — git branch is purely local."
+        ],
+        "interviewTip": "'A branch is just a pointer to a commit' is a one-sentence answer that instantly signals you understand git's model rather than memorized commands."
+      }
+    },
+    {
+      "heading": "Merge vs rebase — and the golden rule",
+      "paragraphs": [
+        "`merge` ties two histories together with a merge commit — truthful, but busy repos accumulate a criss-cross graph. `rebase` replays your commits on top of the target branch, yielding a straight line — cleaner, but the replayed commits are *new* commits with new hashes.",
+        "That rewrite is why the golden rule exists: never rebase commits that others may have based work on (i.e., anything pushed to a shared branch). Rebase your local feature branch freely; rebase shared history and every collaborator's tree diverges from yours.",
+        "A very common team workflow: rebase your feature branch onto main to stay current while developing, then merge (often squash-merge) into main via pull request."
+      ],
+      "question": {
+        "id": "g2",
+        "question": "A teammate rebased the shared `develop` branch and force-pushed it. Everyone's local `develop` now 'has diverged'. What did the rebase do that caused this?",
+        "options": [
+          "It deleted everyone's commits from the server permanently",
+          "It rewrote the branch's commits as new commits with new hashes, so every clone's history no longer matches the remote's",
+          "It merged develop into every open feature branch",
+          "Nothing — divergence warnings are cosmetic and safe to ignore"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Rebase creates replacement commits; force-push made the remote point at the rewritten line. Every local clone still holds the old line, so git correctly reports divergence — and anyone who naively merges the two lines resurrects zombie duplicate commits. This is precisely why shared branches are rebase-forbidden.",
+        "optionExplanations": [
+          "The old commits still exist in clones and reflogs — the damage is divergence and duplication risk, not immediate deletion.",
+          "Correct — rewritten hashes + force-push = every collaborator's history contradicts the remote.",
+          "Rebase touches one branch's history; it never fans out into other branches.",
+          "Ignoring it and pulling merges the old and new lines together — the graph doubles its commits and the mess compounds."
+        ],
+        "interviewTip": "When asked merge vs rebase, don't pick a side — state the policy: 'rebase private history for cleanliness, merge shared history for safety, never force-push shared branches.'"
+      }
+    },
+    {
+      "heading": "Unit testing with Vitest",
+      "paragraphs": [
+        "A unit test isolates one piece of logic: arrange inputs, act, assert on the output. Vitest is the Vite-native runner — `describe` groups, `it` defines cases, `expect(result).toBe(expected)` asserts. Fast enough to run on every save.",
+        "Good tests assert observable behavior ('given an expired token, isValid returns false'), not implementation details ('it calls parseToken once'). Behavior-based tests survive refactors; implementation-based tests break when the code improves.",
+        "Determinism is what keeps a suite trusted: tests touching real time, randomness, or network are flaky by construction. Inject or mock those boundaries (`vi.useFakeTimers()`, `vi.mock(...)`) so the same input always yields the same result."
+      ],
+      "question": {
+        "id": "g3",
+        "question": "A test for 'trial expires after 14 days' calls the real `Date.now()` and started failing this week — the fixture data aged past the window. What's the durable fix?",
+        "options": [
+          "Regenerate the fixture data every couple of weeks",
+          "Control time in the test (fake timers / inject a clock), making the test deterministic regardless of the real date",
+          "Widen the assertion to accept both outcomes",
+          "Delete the test since expiry logic is simple"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The test depends on wall-clock time — a hidden input that changes daily. Faking time (`vi.useFakeTimers()` + `vi.setSystemTime(...)`) or injecting a clock pins that input, so the test verifies the 14-day rule forever, not just for two weeks after someone refreshes fixtures.",
+        "optionExplanations": [
+          "Scheduled human maintenance to keep a test green is a treadmill — and it *will* be forgotten.",
+          "Correct — remove nondeterminism at the source; time becomes a controlled input.",
+          "A test that accepts both outcomes asserts nothing — it's a green light wired to stay green.",
+          "Simple logic with real dates is exactly where silent off-by-one expiry bugs live; the test earns its keep."
+        ],
+        "interviewTip": "'How do you deal with flaky tests?' — root-cause categories (time, randomness, network, shared state, order dependence) plus 'make the boundary injectable' is a complete, senior-sounding answer."
+      }
+    },
+    {
+      "heading": "End-to-end testing with Playwright",
+      "paragraphs": [
+        "Unit tests check parts; end-to-end tests check the assembled machine: Playwright drives a real browser through real flows — navigate, click, type, assert on what a user would see.",
+        "Prefer user-facing selectors — `getByRole('button', { name: 'Save' })`, `getByLabel('Email')` — over CSS/XPath tied to DOM structure. They survive refactors and double as accessibility checks: if getByRole can't find your button, neither can a screen reader.",
+        "Playwright's assertions auto-wait and retry (`await expect(locator).toBeVisible()`), which eliminates the sleep-based flakiness older tools suffered. The testing pyramid still applies: many fast unit tests, fewer integration tests, a thin crust of E2E on the critical paths."
+      ],
+      "question": {
+        "id": "g4",
+        "question": "Why does Playwright's own documentation push `getByRole('button', { name: 'Submit' })` over `page.locator('#app > div.form > button:nth-child(3)')`?",
+        "options": [
+          "Role selectors execute significantly faster in the browser",
+          "Role/name selectors track what users (and assistive tech) perceive, so they survive DOM refactors and implicitly verify accessibility",
+          "CSS selectors are deprecated in modern Playwright",
+          "nth-child is not supported inside locator()"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "The structural selector encodes today's DOM shape — one wrapper div added and the test lies about the app being broken. The role selector encodes intent ('the button a user knows as Submit'), which changes only when the actual UX changes — and it fails if the button loses its accessible name, catching a11y regressions for free.",
+        "optionExplanations": [
+          "Selector speed differences are negligible next to browser and network time.",
+          "Correct — resilience to refactors plus built-in accessibility pressure.",
+          "CSS selectors remain fully supported; the guidance is preference, not deprecation.",
+          "nth-child works fine in locator() — which is part of the problem: it lets you write brittle tests."
+        ],
+        "interviewTip": "'How do you keep E2E suites from becoming flaky and hated?' — answer: user-facing selectors, auto-waiting assertions, test isolation, and keeping E2E thin per the pyramid. Four beats, well rehearsed."
+      }
+    },
+    {
+      "heading": "CI/CD: the pipeline as gatekeeper",
+      "paragraphs": [
+        "Continuous Integration: every push triggers an automated pipeline — install, lint, type-check, test, build. The point is shrinking the distance between introducing a bug and hearing about it from weeks to minutes.",
+        "A typical GitHub Actions flow: on pull request, run the checks; merging is blocked until they're green plus a human review. Continuous Delivery/Deployment extends the green path: merged main auto-deploys to staging, then production — with prod gated manually (Delivery) or fully automatic (Deployment).",
+        "Pipelines fail-fast in order of cheapness: lint before tests, unit before E2E. And a red main is a stop-the-line event — the fix or the revert outranks new work, because everyone is building on top of it."
+      ],
+      "question": {
+        "id": "g5",
+        "question": "A PR's pipeline runs: lint → unit tests → E2E tests → build. E2E is the slowest stage. Why do lint and unit tests run first?",
+        "options": [
+          "Alphabetical ordering of pipeline stages",
+          "Fail fast: cheap checks catch most failures in seconds, so broken pushes don't burn 20 minutes of E2E before reporting the lint error",
+          "E2E tests can only run after a deployment to production",
+          "Lint must pass before code will compile at all"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Pipeline ordering is economics: fastest-and-most-likely-to-fail first. A typo that lint catches in 10 seconds shouldn't cost a full E2E run to discover. Same total coverage, radically better feedback latency for the common failure cases.",
+        "optionExplanations": [
+          "Stage order is authored deliberately in the workflow file; nothing is alphabetical.",
+          "Correct — fail-fast ordering optimizes time-to-feedback, which is the entire point of CI.",
+          "E2E runs against a preview or local server in CI — production deployment is not a prerequisite.",
+          "Linting is style/correctness analysis, independent of compilation; unlinted code compiles fine."
+        ],
+        "interviewTip": "If asked to design a CI pipeline, narrate it in cost order — 'lint, type-check, unit, integration, E2E, build, deploy' — and mention branch protection on green checks. Structure is the signal."
+      }
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "id": "databases",
+  "title": "Pillar IV — Databases, SQL & ORMs",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "Relational modeling: tables, keys, relationships",
+      "paragraphs": [
+        "Relational databases store rows in tables. Each row gets a primary key — a unique, stable identifier. Relationships are expressed with foreign keys: an `orders.user_id` column pointing at `users.id` says every order belongs to a user.",
+        "Cardinality drives the shape: one-to-many is a foreign key on the 'many' side. Many-to-many needs a join table — `post_tags(post_id, tag_id)` — because neither side can hold a list of the other's keys in a single column cleanly.",
+        "Normalization means each fact lives in exactly one place. Storing the user's email on every order row means an email change must update thousands of rows — or, more realistically, quietly won't."
+      ],
+      "question": {
+        "id": "db1",
+        "question": "Posts can have many tags, and tags apply to many posts. What's the standard relational way to model this?",
+        "options": [
+          "A tags column on posts holding a comma-separated string of tag names",
+          "A join table post_tags(post_id, tag_id) with foreign keys to both tables",
+          "A posts column on tags holding an array of post ids",
+          "Duplicate each post row once per tag it has"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Many-to-many decomposes into two one-to-many relationships through a join table. Each row of post_tags is one fact — 'this post has this tag' — indexable, constrainable, and queryable from both directions.",
+        "optionExplanations": [
+          "Comma-separated strings can't be foreign-keyed, can't be indexed usefully, and 'find posts tagged X' becomes string parsing in SQL — the classic anti-pattern.",
+          "Correct — the join table is *the* relational answer to many-to-many.",
+          "Arrays of ids can't enforce referential integrity, and querying 'tags for post 42' means scanning arrays in every tag row.",
+          "Duplicating post rows destroys the primary key's meaning and multiplies every future update."
+        ],
+        "interviewTip": "Schema-design interviews almost always contain a hidden many-to-many. Say 'join table' early and draw it — it's often the main thing being tested."
+      }
+    },
+    {
+      "heading": "Joins: recombining what normalization split",
+      "paragraphs": [
+        "Normalization splits facts into separate tables; joins put them back together at query time. `INNER JOIN` returns only rows with a match on both sides. `LEFT JOIN` returns every row from the left table, with NULLs where the right side has no match.",
+        "The choice changes the question being asked. Users INNER JOIN orders: 'users who have ordered'. Users LEFT JOIN orders: 'all users, with their orders if any' — which is what a report like 'order count per user, including zero' needs.",
+        "Aggregation composes on top: `GROUP BY` collapses row groups, `COUNT`/`SUM` summarize them, and `HAVING` filters the groups after aggregation (where `WHERE` filters rows before it)."
+      ],
+      "question": {
+        "id": "db2",
+        "question": "A 'signups vs activity' report must list ALL users with their order counts — including users with zero orders. Which query shape is right?",
+        "options": [
+          "users INNER JOIN orders ... GROUP BY users.id",
+          "users LEFT JOIN orders ... GROUP BY users.id with COUNT(orders.id)",
+          "Two separate queries concatenated with UNION",
+          "orders LEFT JOIN users ... GROUP BY orders.id"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "LEFT JOIN preserves every user; those without orders get NULL order columns, and COUNT(orders.id) counts non-NULL values — yielding 0 for them. INNER JOIN would silently drop exactly the zero-order users the report exists to find.",
+        "optionExplanations": [
+          "INNER JOIN excludes users with no matching order — the report's most interesting rows vanish, and nothing errors to warn you.",
+          "Correct — and the detail matters: COUNT(orders.id), not COUNT(*), which would count the NULL row as 1.",
+          "A UNION of 'users with orders' and 'users without' can be forced to work but is a contorted rewrite of what LEFT JOIN says directly.",
+          "This direction preserves all *orders* (which all have users anyway) and groups by the wrong entity."
+        ],
+        "interviewTip": "'When would you use a LEFT JOIN over an INNER JOIN?' — give the concrete report: 'all users including those with zero orders.' The COUNT(column) vs COUNT(*) NULL subtlety is a bonus point interviewers notice."
+      }
+    },
+    {
+      "heading": "Indexes: the speed/write tradeoff",
+      "paragraphs": [
+        "Without an index, `WHERE email = ?` scans every row. An index is a sorted structure (typically a B-tree) on chosen columns that lets the database seek directly — the difference between reading a phone book and reading every page of it.",
+        "Indexes aren't free: every INSERT/UPDATE/DELETE must also maintain each index, and they consume storage. You index the columns your queries actually filter, join, and sort on — driven by evidence like `EXPLAIN` output and slow-query logs, not by decoration.",
+        "Composite indexes follow the leftmost-prefix rule: an index on `(user_id, created_at)` accelerates filters on `user_id` and on `user_id + created_at`, but does nothing for a filter on `created_at` alone."
+      ],
+      "question": {
+        "id": "db3",
+        "question": "A query filtering `WHERE user_id = ? AND created_at > ?` is slow. The table has an index on (created_at, user_id). The DBA suggests (user_id, created_at) instead. Why would column order matter?",
+        "options": [
+          "It doesn't — column order in a composite index is purely cosmetic",
+          "With user_id first, the index groups all of one user's rows together, letting the range scan on created_at run within that narrow slice; equality columns should precede range columns",
+          "Indexes can only ever use their first column",
+          "(created_at, user_id) is invalid SQL and was never being used"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "A B-tree sorts by the first column, then the second within it. Leading with the equality filter (user_id) narrows to one contiguous slice, and the range on created_at scans just that slice. Leading with the range column scatters the target user's rows across the whole date range.",
+        "optionExplanations": [
+          "Order is one of the most consequential choices in index design — the leftmost-prefix rule depends on it entirely.",
+          "Correct — the rule of thumb: equality columns first, then the range column.",
+          "Composite indexes serve multi-column lookups all the time; the constraint is the leftmost prefix, not first-column-only.",
+          "It's valid and may even get partially used — just poorly for this query shape."
+        ],
+        "interviewTip": "'How would you speed up this slow query?' — the professional answer starts with 'first I'd run EXPLAIN', then discusses index shape. Leading with evidence beats leading with a guess."
+      }
+    },
+    {
+      "heading": "Transactions: all or nothing",
+      "paragraphs": [
+        "A transaction groups statements into an atomic unit: BEGIN, statements, COMMIT — or ROLLBACK, which undoes all of them. The textbook case is a money transfer: debit one account, credit another. A crash between the two without a transaction silently destroys money.",
+        "ACID names the guarantees: Atomicity (all or nothing), Consistency (constraints hold), Isolation (concurrent transactions don't see each other's half-done work), Durability (committed means persisted).",
+        "In Prisma this is `prisma.$transaction([...])` or the interactive `prisma.$transaction(async (tx) => {...})`; in Drizzle, `db.transaction(async (tx) => {...})`. Same contract: throw inside, and everything rolls back."
+      ],
+      "question": {
+        "id": "db4",
+        "question": "An order checkout does three writes: create order, decrement inventory, record payment. The server can crash at any moment. What guarantees the database never ends up with an order whose inventory was never decremented?",
+        "options": [
+          "Run the three writes in quick succession to minimize the risk window",
+          "Wrap all three in a single transaction so a crash before COMMIT rolls back every write",
+          "Add a try/catch and log any errors for manual cleanup",
+          "Use three separate databases so failures stay isolated"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Atomicity is precisely this guarantee: until COMMIT, none of the writes are permanent; a crash mid-way leaves the database as if nothing happened. Shrinking timing windows or logging for cleanup are mitigations — a transaction is the actual solution.",
+        "optionExplanations": [
+          "A smaller window is still a window; under real traffic, 'rare' inconsistency becomes 'weekly' inconsistency.",
+          "Correct — atomic commit/rollback is what transactions are for.",
+          "try/catch can't catch a process crash or power loss, and 'manual cleanup' means a human reconciling corrupted money data.",
+          "Splitting across databases makes atomicity *harder* (now you need distributed transactions) — the opposite of a fix."
+        ],
+        "interviewTip": "When 'transaction' comes up, name-drop the boundary decision too: keep transactions short and never hold one open across an external API call — that's where senior candidates differentiate."
+      }
+    },
+    {
+      "heading": "ORMs, migrations, and the N+1 trap",
+      "paragraphs": [
+        "ORMs like Prisma and Drizzle map tables to typed objects: `prisma.user.findMany({ where: ... })` instead of hand-built SQL strings. You gain type safety, autocompletion, and injection-safe parameterization; you give up some control over the exact SQL emitted.",
+        "Migrations version your schema the way git versions code: each change (add column, create table) is a replayable script, so dev, staging, and prod evolve identically. Editing production schemas by hand is how environments drift apart irreversibly.",
+        "The signature ORM performance bug is N+1: fetch 100 posts (1 query), then lazily fetch each post's author inside a loop (100 more). ORMs make the loop invisible — the fix is telling the ORM up front to include the relation (`include`/`with`), collapsing it into a join or two queries."
+      ],
+      "question": {
+        "id": "db5",
+        "question": "A page lists 100 posts with author names. Logs show 101 queries per page load. What's happening, and what's the fix?",
+        "options": [
+          "The connection pool is misconfigured; raise the pool size",
+          "Classic N+1: one query for posts, then one per post for its author. Fix: eager-load the relation (Prisma include / Drizzle with) so it's one or two queries",
+          "The database is missing an index on posts.id",
+          "The ORM's cache is disabled; enabling it removes the repeat queries"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "1 + 100 = the N+1 signature. Each author lookup happens lazily inside the render loop. Eager loading declares the relation need up front, letting the ORM emit a join (or one batched IN query) instead of a hundred round-trips.",
+        "optionExplanations": [
+          "A bigger pool lets the 101 queries run more concurrently — you've optimized the symptom's throughput, not removed the 100 extra queries.",
+          "Correct — recognize the 1+N count, name the pattern, eager-load the relation.",
+          "Each per-author query is likely already an indexed fast lookup; the cost is 100 round-trips, not 100 slow queries.",
+          "Caching may mask it for repeated authors, but the first cold load still storms the database — and correctness now depends on cache state."
+        ],
+        "interviewTip": "N+1 is arguably the single most-tested ORM concept in interviews. Be able to define it in one sentence and give the fix in the next."
+      }
+    }
+  ]
+}

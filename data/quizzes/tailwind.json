@@ -1,0 +1,142 @@
+{
+  "id": "tailwind",
+  "title": "Pillar V — Tailwind, Layouts & Stacking Contexts",
+  "passThreshold": 0.8,
+  "sections": [
+    {
+      "heading": "Utility-first: what Tailwind actually is",
+      "paragraphs": [
+        "Tailwind is a set of tiny single-purpose classes — `flex`, `p-4`, `text-slate-200` — composed directly in markup instead of writing named CSS classes in a stylesheet. Styles live next to the structure they style, and there's no naming ceremony or dead-CSS archaeology.",
+        "It's still just CSS: `p-4` is `padding: 1rem` on a spacing scale, colors come from a palette, breakpoints from a scale. The constraint is the point — a design system's worth of consistent values, enforced by what classes exist.",
+        "At build time, Tailwind scans your source for class names and generates only the CSS you actually used. Which is why dynamically assembled class strings like `text-${color}-500` silently fail: the scanner never sees the complete name, so it never generates the rule."
+      ],
+      "question": {
+        "id": "t1",
+        "question": "A developer writes `className={`bg-${theme}-500`}` and the background silently never appears in production. Why?",
+        "options": [
+          "Template literals aren't allowed in the className attribute",
+          "Tailwind's build-time scan looks for complete class names in source; a name assembled at runtime is never seen, so its CSS is never generated",
+          "The bg- prefix requires a corresponding text- class to activate",
+          "Colors in Tailwind only work with inline styles"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Tailwind doesn't execute your code — it greps it. `bg-${theme}-500` contains no complete class name to find. The fix is a map of full names: `{ red: 'bg-red-500', blue: 'bg-blue-500' }[theme]` — every candidate class appears verbatim somewhere in source.",
+        "optionExplanations": [
+          "Template literals are fine in JSX — the runtime string is legal; it's the build-time scan that never saw it.",
+          "Correct — static extraction is the mental model that explains this and several other Tailwind surprises.",
+          "Utilities are independent; no class requires a partner class.",
+          "Tailwind is classes, not inline styles — colors work everywhere the full class name is written out."
+        ],
+        "interviewTip": "'Why is my dynamic Tailwind class not working?' is a real-world debugging question that doubles as an interview question. 'Tailwind scans source text, it doesn't run code' is the crisp answer."
+      }
+    },
+    {
+      "heading": "Flexbox: one-dimensional layout",
+      "paragraphs": [
+        "Flexbox lays out children along one axis. The container declares `flex`; direction picks the main axis (`flex-row`, `flex-col`); `justify-*` distributes along the main axis; `items-*` aligns on the cross axis; `gap-*` spaces children.",
+        "The mental model that prevents confusion: justify = main axis, items = cross axis, and both rotate when direction changes. In `flex-col`, `justify-center` centers *vertically*.",
+        "Children flex too: `flex-1` lets an element grow and shrink to fill remaining space. The everyday patterns: `flex items-center justify-between` for a navbar; a `flex-col` with a `flex-1` middle region for full-height app shells — exactly how this app's own layout works."
+      ],
+      "question": {
+        "id": "t2",
+        "question": "Inside a `flex flex-col h-screen` container, which class centers children horizontally?",
+        "options": [
+          "justify-center",
+          "items-center",
+          "content-center",
+          "self-center on the container"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "With flex-col, the main axis is vertical — so justify-* controls vertical distribution and items-* controls the horizontal (cross) axis. items-center centers children horizontally here. The axes rotating with direction is the whole trick.",
+        "optionExplanations": [
+          "In a column, justify-center centers *vertically* — the exact inverse of what's asked. This is the most common flexbox mix-up in existence.",
+          "Correct — cross axis in a column is horizontal; items-center wins.",
+          "content-center affects multi-line/wrapped content lines, not individual child alignment in a single-line flex container.",
+          "self-* applies to a flex *child* overriding its own alignment — meaningless on the container."
+        ],
+        "interviewTip": "Live-coding layout under observation is common. Narrate the axis out loud — 'column, so main axis is vertical, so I need items-center for horizontal' — it prevents the error and shows systematic thinking."
+      }
+    },
+    {
+      "heading": "Grid and responsive design",
+      "paragraphs": [
+        "Grid is two-dimensional: `grid grid-cols-3 gap-4` gives three columns with row and column tracks managed together. Reach for grid when both dimensions matter (galleries, dashboards) and flexbox when content flows along one line.",
+        "Tailwind is mobile-first: unprefixed utilities apply everywhere; prefixed ones override upward. `grid-cols-1 md:grid-cols-2 lg:grid-cols-4` means one column by default, two from 768px, four from 1024px.",
+        "The common inversion bug: thinking `md:` means 'on medium screens and below'. It means 'at the md breakpoint and up'. Write the phone layout with bare utilities, then layer wider layouts on top."
+      ],
+      "question": {
+        "id": "t3",
+        "question": "What does `class=\"grid grid-cols-1 md:grid-cols-3\"` produce on a phone (viewport below 768px)?",
+        "options": [
+          "Three columns — md: styles apply to medium screens and smaller",
+          "One column — bare utilities are the mobile baseline; md:grid-cols-3 only kicks in at 768px and up",
+          "An error, because two grid-cols utilities conflict",
+          "Three columns squeezed to fit the narrow screen"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "Mobile-first means unprefixed classes are the default at every width, and each breakpoint prefix adds a min-width override. Below 768px only grid-cols-1 applies; at 768px+ the md: rule takes over.",
+        "optionExplanations": [
+          "This is the classic inversion — md: is min-width (and up), not max-width (and down).",
+          "Correct — baseline unprefixed, overrides layered upward.",
+          "Both classes coexist by design; media queries decide which wins at each width. That's the whole responsive system.",
+          "Nothing squeezes — the three-column rule simply isn't active below its breakpoint."
+        ],
+        "interviewTip": "Say 'mobile-first, so breakpoint prefixes are min-width overrides' in any responsive-design discussion — one sentence that demonstrates you understand the cascade, not just the syntax."
+      }
+    },
+    {
+      "heading": "Position, z-index, and where they lie to you",
+      "paragraphs": [
+        "`position: relative` keeps an element in flow but makes it an anchor; `absolute` removes it from flow and positions it against the nearest positioned ancestor; `fixed` pins to the viewport; `sticky` toggles between relative and fixed at a scroll threshold.",
+        "z-index looks global but isn't: it only applies to positioned elements (or flex/grid children), and it competes only *within its stacking context*.",
+        "A new stacking context is created by more properties than people expect: position+z-index, `transform`, `opacity` below 1, `filter`, `will-change`, and others. Once a parent creates one, its children's z-indexes are trapped inside — they compare against each other, never against the outside world."
+      ],
+      "question": {
+        "id": "t4",
+        "question": "A dropdown has z-index: 9999 but still renders underneath a sibling section. The dropdown's parent has `transform: translateX(0)` from an animation. What's going on?",
+        "options": [
+          "9999 exceeds the maximum z-index and overflows to a negative value",
+          "The transform created a stacking context on the parent; the dropdown's 9999 only competes inside it, and the parent's own stack level loses to the sibling",
+          "z-index needs !important to beat sibling elements",
+          "Dropdowns must be direct children of body to stack correctly"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "transform (even an identity transform) spawns a stacking context. The dropdown's z-index is now purely internal ranking within that parent; externally, the whole subtree stacks as one unit at the parent's level. Fixes: remove the transform, raise the parent's own stack level, or portal the dropdown out of the trapped subtree.",
+        "optionExplanations": [
+          "z-index caps around 2.1 billion and clamps rather than overflows — 9999 is nowhere close.",
+          "Correct — 'a child cannot escape its parent's stacking context' is the law behind nearly every mysterious z-index bug.",
+          "!important affects cascade specificity (which declaration wins), not stacking order between elements — unrelated mechanisms.",
+          "Portaling to body is a *workaround* that happens to work by escaping the context — but the stated 'must' rule is false and skips the actual cause."
+        ],
+        "interviewTip": "The 'why won't my z-index work' question separates CSS-guessers from CSS-understanders. Name the stacking-context trigger (transform/opacity/filter), then offer the portal escape hatch — React's createPortal exists largely for this."
+      }
+    },
+    {
+      "heading": "Reusable styling without losing the plot",
+      "paragraphs": [
+        "Long class strings are fine until they repeat. The Tailwind-idiomatic cure is extracting a *component* (a Button component owns its classes once), not writing traditional CSS — the reuse unit is the component, not a stylesheet class.",
+        "For variants (primary/secondary, sm/lg), keep a small map of complete class strings and select by prop — libraries like cva formalize this. This also stays inside the static-extraction rules from earlier: every class name exists verbatim in source.",
+        "Conditional styling composes with template logic: a shared base string plus a selected variant string. Resist string-building fragments of class names; always assemble from whole ones."
+      ],
+      "question": {
+        "id": "t5",
+        "question": "The same 12-utility class string appears on buttons in 9 files, and a designer just changed the border radius. What's the Tailwind-idiomatic fix going forward?",
+        "options": [
+          "Find-and-replace across the 9 files each time the design changes",
+          "Extract a Button component that owns the class string once; variants become props selecting from complete class strings",
+          "Write a .btn class in global CSS and use @apply with all 12 utilities",
+          "Shorten the string by dropping the least important utilities"
+        ],
+        "correctAnswerIndex": 1,
+        "rationale": "In a component framework, the component *is* the reuse mechanism — one source of truth for the markup and its styling, with variants as typed props. The duplication problem was never about CSS; it was about not having extracted the component.",
+        "optionExplanations": [
+          "Manual synchronization across files is exactly the maintenance failure the question demonstrates — the 10th file will be missed.",
+          "Correct — reuse via components, variants via complete-class-string maps.",
+          "@apply works but the Tailwind team itself discourages leaning on it — it recreates the named-abstraction indirection Tailwind was designed to avoid. Defensible, not idiomatic.",
+          "Deleting styles to reduce duplication changes the design instead of solving the reuse problem."
+        ],
+        "interviewTip": "If asked to critique utility-first CSS ('isn't that just inline styles?'), the strong answer covers: constrained design-scale values, responsive/state variants (`hover:`, `md:`) that inline styles can't express, and components as the reuse layer."
+      }
+    }
+  ]
+}
