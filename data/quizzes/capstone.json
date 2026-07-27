@@ -1,7 +1,7 @@
 {
   "id": "capstone",
   "title": "The Pediment — Capstone & Mock Interviews",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "The portfolio project that gets interviews",

@@ -12,7 +12,7 @@ import type {
   SaveScoreResult,
 } from "../types/schema";
 
-export const PASS_THRESHOLD = 0.8;
+export const PASS_THRESHOLD = 0.85;
 
 export interface StorePaths {
   /** Directory holding the live save file (e.g. %APPDATA%/DevParthenon). */

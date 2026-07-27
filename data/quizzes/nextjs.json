@@ -1,7 +1,7 @@
 {
   "id": "nextjs",
   "title": "Pillar II — Next.js & Server Component Architectures",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "Where does the HTML come from?",

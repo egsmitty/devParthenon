@@ -1,7 +1,7 @@
 {
   "id": "git_testing",
   "title": "Pillar VI — Git Workflows, Testing & CI/CD",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "Commits and branches: the mental model",

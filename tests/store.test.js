@@ -57,8 +57,8 @@ describe("saveQuizScore — pillar progression rule", () => {
     assert.deepEqual(result.progress.unlockedPillars, ["pillar-react"]);
   });
 
-  test("a score below 80% does not complete or unlock anything", () => {
-    const result = store.saveQuizScore(paths, "foundation", 0.79);
+  test("a score below 85% does not complete or unlock anything", () => {
+    const result = store.saveQuizScore(paths, "foundation", 0.84);
     assert.equal(result.passed, false);
     assert.equal(result.progress.nodes["foundation"].status, "in_progress");
     assert.equal(result.progress.foundationCompleted, false);
@@ -66,9 +66,10 @@ describe("saveQuizScore — pillar progression rule", () => {
     assert.equal(result.progress.nodes["pillar-react"].status, "locked");
   });
 
-  test("exactly 80% passes", () => {
-    const result = store.saveQuizScore(paths, "foundation", 0.8);
-    assert.equal(result.passed, true);
+  test("exactly 85% passes; 84% does not", () => {
+    assert.equal(store.saveQuizScore(paths, "foundation", 0.85).passed, true);
+    store.resetProgress(paths);
+    assert.equal(store.saveQuizScore(paths, "foundation", 0.84).passed, false);
   });
 
   test("attempting a locked pillar throws (prerequisite locking)", () => {
@@ -163,7 +164,7 @@ describe("data integrity", () => {
       const quiz = JSON.parse(
         fs.readFileSync(path.join(quizzesDir, node.quizFile), "utf-8")
       );
-      assert.equal(quiz.passThreshold, 0.8, `${quiz.id} pass threshold`);
+      assert.equal(quiz.passThreshold, 0.85, `${quiz.id} pass threshold`);
       assert.ok(quiz.sections.length >= 5, `${quiz.id} has too few sections`);
       for (const section of quiz.sections) {
         assert.ok(

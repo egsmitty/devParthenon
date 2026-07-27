@@ -1,7 +1,7 @@
 {
   "id": "tailwind",
   "title": "Pillar V — Tailwind, Layouts & Stacking Contexts",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "Utility-first: what Tailwind actually is",

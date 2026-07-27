@@ -1,7 +1,7 @@
 {
   "id": "databases",
   "title": "Pillar IV — Databases, SQL & ORMs",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "Relational modeling: tables, keys, relationships",

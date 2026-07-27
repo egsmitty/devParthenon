@@ -1,7 +1,7 @@
 {
   "id": "react",
   "title": "Pillar I — React & the UI Rendering Engine",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "Components, props, and state",

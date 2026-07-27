@@ -1,7 +1,7 @@
 {
   "id": "node",
   "title": "Pillar III — Node.js, APIs & Async Control Flow",
-  "passThreshold": 0.8,
+  "passThreshold": 0.85,
   "sections": [
     {
       "heading": "The event loop: one thread, no waiting",
