@@ -39,18 +39,22 @@ export interface QuizQuestion {
 /**
  * A single "chunk" of a module: at most 3 short paragraphs of teaching,
  * always followed by an interactive check (the anti-overwhelm law).
+ *
+ * Each section carries an ordered pool of parallel question variants
+ * (Test A/B/C/D…): same concept and interview trap, different scenario and
+ * answer. variants[0] is the canonical graded check; later entries feed the
+ * Redemption Round and practice replays so rote answer-memorization never
+ * passes. Selection policy lives in src/renderer/variants.ts.
  */
 export interface LessonSection {
   heading: string;
   paragraphs: string[];
-  /** Primary check ("Test A"), shown on the first pass through the module. */
-  question: QuizQuestion;
-  /**
-   * Parallel variant ("Test B") of the same concept with a different
-   * scenario and answer. Shown in the Redemption Round so a learner can't
-   * pass by memorizing the primary answer — they must understand the idea.
-   */
-  altQuestion: QuizQuestion;
+  /** Ordered variant pool; index 0 is the canonical "Test A". */
+  variants?: QuizQuestion[];
+  /** @deprecated legacy shape — superseded by variants[0]. */
+  question?: QuizQuestion;
+  /** @deprecated legacy shape — superseded by variants[1]. */
+  altQuestion?: QuizQuestion;
 }
 
 export interface QuizModule {

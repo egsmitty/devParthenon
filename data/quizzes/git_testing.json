@@ -10,44 +10,46 @@
         "The working cycle: edit files (working directory), `git add` selects changes into the staging area, `git commit` seals the staged snapshot. The staging area exists so you can commit a *coherent subset* of your current mess.",
         "Good commits are atomic — one logical change with a message explaining *why*. 'Fix login redirect for expired sessions' can be reviewed, reverted, and bisected; 'wip stuff' cannot."
       ],
-      "question": {
-        "id": "g1",
-        "question": "What actually happens when you run `git branch feature-x`?",
-        "options": [
-          "A new label is created pointing at the current commit — nothing is copied",
-          "All uncommitted changes move to the new branch automatically",
-          "A remote branch is created on origin",
-          "The entire project is copied into a new directory for the branch"
-        ],
-        "correctAnswerIndex": 0,
-        "rationale": "Branches are ~40-byte pointers into the commit graph. That's why branching in git is instant and why workflows built on many short-lived branches are practical — there is no duplication to pay for.",
-        "optionExplanations": [
-          "Correct — a branch is a movable pointer, nothing more.",
-          "Uncommitted changes belong to the working directory, which is independent of branch pointers (they follow you until committed).",
-          "Nothing touches the network until you push — git branch is purely local.",
-          "That's how some pre-git systems felt; git branches share the same object store — zero copying."
-        ],
-        "interviewTip": "'A branch is just a pointer to a commit' is a one-sentence answer that instantly signals you understand git's model rather than memorized commands."
-      },
-      "altQuestion": {
-        "id": "g1-alt",
-        "question": "You're on `main` with two files edited but not yet committed. You run `git checkout -b hotfix` and then `git commit -am 'patch'`. Where did that new commit land, and what happened to `main`?",
-        "options": [
-          "The commit landed on `main`, and `hotfix` is an empty copy waiting for its first change",
-          "The commit landed on `hotfix`; `main` still points at the commit it did before, now one behind",
-          "Both `main` and `hotfix` advanced to the new commit, since they started from the same place",
-          "The edits were lost during checkout because they weren't committed before switching branches"
-        ],
-        "correctAnswerIndex": 1,
-        "rationale": "`checkout -b hotfix` created a label at the same commit as `main` and moved HEAD onto it, carrying the uncommitted edits along. The commit advances only the branch HEAD points at — `hotfix` — while `main` stays frozen at the older commit. Branches diverge precisely because a commit moves one pointer, not all of them.",
-        "optionExplanations": [
-          "HEAD moved to `hotfix` on creation, so the commit lands there, not on `main` — and it isn't empty, it carried the working-directory edits.",
-          "Correct — the commit only advances the branch HEAD is on (`hotfix`); `main` is left one commit behind.",
-          "A commit advances a single pointer — the one HEAD references — never two branches at once.",
-          "Uncommitted edits follow you across a checkout when there's no conflict; they were never lost."
-        ],
-        "interviewTip": "Say it as 'a commit only moves the branch HEAD is currently on' — that one line explains divergence, fast-forwards, and why other branches don't magically update."
-      }
+      "variants": [
+        {
+          "id": "g1",
+          "question": "What actually happens when you run `git branch feature-x`?",
+          "options": [
+            "A new label is created pointing at the current commit — nothing is copied",
+            "All uncommitted changes move to the new branch automatically",
+            "A remote branch is created on origin",
+            "The entire project is copied into a new directory for the branch"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Branches are ~40-byte pointers into the commit graph. That's why branching in git is instant and why workflows built on many short-lived branches are practical — there is no duplication to pay for.",
+          "optionExplanations": [
+            "Correct — a branch is a movable pointer, nothing more.",
+            "Uncommitted changes belong to the working directory, which is independent of branch pointers (they follow you until committed).",
+            "Nothing touches the network until you push — git branch is purely local.",
+            "That's how some pre-git systems felt; git branches share the same object store — zero copying."
+          ],
+          "interviewTip": "'A branch is just a pointer to a commit' is a one-sentence answer that instantly signals you understand git's model rather than memorized commands."
+        },
+        {
+          "id": "g1-alt",
+          "question": "You're on `main` with two files edited but not yet committed. You run `git checkout -b hotfix` and then `git commit -am 'patch'`. Where did that new commit land, and what happened to `main`?",
+          "options": [
+            "The commit landed on `main`, and `hotfix` is an empty copy waiting for its first change",
+            "The commit landed on `hotfix`; `main` still points at the commit it did before, now one behind",
+            "Both `main` and `hotfix` advanced to the new commit, since they started from the same place",
+            "The edits were lost during checkout because they weren't committed before switching branches"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`checkout -b hotfix` created a label at the same commit as `main` and moved HEAD onto it, carrying the uncommitted edits along. The commit advances only the branch HEAD points at — `hotfix` — while `main` stays frozen at the older commit. Branches diverge precisely because a commit moves one pointer, not all of them.",
+          "optionExplanations": [
+            "HEAD moved to `hotfix` on creation, so the commit lands there, not on `main` — and it isn't empty, it carried the working-directory edits.",
+            "Correct — the commit only advances the branch HEAD is on (`hotfix`); `main` is left one commit behind.",
+            "A commit advances a single pointer — the one HEAD references — never two branches at once.",
+            "Uncommitted edits follow you across a checkout when there's no conflict; they were never lost."
+          ],
+          "interviewTip": "Say it as 'a commit only moves the branch HEAD is currently on' — that one line explains divergence, fast-forwards, and why other branches don't magically update."
+        }
+      ]
     },
     {
       "heading": "Merge vs rebase — and the golden rule",
@@ -56,44 +58,46 @@
         "That rewrite is why the golden rule exists: never rebase commits that others may have based work on (i.e., anything pushed to a shared branch). Rebase your local feature branch freely; rebase shared history and every collaborator's tree diverges from yours.",
         "A very common team workflow: rebase your feature branch onto main to stay current while developing, then merge (often squash-merge) into main via pull request."
       ],
-      "question": {
-        "id": "g2",
-        "question": "A teammate rebased the shared `develop` branch and force-pushed it. Everyone's local `develop` now 'has diverged'. What did the rebase do that caused this?",
-        "options": [
-          "Nothing — divergence warnings are cosmetic and safe to ignore",
-          "It deleted everyone's commits from the server permanently",
-          "It rewrote the branch's commits as new commits with new hashes, so every clone's history no longer matches the remote's",
-          "It merged develop into every open feature branch"
-        ],
-        "correctAnswerIndex": 2,
-        "rationale": "Rebase creates replacement commits; force-push made the remote point at the rewritten line. Every local clone still holds the old line, so git correctly reports divergence — and anyone who naively merges the two lines resurrects zombie duplicate commits. This is precisely why shared branches are rebase-forbidden.",
-        "optionExplanations": [
-          "Ignoring it and pulling merges the old and new lines together — the graph doubles its commits and the mess compounds.",
-          "The old commits still exist in clones and reflogs — the damage is divergence and duplication risk, not immediate deletion.",
-          "Correct — rewritten hashes + force-push = every collaborator's history contradicts the remote.",
-          "Rebase touches one branch's history; it never fans out into other branches."
-        ],
-        "interviewTip": "When asked merge vs rebase, don't pick a side — state the policy: 'rebase private history for cleanliness, merge shared history for safety, never force-push shared branches.'"
-      },
-      "altQuestion": {
-        "id": "g2-alt",
-        "question": "Your feature branch is 6 commits ahead of `main`, all still local and unpushed. `main` moved ahead with 3 new commits. You want your feature to sit cleanly on top of the latest `main` with no merge commit. Which is safe and appropriate here — and why?",
-        "options": [
-          "Nothing is safe here; any history operation on a branch behind `main` risks corrupting the shared repo",
-          "`git rebase main` but only after force-pushing the feature branch first so the remote is authoritative",
-          "`git merge main` into the feature branch, because merging is always the safer default",
-          "`git rebase main` on your feature branch, because the commits are private and unshared, so rewriting their hashes harms no one"
-        ],
-        "correctAnswerIndex": 3,
-        "rationale": "The golden rule forbids rebasing *shared* history — commits others may have built on. These 6 commits are local and unpushed, so nobody else has them; rewriting their hashes onto the new `main` tip is exactly the sanctioned use of rebase, giving the straight-line history you asked for with zero merge commit.",
-        "optionExplanations": [
-          "The golden rule only restricts *shared* history; local unpushed commits are the textbook case where rebase is encouraged.",
-          "Force-pushing before rebasing is backwards and pointless here — the branch is unshared, so there's nothing on the remote to force over.",
-          "Merging is safe but produces the merge commit you explicitly wanted to avoid; 'always safer' ignores that rebasing private history is perfectly safe.",
-          "Correct — private, unpushed commits are yours alone to rewrite; rebase gives the clean linear result the golden rule permits."
-        ],
-        "interviewTip": "The trap is 'rebase = dangerous'. Reframe it as 'rebase = dangerous only on shared history' — for local, unpushed work it's the recommended way to stay current."
-      }
+      "variants": [
+        {
+          "id": "g2",
+          "question": "A teammate rebased the shared `develop` branch and force-pushed it. Everyone's local `develop` now 'has diverged'. What did the rebase do that caused this?",
+          "options": [
+            "Nothing — divergence warnings are cosmetic and safe to ignore",
+            "It deleted everyone's commits from the server permanently",
+            "It rewrote the branch's commits as new commits with new hashes, so every clone's history no longer matches the remote's",
+            "It merged develop into every open feature branch"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Rebase creates replacement commits; force-push made the remote point at the rewritten line. Every local clone still holds the old line, so git correctly reports divergence — and anyone who naively merges the two lines resurrects zombie duplicate commits. This is precisely why shared branches are rebase-forbidden.",
+          "optionExplanations": [
+            "Ignoring it and pulling merges the old and new lines together — the graph doubles its commits and the mess compounds.",
+            "The old commits still exist in clones and reflogs — the damage is divergence and duplication risk, not immediate deletion.",
+            "Correct — rewritten hashes + force-push = every collaborator's history contradicts the remote.",
+            "Rebase touches one branch's history; it never fans out into other branches."
+          ],
+          "interviewTip": "When asked merge vs rebase, don't pick a side — state the policy: 'rebase private history for cleanliness, merge shared history for safety, never force-push shared branches.'"
+        },
+        {
+          "id": "g2-alt",
+          "question": "Your feature branch is 6 commits ahead of `main`, all still local and unpushed. `main` moved ahead with 3 new commits. You want your feature to sit cleanly on top of the latest `main` with no merge commit. Which is safe and appropriate here — and why?",
+          "options": [
+            "Nothing is safe here; any history operation on a branch behind `main` risks corrupting the shared repo",
+            "`git rebase main` but only after force-pushing the feature branch first so the remote is authoritative",
+            "`git merge main` into the feature branch, because merging is always the safer default",
+            "`git rebase main` on your feature branch, because the commits are private and unshared, so rewriting their hashes harms no one"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The golden rule forbids rebasing *shared* history — commits others may have built on. These 6 commits are local and unpushed, so nobody else has them; rewriting their hashes onto the new `main` tip is exactly the sanctioned use of rebase, giving the straight-line history you asked for with zero merge commit.",
+          "optionExplanations": [
+            "The golden rule only restricts *shared* history; local unpushed commits are the textbook case where rebase is encouraged.",
+            "Force-pushing before rebasing is backwards and pointless here — the branch is unshared, so there's nothing on the remote to force over.",
+            "Merging is safe but produces the merge commit you explicitly wanted to avoid; 'always safer' ignores that rebasing private history is perfectly safe.",
+            "Correct — private, unpushed commits are yours alone to rewrite; rebase gives the clean linear result the golden rule permits."
+          ],
+          "interviewTip": "The trap is 'rebase = dangerous'. Reframe it as 'rebase = dangerous only on shared history' — for local, unpushed work it's the recommended way to stay current."
+        }
+      ]
     },
     {
       "heading": "Unit testing with Vitest",
@@ -102,44 +106,46 @@
         "Good tests assert observable behavior ('given an expired token, isValid returns false'), not implementation details ('it calls parseToken once'). Behavior-based tests survive refactors; implementation-based tests break when the code improves.",
         "Determinism is what keeps a suite trusted: tests touching real time, randomness, or network are flaky by construction. Inject or mock those boundaries (`vi.useFakeTimers()`, `vi.mock(...)`) so the same input always yields the same result."
       ],
-      "question": {
-        "id": "g3",
-        "question": "A test for 'trial expires after 14 days' calls the real `Date.now()` and started failing this week — the fixture data aged past the window. What's the durable fix?",
-        "options": [
-          "Control time in the test (fake timers / inject a clock), making the test deterministic regardless of the real date",
-          "Widen the assertion to accept both outcomes",
-          "Delete the test since expiry logic is simple",
-          "Regenerate the fixture data every couple of weeks"
-        ],
-        "correctAnswerIndex": 0,
-        "rationale": "The test depends on wall-clock time — a hidden input that changes daily. Faking time (`vi.useFakeTimers()` + `vi.setSystemTime(...)`) or injecting a clock pins that input, so the test verifies the 14-day rule forever, not just for two weeks after someone refreshes fixtures.",
-        "optionExplanations": [
-          "Correct — remove nondeterminism at the source; time becomes a controlled input.",
-          "A test that accepts both outcomes asserts nothing — it's a green light wired to stay green.",
-          "Simple logic with real dates is exactly where silent off-by-one expiry bugs live; the test earns its keep.",
-          "Scheduled human maintenance to keep a test green is a treadmill — and it *will* be forgotten."
-        ],
-        "interviewTip": "'How do you deal with flaky tests?' — root-cause categories (time, randomness, network, shared state, order dependence) plus 'make the boundary injectable' is a complete, senior-sounding answer."
-      },
-      "altQuestion": {
-        "id": "g3-alt",
-        "question": "A test asserts `describe('cart', () => { it('applies a random 5–15% loyalty discount', ...) })` by calling the real `Math.random()` and checking the total is within range. It passes ~99% of runs but fails intermittently in CI with no code change. What's the correct fix?",
-        "options": [
-          "Add a retry so the test re-runs up to three times before it's marked failed",
-          "Mock the randomness boundary (e.g. `vi.spyOn(Math, 'random').mockReturnValue(0.5)`) so the discount is a fixed, asserted value",
-          "Loosen the range check to 0–100% so the assertion can never fail",
-          "Move the test to run only locally, never in CI, since CI machines behave differently"
-        ],
-        "correctAnswerIndex": 1,
-        "rationale": "The flake is nondeterminism from real randomness — a hidden input that varies each run, occasionally landing on a boundary the assertion mishandles. Stubbing `Math.random()` to a fixed value pins the input so the same computation runs every time, turning an intermittent test into a deterministic one that actually verifies the discount formula.",
-        "optionExplanations": [
-          "Retries paper over flakiness — they hide a real nondeterminism bug and let genuinely broken code sneak through on a lucky re-run.",
-          "Correct — control the random boundary at the source; the discount becomes a fixed, deterministic input.",
-          "A 0–100% range asserts nothing about a 5–15% rule; it's a test wired to always pass.",
-          "'Skip it in CI' abandons the coverage exactly where it matters most and doesn't fix the nondeterminism."
-        ],
-        "interviewTip": "Retrying a flaky test is a smell, not a fix. Name the nondeterministic source — here, randomness — and pin it. Interviewers listen for whether you remove the cause or mask the symptom."
-      }
+      "variants": [
+        {
+          "id": "g3",
+          "question": "A test for 'trial expires after 14 days' calls the real `Date.now()` and started failing this week — the fixture data aged past the window. What's the durable fix?",
+          "options": [
+            "Control time in the test (fake timers / inject a clock), making the test deterministic regardless of the real date",
+            "Widen the assertion to accept both outcomes",
+            "Delete the test since expiry logic is simple",
+            "Regenerate the fixture data every couple of weeks"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The test depends on wall-clock time — a hidden input that changes daily. Faking time (`vi.useFakeTimers()` + `vi.setSystemTime(...)`) or injecting a clock pins that input, so the test verifies the 14-day rule forever, not just for two weeks after someone refreshes fixtures.",
+          "optionExplanations": [
+            "Correct — remove nondeterminism at the source; time becomes a controlled input.",
+            "A test that accepts both outcomes asserts nothing — it's a green light wired to stay green.",
+            "Simple logic with real dates is exactly where silent off-by-one expiry bugs live; the test earns its keep.",
+            "Scheduled human maintenance to keep a test green is a treadmill — and it *will* be forgotten."
+          ],
+          "interviewTip": "'How do you deal with flaky tests?' — root-cause categories (time, randomness, network, shared state, order dependence) plus 'make the boundary injectable' is a complete, senior-sounding answer."
+        },
+        {
+          "id": "g3-alt",
+          "question": "A test asserts `describe('cart', () => { it('applies a random 5–15% loyalty discount', ...) })` by calling the real `Math.random()` and checking the total is within range. It passes ~99% of runs but fails intermittently in CI with no code change. What's the correct fix?",
+          "options": [
+            "Add a retry so the test re-runs up to three times before it's marked failed",
+            "Mock the randomness boundary (e.g. `vi.spyOn(Math, 'random').mockReturnValue(0.5)`) so the discount is a fixed, asserted value",
+            "Loosen the range check to 0–100% so the assertion can never fail",
+            "Move the test to run only locally, never in CI, since CI machines behave differently"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The flake is nondeterminism from real randomness — a hidden input that varies each run, occasionally landing on a boundary the assertion mishandles. Stubbing `Math.random()` to a fixed value pins the input so the same computation runs every time, turning an intermittent test into a deterministic one that actually verifies the discount formula.",
+          "optionExplanations": [
+            "Retries paper over flakiness — they hide a real nondeterminism bug and let genuinely broken code sneak through on a lucky re-run.",
+            "Correct — control the random boundary at the source; the discount becomes a fixed, deterministic input.",
+            "A 0–100% range asserts nothing about a 5–15% rule; it's a test wired to always pass.",
+            "'Skip it in CI' abandons the coverage exactly where it matters most and doesn't fix the nondeterminism."
+          ],
+          "interviewTip": "Retrying a flaky test is a smell, not a fix. Name the nondeterministic source — here, randomness — and pin it. Interviewers listen for whether you remove the cause or mask the symptom."
+        }
+      ]
     },
     {
       "heading": "End-to-end testing with Playwright",
@@ -148,44 +154,46 @@
         "Prefer user-facing selectors — `getByRole('button', { name: 'Save' })`, `getByLabel('Email')` — over CSS/XPath tied to DOM structure. They survive refactors and double as accessibility checks: if getByRole can't find your button, neither can a screen reader.",
         "Playwright's assertions auto-wait and retry (`await expect(locator).toBeVisible()`), which eliminates the sleep-based flakiness older tools suffered. The testing pyramid still applies: many fast unit tests, fewer integration tests, a thin crust of E2E on the critical paths."
       ],
-      "question": {
-        "id": "g4",
-        "question": "Why does Playwright's own documentation push `getByRole('button', { name: 'Submit' })` over `page.locator('#app > div.form > button:nth-child(3)')`?",
-        "options": [
-          "nth-child is not supported inside locator()",
-          "Role selectors execute significantly faster in the browser",
-          "Role/name selectors track what users (and assistive tech) perceive, so they survive DOM refactors and implicitly verify accessibility",
-          "CSS selectors are deprecated in modern Playwright"
-        ],
-        "correctAnswerIndex": 2,
-        "rationale": "The structural selector encodes today's DOM shape — one wrapper div added and the test lies about the app being broken. The role selector encodes intent ('the button a user knows as Submit'), which changes only when the actual UX changes — and it fails if the button loses its accessible name, catching a11y regressions for free.",
-        "optionExplanations": [
-          "nth-child works fine in locator() — which is part of the problem: it lets you write brittle tests.",
-          "Selector speed differences are negligible next to browser and network time.",
-          "Correct — resilience to refactors plus built-in accessibility pressure.",
-          "CSS selectors remain fully supported; the guidance is preference, not deprecation."
-        ],
-        "interviewTip": "'How do you keep E2E suites from becoming flaky and hated?' — answer: user-facing selectors, auto-waiting assertions, test isolation, and keeping E2E thin per the pyramid. Four beats, well rehearsed."
-      },
-      "altQuestion": {
-        "id": "g4-alt",
-        "question": "A test does `await page.waitForTimeout(3000)` then clicks a 'Checkout' button that appears after an async cart load. It passes locally but fails ~10% of the time in CI, where the machine is slower. What's the idiomatic Playwright fix?",
-        "options": [
-          "Wrap the click in a try/catch and retry it in a loop until it succeeds",
-          "Disable the test in CI and run it only on the faster local machine",
-          "Bump the timeout to `waitForTimeout(8000)` to give the slow CI box more headroom",
-          "Replace the fixed sleep with an auto-waiting assertion/locator like `await page.getByRole('button', { name: 'Checkout' }).click()`, which retries until the element is actionable"
-        ],
-        "correctAnswerIndex": 3,
-        "rationale": "A hardcoded `waitForTimeout` guesses at how long the async load takes — too short and it flakes on slow CI, too long and it wastes time. Playwright's locators and web-first assertions auto-wait and retry until the element is present and actionable, so the test synchronizes on the actual condition instead of a fragile fixed delay. That's the mechanism that kills sleep-based flakiness.",
-        "optionExplanations": [
-          "A manual retry loop reinvents what Playwright's auto-waiting already does, worse and more verbosely.",
-          "Skipping in CI abandons coverage on the exact environment where the race actually surfaces.",
-          "A bigger fixed sleep just moves the flake threshold and slows every run; it still guesses instead of waiting on the real condition.",
-          "Correct — auto-waiting locators retry until the button is actually clickable, eliminating the timing guess entirely."
-        ],
-        "interviewTip": "Any `waitForTimeout` / `sleep` in an E2E test is a red flag. The senior answer: 'wait on a condition, not a duration' — Playwright's auto-waiting assertions do this for you."
-      }
+      "variants": [
+        {
+          "id": "g4",
+          "question": "Why does Playwright's own documentation push `getByRole('button', { name: 'Submit' })` over `page.locator('#app > div.form > button:nth-child(3)')`?",
+          "options": [
+            "nth-child is not supported inside locator()",
+            "Role selectors execute significantly faster in the browser",
+            "Role/name selectors track what users (and assistive tech) perceive, so they survive DOM refactors and implicitly verify accessibility",
+            "CSS selectors are deprecated in modern Playwright"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The structural selector encodes today's DOM shape — one wrapper div added and the test lies about the app being broken. The role selector encodes intent ('the button a user knows as Submit'), which changes only when the actual UX changes — and it fails if the button loses its accessible name, catching a11y regressions for free.",
+          "optionExplanations": [
+            "nth-child works fine in locator() — which is part of the problem: it lets you write brittle tests.",
+            "Selector speed differences are negligible next to browser and network time.",
+            "Correct — resilience to refactors plus built-in accessibility pressure.",
+            "CSS selectors remain fully supported; the guidance is preference, not deprecation."
+          ],
+          "interviewTip": "'How do you keep E2E suites from becoming flaky and hated?' — answer: user-facing selectors, auto-waiting assertions, test isolation, and keeping E2E thin per the pyramid. Four beats, well rehearsed."
+        },
+        {
+          "id": "g4-alt",
+          "question": "A test does `await page.waitForTimeout(3000)` then clicks a 'Checkout' button that appears after an async cart load. It passes locally but fails ~10% of the time in CI, where the machine is slower. What's the idiomatic Playwright fix?",
+          "options": [
+            "Wrap the click in a try/catch and retry it in a loop until it succeeds",
+            "Disable the test in CI and run it only on the faster local machine",
+            "Bump the timeout to `waitForTimeout(8000)` to give the slow CI box more headroom",
+            "Replace the fixed sleep with an auto-waiting assertion/locator like `await page.getByRole('button', { name: 'Checkout' }).click()`, which retries until the element is actionable"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "A hardcoded `waitForTimeout` guesses at how long the async load takes — too short and it flakes on slow CI, too long and it wastes time. Playwright's locators and web-first assertions auto-wait and retry until the element is present and actionable, so the test synchronizes on the actual condition instead of a fragile fixed delay. That's the mechanism that kills sleep-based flakiness.",
+          "optionExplanations": [
+            "A manual retry loop reinvents what Playwright's auto-waiting already does, worse and more verbosely.",
+            "Skipping in CI abandons coverage on the exact environment where the race actually surfaces.",
+            "A bigger fixed sleep just moves the flake threshold and slows every run; it still guesses instead of waiting on the real condition.",
+            "Correct — auto-waiting locators retry until the button is actually clickable, eliminating the timing guess entirely."
+          ],
+          "interviewTip": "Any `waitForTimeout` / `sleep` in an E2E test is a red flag. The senior answer: 'wait on a condition, not a duration' — Playwright's auto-waiting assertions do this for you."
+        }
+      ]
     },
     {
       "heading": "CI/CD: the pipeline as gatekeeper",
@@ -194,44 +202,46 @@
         "A typical GitHub Actions flow: on pull request, run the checks; merging is blocked until they're green plus a human review. Continuous Delivery/Deployment extends the green path: merged main auto-deploys to staging, then production — with prod gated manually (Delivery) or fully automatic (Deployment).",
         "Pipelines fail-fast in order of cheapness: lint before tests, unit before E2E. And a red main is a stop-the-line event — the fix or the revert outranks new work, because everyone is building on top of it."
       ],
-      "question": {
-        "id": "g5",
-        "question": "A PR's pipeline runs: lint → unit tests → E2E tests → build. E2E is the slowest stage. Why do lint and unit tests run first?",
-        "options": [
-          "Fail fast: cheap checks catch most failures in seconds, so broken pushes don't burn 20 minutes of E2E before reporting the lint error",
-          "E2E tests can only run after a deployment to production",
-          "Lint must pass before code will compile at all",
-          "Alphabetical ordering of pipeline stages"
-        ],
-        "correctAnswerIndex": 0,
-        "rationale": "Pipeline ordering is economics: fastest-and-most-likely-to-fail first. A typo that lint catches in 10 seconds shouldn't cost a full E2E run to discover. Same total coverage, radically better feedback latency for the common failure cases.",
-        "optionExplanations": [
-          "Correct — fail-fast ordering optimizes time-to-feedback, which is the entire point of CI.",
-          "E2E runs against a preview or local server in CI — production deployment is not a prerequisite.",
-          "Linting is style/correctness analysis, independent of compilation; unlinted code compiles fine.",
-          "Stage order is authored deliberately in the workflow file; nothing is alphabetical."
-        ],
-        "interviewTip": "If asked to design a CI pipeline, narrate it in cost order — 'lint, type-check, unit, integration, E2E, build, deploy' — and mention branch protection on green checks. Structure is the signal."
-      },
-      "altQuestion": {
-        "id": "g5-alt",
-        "question": "Your team's `main` branch pipeline goes red: a merged commit broke the build. A developer opens a fresh PR to add an unrelated new feature and asks to merge it 'since it's green on its own branch'. What does a healthy CI/CD culture do first?",
-        "options": [
-          "Merge the new feature — it's green in isolation, and unrelated to the breakage",
-          "Stop the line: fixing or reverting the broken `main` outranks new work, because everyone branches from `main` and builds on the breakage",
-          "Disable the failing check on `main` so the pipeline goes green and work can continue",
-          "Wait a day to see if the failure resolves itself before taking any action"
-        ],
-        "correctAnswerIndex": 1,
-        "rationale": "A red `main` is a stop-the-line event. Everyone cuts new branches from `main` and merges back into it, so a broken `main` poisons every downstream branch and hides which failures are new. Restoring green — by fixing forward or reverting the offending commit — takes priority over any new feature, however clean that feature looks in isolation.",
-        "optionExplanations": [
-          "Merging onto a broken `main` stacks new work atop the breakage and muddies which failures are the new PR's fault.",
-          "Correct — a red shared branch is stop-the-line; fix or revert before new work, because the whole team builds on `main`.",
-          "Silencing the check hides the breakage instead of resolving it — the bug ships and trust in the pipeline erodes.",
-          "Build failures don't self-heal; waiting just extends the window in which everyone inherits a broken base."
-        ],
-        "interviewTip": "'Stop the line' is the phrase interviewers want. A red shared branch blocks the whole team, so its fix or revert always outranks new feature work — say that explicitly."
-      }
+      "variants": [
+        {
+          "id": "g5",
+          "question": "A PR's pipeline runs: lint → unit tests → E2E tests → build. E2E is the slowest stage. Why do lint and unit tests run first?",
+          "options": [
+            "Fail fast: cheap checks catch most failures in seconds, so broken pushes don't burn 20 minutes of E2E before reporting the lint error",
+            "E2E tests can only run after a deployment to production",
+            "Lint must pass before code will compile at all",
+            "Alphabetical ordering of pipeline stages"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Pipeline ordering is economics: fastest-and-most-likely-to-fail first. A typo that lint catches in 10 seconds shouldn't cost a full E2E run to discover. Same total coverage, radically better feedback latency for the common failure cases.",
+          "optionExplanations": [
+            "Correct — fail-fast ordering optimizes time-to-feedback, which is the entire point of CI.",
+            "E2E runs against a preview or local server in CI — production deployment is not a prerequisite.",
+            "Linting is style/correctness analysis, independent of compilation; unlinted code compiles fine.",
+            "Stage order is authored deliberately in the workflow file; nothing is alphabetical."
+          ],
+          "interviewTip": "If asked to design a CI pipeline, narrate it in cost order — 'lint, type-check, unit, integration, E2E, build, deploy' — and mention branch protection on green checks. Structure is the signal."
+        },
+        {
+          "id": "g5-alt",
+          "question": "Your team's `main` branch pipeline goes red: a merged commit broke the build. A developer opens a fresh PR to add an unrelated new feature and asks to merge it 'since it's green on its own branch'. What does a healthy CI/CD culture do first?",
+          "options": [
+            "Merge the new feature — it's green in isolation, and unrelated to the breakage",
+            "Stop the line: fixing or reverting the broken `main` outranks new work, because everyone branches from `main` and builds on the breakage",
+            "Disable the failing check on `main` so the pipeline goes green and work can continue",
+            "Wait a day to see if the failure resolves itself before taking any action"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A red `main` is a stop-the-line event. Everyone cuts new branches from `main` and merges back into it, so a broken `main` poisons every downstream branch and hides which failures are new. Restoring green — by fixing forward or reverting the offending commit — takes priority over any new feature, however clean that feature looks in isolation.",
+          "optionExplanations": [
+            "Merging onto a broken `main` stacks new work atop the breakage and muddies which failures are the new PR's fault.",
+            "Correct — a red shared branch is stop-the-line; fix or revert before new work, because the whole team builds on `main`.",
+            "Silencing the check hides the breakage instead of resolving it — the bug ships and trust in the pipeline erodes.",
+            "Build failures don't self-heal; waiting just extends the window in which everyone inherits a broken base."
+          ],
+          "interviewTip": "'Stop the line' is the phrase interviewers want. A red shared branch blocks the whole team, so its fix or revert always outranks new feature work — say that explicitly."
+        }
+      ]
     }
   ]
 }

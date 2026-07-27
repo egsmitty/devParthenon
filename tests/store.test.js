@@ -191,6 +191,71 @@ describe("attempt persistence (§3.6 reload safety)", () => {
   });
 });
 
+describe("variant selection policy (pickVariant)", () => {
+  const { pathToFileURL } = require("node:url");
+  const variantsUrl = pathToFileURL(
+    path.join(__dirname, "..", "dist", "renderer", "variants.js")
+  ).href;
+
+  const mkQ = (id, idx) => ({
+    id,
+    question: `q-${id}`,
+    options: ["a", "b", "c", "d"],
+    correctAnswerIndex: idx,
+    rationale: "r",
+    optionExplanations: ["", "", "", ""],
+    interviewTip: "t",
+  });
+  const section = {
+    heading: "h",
+    paragraphs: ["p"],
+    variants: [mkQ("x-a", 0), mkQ("x-b", 1), mkQ("x-c", 2)],
+  };
+
+  test("graded mode always returns the canonical variants[0]", async () => {
+    const { pickVariant } = await import(variantsUrl);
+    for (let i = 0; i < 5; i++) {
+      assert.equal(pickVariant(section, { mode: "graded" }).id, "x-a");
+    }
+  });
+
+  test("redeem mode returns the first unseen variant, never a repeat", async () => {
+    const { pickVariant } = await import(variantsUrl);
+    assert.equal(
+      pickVariant(section, { mode: "redeem", usedIds: new Set(["x-a"]) }).id,
+      "x-b"
+    );
+    assert.equal(
+      pickVariant(section, { mode: "redeem", usedIds: new Set(["x-a", "x-b"]) }).id,
+      "x-c"
+    );
+    // Pool exhausted: falls back to the first non-canonical variant.
+    assert.equal(
+      pickVariant(section, {
+        mode: "redeem",
+        usedIds: new Set(["x-a", "x-b", "x-c"]),
+      }).id,
+      "x-b"
+    );
+  });
+
+  test("practice mode draws only from unused variants (shuffle-bag)", async () => {
+    const { pickVariant } = await import(variantsUrl);
+    const picked = pickVariant(section, {
+      mode: "practice",
+      usedIds: new Set(["x-a", "x-c"]),
+      rng: () => 0.99,
+    });
+    assert.equal(picked.id, "x-b");
+  });
+
+  test("legacy question/altQuestion sections normalize into a pool", async () => {
+    const { sectionVariants } = await import(variantsUrl);
+    const legacy = { heading: "h", paragraphs: ["p"], question: mkQ("l-a", 0), altQuestion: mkQ("l-b", 1) };
+    assert.deepEqual(sectionVariants(legacy).map((q) => q.id), ["l-a", "l-b"]);
+  });
+});
+
 describe("data integrity", () => {
   const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
 
@@ -222,8 +287,15 @@ describe("data integrity", () => {
           section.paragraphs.length >= 1 && section.paragraphs.length <= 3,
           `${quiz.id}/${section.heading}: chunked-feeding law (1-3 paragraphs)`
         );
-        const checkQuestion = (q, label) => {
-          assert.ok(q, `${quiz.id}/${section.heading}: ${label} required`);
+        // Normalize like the renderer does: variants[] or legacy pair.
+        const pool =
+          section.variants ??
+          [section.question, section.altQuestion].filter(Boolean);
+        assert.ok(
+          pool.length >= 2,
+          `${quiz.id}/${section.heading}: needs a pool of at least 2 variants`
+        );
+        for (const q of pool) {
           assert.equal(q.options.length, 4, `${q.id}: must have exactly 4 options`);
           assert.ok(
             q.correctAnswerIndex >= 0 && q.correctAnswerIndex < q.options.length,
@@ -234,21 +306,25 @@ describe("data integrity", () => {
             q.options.length,
             `${q.id}: every option needs a why-wrong/why-right explanation`
           );
+          assert.match(
+            (q.optionExplanations[q.correctAnswerIndex] || "").trim(),
+            /^correct\b/i,
+            `${q.id}: correctAnswerIndex must point at the "Correct —" explanation`
+          );
           assert.ok(q.rationale.length > 0, `${q.id}: rationale required`);
           assert.ok(q.interviewTip.length > 0, `${q.id}: interviewTip required`);
-        };
-        checkQuestion(section.question, "question (Test A)");
-        checkQuestion(section.altQuestion, "altQuestion (Test B)");
-        // The variant must be genuinely different, not a copy.
+        }
+        // Variants must be genuinely different questions, not copies.
+        const ids = new Set(pool.map((q) => q.id));
+        assert.equal(ids.size, pool.length, `${pool[0].id}: duplicate variant ids`);
+        const texts = new Set(pool.map((q) => q.question.trim()));
+        assert.equal(texts.size, pool.length, `${pool[0].id}: duplicate variant text`);
+        // The graded check and the first redemption variant never share a
+        // correct position (anti-rote).
         assert.notEqual(
-          section.altQuestion.id,
-          section.question.id,
-          `${section.question.id}: altQuestion needs a distinct id`
-        );
-        assert.notEqual(
-          section.altQuestion.question.trim(),
-          section.question.question.trim(),
-          `${section.question.id}: altQuestion must pose a different question`
+          pool[0].correctAnswerIndex,
+          pool[1].correctAnswerIndex,
+          `${pool[0].id}: variants 0 and 1 share a correct index`
         );
       }
     }

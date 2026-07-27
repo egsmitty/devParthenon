@@ -10,44 +10,46 @@
         "The golden rule: never mutate state directly. `items.push(x)` changes the array in place — React compares references, sees the same array, and skips the re-render. `setItems([...items, x])` creates a new reference React can detect.",
         "Think of every render as a photograph: the component function runs top to bottom with that moment's props and state, producing a fresh snapshot of the UI."
       ],
-      "question": {
-        "id": "r1",
-        "question": "A developer writes `user.name = 'Ada'; setUser(user);` but the component doesn't re-render. Why?",
-        "options": [
-          "useState cannot store objects with nested properties",
-          "setUser only works with strings, not objects",
-          "The object was mutated in place, so the state's reference is unchanged and React bails out of the update",
-          "React batches the update and it will appear after a page refresh"
-        ],
-        "correctAnswerIndex": 2,
-        "rationale": "React uses Object.is on the old and new state to decide whether anything changed. Mutating and passing back the same object means same reference, so React skips the render. The fix: `setUser({ ...user, name: 'Ada' })` — a new object, a new reference.",
-        "optionExplanations": [
-          "Nested objects are fine in state; you just must replace rather than mutate them.",
-          "State can hold any value — objects, arrays, functions. The type isn't the issue.",
-          "Correct — same reference means React concludes nothing changed. Spread into a new object.",
-          "Batching delays renders by microseconds within an event, not until refresh. A refresh actually loses the state entirely."
-        ],
-        "interviewTip": "The phrase to use: 'React state updates rely on referential equality, so immutable updates are mandatory.' Interviewers listen for 'referential equality'."
-      },
-      "altQuestion": {
-        "id": "r1-alt",
-        "question": "A shopping cart keeps `cart` in state. The remove handler runs `cart.splice(i, 1); setCart(cart);` and the deleted row stays on screen until an unrelated state change forces a render. What is the underlying cause?",
-        "options": [
-          "Arrays over a certain length must be updated with `useReducer` instead of `useState`",
-          "The render only appeared late because React throttles list updates to 60fps",
-          "`splice` returns the removed elements, so `setCart` received the wrong value",
-          "`splice` mutated the existing array in place, so React's `Object.is` check sees the same reference and skips rendering"
-        ],
-        "correctAnswerIndex": 3,
-        "rationale": "`splice` edits the array in place and returns the removed items, but the crux is the reference: `setCart` got the very same array object it already held, so `Object.is(prev, next)` is true and React bails out. The next unrelated update happens to re-render and reveal the already-mutated data. Fix with an immutable copy: `setCart(cart.filter((_, idx) => idx !== i))`.",
-        "optionExplanations": [
-          "`useReducer` is an organizational choice, not a size requirement; `useState` handles arrays of any length fine.",
-          "There is no 60fps throttle causing this; the delayed appearance is a coincidental later render, not rate limiting.",
-          "While it's true `splice` returns the removed elements (not the new array), the code passes `cart` itself to `setCart`, not the return value — so the reason it fails is the unchanged reference, not a wrong value.",
-          "Correct — mutating in place keeps the same reference, and React's referential equality check concludes nothing changed."
-        ],
-        "interviewTip": "Name the trap explicitly: array methods like `splice`, `sort`, and `reverse` mutate in place. Say 'I reach for `filter`, `map`, or a spread to produce a new reference React can detect.'"
-      }
+      "variants": [
+        {
+          "id": "r1",
+          "question": "A developer writes `user.name = 'Ada'; setUser(user);` but the component doesn't re-render. Why?",
+          "options": [
+            "useState cannot store objects with nested properties",
+            "setUser only works with strings, not objects",
+            "The object was mutated in place, so the state's reference is unchanged and React bails out of the update",
+            "React batches the update and it will appear after a page refresh"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "React uses Object.is on the old and new state to decide whether anything changed. Mutating and passing back the same object means same reference, so React skips the render. The fix: `setUser({ ...user, name: 'Ada' })` — a new object, a new reference.",
+          "optionExplanations": [
+            "Nested objects are fine in state; you just must replace rather than mutate them.",
+            "State can hold any value — objects, arrays, functions. The type isn't the issue.",
+            "Correct — same reference means React concludes nothing changed. Spread into a new object.",
+            "Batching delays renders by microseconds within an event, not until refresh. A refresh actually loses the state entirely."
+          ],
+          "interviewTip": "The phrase to use: 'React state updates rely on referential equality, so immutable updates are mandatory.' Interviewers listen for 'referential equality'."
+        },
+        {
+          "id": "r1-alt",
+          "question": "A shopping cart keeps `cart` in state. The remove handler runs `cart.splice(i, 1); setCart(cart);` and the deleted row stays on screen until an unrelated state change forces a render. What is the underlying cause?",
+          "options": [
+            "Arrays over a certain length must be updated with `useReducer` instead of `useState`",
+            "The render only appeared late because React throttles list updates to 60fps",
+            "`splice` returns the removed elements, so `setCart` received the wrong value",
+            "`splice` mutated the existing array in place, so React's `Object.is` check sees the same reference and skips rendering"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "`splice` edits the array in place and returns the removed items, but the crux is the reference: `setCart` got the very same array object it already held, so `Object.is(prev, next)` is true and React bails out. The next unrelated update happens to re-render and reveal the already-mutated data. Fix with an immutable copy: `setCart(cart.filter((_, idx) => idx !== i))`.",
+          "optionExplanations": [
+            "`useReducer` is an organizational choice, not a size requirement; `useState` handles arrays of any length fine.",
+            "There is no 60fps throttle causing this; the delayed appearance is a coincidental later render, not rate limiting.",
+            "While it's true `splice` returns the removed elements (not the new array), the code passes `cart` itself to `setCart`, not the return value — so the reason it fails is the unchanged reference, not a wrong value.",
+            "Correct — mutating in place keeps the same reference, and React's referential equality check concludes nothing changed."
+          ],
+          "interviewTip": "Name the trap explicitly: array methods like `splice`, `sort`, and `reverse` mutate in place. Say 'I reach for `filter`, `map`, or a spread to produce a new reference React can detect.'"
+        }
+      ]
     },
     {
       "heading": "The rules of hooks and useEffect",
@@ -56,44 +58,46 @@
         "`useEffect(fn, deps)` runs `fn` after render, and again whenever a value in `deps` changes. Return a cleanup function and React runs it before the next effect and on unmount — that's where you clear intervals, abort fetches, and unsubscribe.",
         "In development, `<StrictMode>` deliberately mounts, unmounts, and remounts each component, so effects run twice. That's not a bug to suppress — it's a stress test that exposes effects missing proper cleanup."
       ],
-      "question": {
-        "id": "r2",
-        "question": "In development, a `useEffect` that starts a `setInterval` fires twice and the intervals stack up. What's the correct response?",
-        "options": [
-          "Return a cleanup function that clears the interval; StrictMode is intentionally exposing the missing cleanup",
-          "Move the setInterval outside the component into module scope",
-          "Remove StrictMode — the double-invoke is a React bug",
-          "Wrap the effect in a `useRef` flag so it only ever runs once"
-        ],
-        "correctAnswerIndex": 0,
-        "rationale": "StrictMode's mount-unmount-remount cycle simulates what genuinely happens in real apps (navigation, remounts). If the effect cleaned up after itself — `return () => clearInterval(id)` — the double-run would be harmless. The double-invoke found a real leak.",
-        "optionExplanations": [
-          "Correct — cleanup makes effects remount-safe, which is exactly what StrictMode is verifying.",
-          "Module scope runs once per page load, can't access props/state correctly, and never cleans up — strictly worse.",
-          "Deleting the smoke detector doesn't put out the fire. In production, remounts happen naturally and the leak remains.",
-          "A run-once flag defeats the purpose: on a real unmount/remount your effect now never re-runs, leaving stale subscriptions."
-        ],
-        "interviewTip": "'Why does my effect run twice?' is a deliberately planted interview trap. The winning answer names StrictMode, explains the remount simulation, and concludes: 'the fix is cleanup, not suppression.'"
-      },
-      "altQuestion": {
-        "id": "r2-alt",
-        "question": "A component subscribes to a WebSocket inside `useEffect(() => { socket.on('msg', handle) }, [])`. In development, every message now triggers `handle` twice, and users report duplicate chat lines. A teammate proposes adding a module-level `let subscribed = false` guard so the subscription is registered only once. Evaluate this.",
-        "options": [
-          "The guard is correct — a module-level boolean is the standard way to make effects idempotent",
-          "The real fix is returning `() => socket.off('msg', handle)`; StrictMode's remount is revealing that the subscription is never removed",
-          "Move the subscription into `useLayoutEffect`, which StrictMode does not double-invoke",
-          "Add `handle` to the dependency array so the effect resubscribes cleanly on each change"
-        ],
-        "correctAnswerIndex": 1,
-        "rationale": "The duplicate handler is a missing-cleanup leak that StrictMode's mount-unmount-remount surfaced. Returning `() => socket.off('msg', handle)` unsubscribes before the next mount, so exactly one live listener remains. A module-level flag would silence dev noise but leaves the listener dangling on real remounts (route changes), reintroducing duplicates in production.",
-        "optionExplanations": [
-          "A module-level flag is shared across all instances and never resets on a genuine remount, so it hides the symptom while preserving the leak — the opposite of idempotent.",
-          "Correct — pairing each subscription with a matching unsubscribe in cleanup is what makes the effect remount-safe, which is what StrictMode checks.",
-          "`useLayoutEffect` is also double-invoked under StrictMode and is for synchronous DOM measurement, not for dodging cleanup; this doesn't address the leak.",
-          "Adding `handle` to deps causes more resubscribes, not fewer, and still leaks without a cleanup to remove the prior listener."
-        ],
-        "interviewTip": "Whenever you 'subscribe', 'listen', 'open', or 'start' something in an effect, immediately ask 'where do I unsubscribe?' The cleanup function is the answer, and it's what makes StrictMode's double-invoke a non-event."
-      }
+      "variants": [
+        {
+          "id": "r2",
+          "question": "In development, a `useEffect` that starts a `setInterval` fires twice and the intervals stack up. What's the correct response?",
+          "options": [
+            "Return a cleanup function that clears the interval; StrictMode is intentionally exposing the missing cleanup",
+            "Move the setInterval outside the component into module scope",
+            "Remove StrictMode — the double-invoke is a React bug",
+            "Wrap the effect in a `useRef` flag so it only ever runs once"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "StrictMode's mount-unmount-remount cycle simulates what genuinely happens in real apps (navigation, remounts). If the effect cleaned up after itself — `return () => clearInterval(id)` — the double-run would be harmless. The double-invoke found a real leak.",
+          "optionExplanations": [
+            "Correct — cleanup makes effects remount-safe, which is exactly what StrictMode is verifying.",
+            "Module scope runs once per page load, can't access props/state correctly, and never cleans up — strictly worse.",
+            "Deleting the smoke detector doesn't put out the fire. In production, remounts happen naturally and the leak remains.",
+            "A run-once flag defeats the purpose: on a real unmount/remount your effect now never re-runs, leaving stale subscriptions."
+          ],
+          "interviewTip": "'Why does my effect run twice?' is a deliberately planted interview trap. The winning answer names StrictMode, explains the remount simulation, and concludes: 'the fix is cleanup, not suppression.'"
+        },
+        {
+          "id": "r2-alt",
+          "question": "A component subscribes to a WebSocket inside `useEffect(() => { socket.on('msg', handle) }, [])`. In development, every message now triggers `handle` twice, and users report duplicate chat lines. A teammate proposes adding a module-level `let subscribed = false` guard so the subscription is registered only once. Evaluate this.",
+          "options": [
+            "The guard is correct — a module-level boolean is the standard way to make effects idempotent",
+            "The real fix is returning `() => socket.off('msg', handle)`; StrictMode's remount is revealing that the subscription is never removed",
+            "Move the subscription into `useLayoutEffect`, which StrictMode does not double-invoke",
+            "Add `handle` to the dependency array so the effect resubscribes cleanly on each change"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The duplicate handler is a missing-cleanup leak that StrictMode's mount-unmount-remount surfaced. Returning `() => socket.off('msg', handle)` unsubscribes before the next mount, so exactly one live listener remains. A module-level flag would silence dev noise but leaves the listener dangling on real remounts (route changes), reintroducing duplicates in production.",
+          "optionExplanations": [
+            "A module-level flag is shared across all instances and never resets on a genuine remount, so it hides the symptom while preserving the leak — the opposite of idempotent.",
+            "Correct — pairing each subscription with a matching unsubscribe in cleanup is what makes the effect remount-safe, which is what StrictMode checks.",
+            "`useLayoutEffect` is also double-invoked under StrictMode and is for synchronous DOM measurement, not for dodging cleanup; this doesn't address the leak.",
+            "Adding `handle` to deps causes more resubscribes, not fewer, and still leaks without a cleanup to remove the prior listener."
+          ],
+          "interviewTip": "Whenever you 'subscribe', 'listen', 'open', or 'start' something in an effect, immediately ask 'where do I unsubscribe?' The cleanup function is the answer, and it's what makes StrictMode's double-invoke a non-event."
+        }
+      ]
     },
     {
       "heading": "Reconciliation and the key prop",
@@ -102,44 +106,46 @@
         "Using the array index as a key works only for lists that never reorder, insert, or delete. If you delete item 0 from an index-keyed list, every remaining item shifts to a new key — React matches old item 1 to new key 0, and any DOM state (checkbox checks, input text, focus) attaches to the wrong rows.",
         "A key should be a stable identity from the data itself — a database id — so a reordered item keeps its component instance and its state."
       ],
-      "question": {
-        "id": "r3",
-        "question": "A todo list uses `key={index}`. Each row has an uncontrolled checkbox. When the user deletes the first todo, the remaining rows' checkboxes appear shifted onto the wrong items. What happened?",
-        "options": [
-          "The delete handler mutated the array, corrupting the list",
-          "The browser lost the checkbox state during the repaint",
-          "Index keys made React identify rows by position, so DOM state stayed at each position while the data shifted underneath it",
-          "Uncontrolled inputs cannot be used inside lists in React"
-        ],
-        "correctAnswerIndex": 2,
-        "rationale": "With index keys, 'row 0' is a stable identity even though its data changed. React reuses the row-0 DOM (with its checked checkbox) for what is now a different todo. Stable ids as keys make identity follow the data instead of the position.",
-        "optionExplanations": [
-          "Even a perfectly immutable delete produces this bug if keys are indexes — the keys, not the mutation, are at fault.",
-          "The browser preserved state perfectly — at each position. That's precisely the problem: position kept the state, data moved.",
-          "Correct — this is the canonical `key={index}` failure, and a top-tier interview trap.",
-          "Uncontrolled inputs in lists are fine when keys are stable identities."
-        ],
-        "interviewTip": "Don't just say 'index keys are bad'. Demonstrate the failure: 'delete the first row and every checkbox shifts up one item.' Concrete symptoms beat rules."
-      },
-      "altQuestion": {
-        "id": "r3-alt",
-        "question": "A sortable table renders rows with `key={index}`. Each row has a `<input>` where the user is mid-typing an edit. When another user's update arrives and the list re-sorts so the focused row moves from position 3 to position 0, the half-typed text suddenly appears in a completely different row. Which statement best explains and fixes this?",
-        "options": [
-          "Uncontrolled inputs are incompatible with sorting; switching to a controlled `value` prop is the only fix",
-          "The sort mutated the array, so React re-created every row from scratch and randomly reassigned the text",
-          "React re-sorts the DOM but forgets to move focus, so the text visually lags one frame behind",
-          "Index keys bind the input's DOM state to a position; after the sort, position 0 keeps its old input contents while the data at position 0 changed — using a stable row id as the key ties state to the data"
-        ],
-        "correctAnswerIndex": 3,
-        "rationale": "With `key={index}`, key `0` always means 'whatever sits in position 0'. After the re-sort, React matches the old position-0 instance (holding the in-progress input value and focus) to the new position-0 data — a different record. Keying by a stable `row.id` makes React move the instance along with its data, so the input follows the row it belongs to.",
-        "optionExplanations": [
-          "Controlled inputs don't fix keying: if the controlled value is looked up by index too, it desyncs the same way; the key is the root cause.",
-          "Even an immutable, freshly-sorted array reproduces this with index keys; the mutation is a red herring.",
-          "This isn't a one-frame focus lag; the input state is durably attached to the wrong record because identity is positional.",
-          "Correct — positional keys keep DOM/input state at each slot while the underlying data reorders, the classic reorder failure; stable ids fix it."
-        ],
-        "interviewTip": "Push past deletion examples — reordering is the harder case. Say 'with index keys, the key describes a slot, not a record, so any reorder detaches state from data.'"
-      }
+      "variants": [
+        {
+          "id": "r3",
+          "question": "A todo list uses `key={index}`. Each row has an uncontrolled checkbox. When the user deletes the first todo, the remaining rows' checkboxes appear shifted onto the wrong items. What happened?",
+          "options": [
+            "The delete handler mutated the array, corrupting the list",
+            "The browser lost the checkbox state during the repaint",
+            "Index keys made React identify rows by position, so DOM state stayed at each position while the data shifted underneath it",
+            "Uncontrolled inputs cannot be used inside lists in React"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "With index keys, 'row 0' is a stable identity even though its data changed. React reuses the row-0 DOM (with its checked checkbox) for what is now a different todo. Stable ids as keys make identity follow the data instead of the position.",
+          "optionExplanations": [
+            "Even a perfectly immutable delete produces this bug if keys are indexes — the keys, not the mutation, are at fault.",
+            "The browser preserved state perfectly — at each position. That's precisely the problem: position kept the state, data moved.",
+            "Correct — this is the canonical `key={index}` failure, and a top-tier interview trap.",
+            "Uncontrolled inputs in lists are fine when keys are stable identities."
+          ],
+          "interviewTip": "Don't just say 'index keys are bad'. Demonstrate the failure: 'delete the first row and every checkbox shifts up one item.' Concrete symptoms beat rules."
+        },
+        {
+          "id": "r3-alt",
+          "question": "A sortable table renders rows with `key={index}`. Each row has a `<input>` where the user is mid-typing an edit. When another user's update arrives and the list re-sorts so the focused row moves from position 3 to position 0, the half-typed text suddenly appears in a completely different row. Which statement best explains and fixes this?",
+          "options": [
+            "Uncontrolled inputs are incompatible with sorting; switching to a controlled `value` prop is the only fix",
+            "The sort mutated the array, so React re-created every row from scratch and randomly reassigned the text",
+            "React re-sorts the DOM but forgets to move focus, so the text visually lags one frame behind",
+            "Index keys bind the input's DOM state to a position; after the sort, position 0 keeps its old input contents while the data at position 0 changed — using a stable row id as the key ties state to the data"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "With `key={index}`, key `0` always means 'whatever sits in position 0'. After the re-sort, React matches the old position-0 instance (holding the in-progress input value and focus) to the new position-0 data — a different record. Keying by a stable `row.id` makes React move the instance along with its data, so the input follows the row it belongs to.",
+          "optionExplanations": [
+            "Controlled inputs don't fix keying: if the controlled value is looked up by index too, it desyncs the same way; the key is the root cause.",
+            "Even an immutable, freshly-sorted array reproduces this with index keys; the mutation is a red herring.",
+            "This isn't a one-frame focus lag; the input state is durably attached to the wrong record because identity is positional.",
+            "Correct — positional keys keep DOM/input state at each slot while the underlying data reorders, the classic reorder failure; stable ids fix it."
+          ],
+          "interviewTip": "Push past deletion examples — reordering is the harder case. Say 'with index keys, the key describes a slot, not a record, so any reorder detaches state from data.'"
+        }
+      ]
     },
     {
       "heading": "Lifting state and the single source of truth",
@@ -148,44 +154,46 @@
         "The same principle covers derived data: if it can be computed from existing state (`filteredItems` from `items` + `query`), compute it during render. Storing derived data in its own `useState` means remembering to update two things forever.",
         "Reach for context only when props would have to tunnel through many indifferent layers (prop drilling), and for effects only to synchronize with systems *outside* React — never to 'react' to your own state."
       ],
-      "question": {
-        "id": "r4",
-        "question": "A component stores `items` in state, and also stores `filteredItems` in a second useState, updated via a useEffect whenever `items` or `query` changes. What's the idiomatic improvement?",
-        "options": [
-          "Compute filteredItems directly during render (optionally useMemo) and delete the second state and the effect",
-          "Move filteredItems into a global store so it can't desync",
-          "Debounce the effect so the two states sync less often",
-          "Add filteredItems to the effect's dependency array as well"
-        ],
-        "correctAnswerIndex": 0,
-        "rationale": "Derived data shouldn't be state. `const filteredItems = items.filter(...)` during render is always consistent by construction — there's nothing to sync, no extra render pass, no effect. useMemo is an optional optimization if the filter is genuinely expensive.",
-        "optionExplanations": [
-          "Correct — 'you might not need an effect': derive it, don't store it.",
-          "A global store still duplicates the truth; you've just moved the desync risk somewhere with more ceremony.",
-          "Debouncing makes the stale window longer, not the design better.",
-          "Adding the derived value to the deps risks an infinite loop (effect sets state, state re-triggers effect) and deepens the anti-pattern."
-        ],
-        "interviewTip": "The React docs page 'You Might Not Need an Effect' is quietly one of the most quoted sources in React interviews. 'Derived state should be computed, not stored' is the sentence to say."
-      },
-      "altQuestion": {
-        "id": "r4-alt",
-        "question": "A checkout page keeps `lineItems` in state. It also keeps `total` in a separate `useState`, recomputed inside a `useEffect` that watches `lineItems`. QA reports the total occasionally lags a render behind the items — for one paint it shows the previous total. What's the correct redesign?",
-        "options": [
-          "Wrap the `setTotal` call in `flushSync` so the total updates synchronously with the items",
-          "Compute `total` during render from `lineItems` (e.g. `const total = lineItems.reduce(...)`) and remove the `total` state and its effect",
-          "Move the total computation into a `useLayoutEffect` so it runs before the browser paints",
-          "Store the total in a `useRef` and mutate it whenever `lineItems` changes"
-        ],
-        "correctAnswerIndex": 1,
-        "rationale": "The one-frame lag is inherent to storing derived data in state: the component renders with new `lineItems` and the old `total`, then the effect fires and triggers a second render with the corrected total. Computing `total` inline during render makes it consistent with `lineItems` on the very first paint — no effect, no extra render, no stale window.",
-        "optionExplanations": [
-          "`flushSync` forces a synchronous commit but keeps the redundant second render and the anti-pattern; it patches timing instead of removing the duplicated source of truth.",
-          "Correct — the total is derivable, so compute it in render; there's nothing to sync and no lag by construction.",
-          "`useLayoutEffect` narrows the visible lag but still stores derived data and adds an extra pass; it treats the symptom, not the cause.",
-          "A ref holds a value across renders but doesn't trigger re-render, so the displayed total would go stale — worse, not better."
-        ],
-        "interviewTip": "The tell for this anti-pattern is 'a value that's always recomputed from other state inside an effect.' Answer: 'if it's derivable, derive it in render — effects that mirror state into more state cause exactly this off-by-one-render lag.'"
-      }
+      "variants": [
+        {
+          "id": "r4",
+          "question": "A component stores `items` in state, and also stores `filteredItems` in a second useState, updated via a useEffect whenever `items` or `query` changes. What's the idiomatic improvement?",
+          "options": [
+            "Compute filteredItems directly during render (optionally useMemo) and delete the second state and the effect",
+            "Move filteredItems into a global store so it can't desync",
+            "Debounce the effect so the two states sync less often",
+            "Add filteredItems to the effect's dependency array as well"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Derived data shouldn't be state. `const filteredItems = items.filter(...)` during render is always consistent by construction — there's nothing to sync, no extra render pass, no effect. useMemo is an optional optimization if the filter is genuinely expensive.",
+          "optionExplanations": [
+            "Correct — 'you might not need an effect': derive it, don't store it.",
+            "A global store still duplicates the truth; you've just moved the desync risk somewhere with more ceremony.",
+            "Debouncing makes the stale window longer, not the design better.",
+            "Adding the derived value to the deps risks an infinite loop (effect sets state, state re-triggers effect) and deepens the anti-pattern."
+          ],
+          "interviewTip": "The React docs page 'You Might Not Need an Effect' is quietly one of the most quoted sources in React interviews. 'Derived state should be computed, not stored' is the sentence to say."
+        },
+        {
+          "id": "r4-alt",
+          "question": "A checkout page keeps `lineItems` in state. It also keeps `total` in a separate `useState`, recomputed inside a `useEffect` that watches `lineItems`. QA reports the total occasionally lags a render behind the items — for one paint it shows the previous total. What's the correct redesign?",
+          "options": [
+            "Wrap the `setTotal` call in `flushSync` so the total updates synchronously with the items",
+            "Compute `total` during render from `lineItems` (e.g. `const total = lineItems.reduce(...)`) and remove the `total` state and its effect",
+            "Move the total computation into a `useLayoutEffect` so it runs before the browser paints",
+            "Store the total in a `useRef` and mutate it whenever `lineItems` changes"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The one-frame lag is inherent to storing derived data in state: the component renders with new `lineItems` and the old `total`, then the effect fires and triggers a second render with the corrected total. Computing `total` inline during render makes it consistent with `lineItems` on the very first paint — no effect, no extra render, no stale window.",
+          "optionExplanations": [
+            "`flushSync` forces a synchronous commit but keeps the redundant second render and the anti-pattern; it patches timing instead of removing the duplicated source of truth.",
+            "Correct — the total is derivable, so compute it in render; there's nothing to sync and no lag by construction.",
+            "`useLayoutEffect` narrows the visible lag but still stores derived data and adds an extra pass; it treats the symptom, not the cause.",
+            "A ref holds a value across renders but doesn't trigger re-render, so the displayed total would go stale — worse, not better."
+          ],
+          "interviewTip": "The tell for this anti-pattern is 'a value that's always recomputed from other state inside an effect.' Answer: 'if it's derivable, derive it in render — effects that mirror state into more state cause exactly this off-by-one-render lag.'"
+        }
+      ]
     },
     {
       "heading": "Render performance: memo, useMemo, useCallback",
@@ -194,44 +202,46 @@
         "`React.memo(Child)` skips re-rendering Child if its props are shallowly equal to last time. But props created inline — `onClick={() => ...}`, `style={{...}}` — are new objects every render, so they defeat memo. `useCallback` and `useMemo` stabilize those references.",
         "This trio is a package deal: memo on the child does nothing useful if the parent passes a fresh callback each render, and useCallback without a memoized child mostly adds overhead."
       ],
-      "question": {
-        "id": "r5",
-        "question": "A parent renders `<ExpensiveChild onSave={() => save(id)} />` where ExpensiveChild is wrapped in React.memo, yet it still re-renders every time the parent does. Why?",
-        "options": [
-          "onSave is a reserved prop name that bypasses memoization",
-          "React.memo only works on class components",
-          "The inline arrow function is a new reference each render, so memo's shallow prop comparison always sees a changed prop",
-          "memo compares deeply and the save function's body changed"
-        ],
-        "correctAnswerIndex": 2,
-        "rationale": "memo does a shallow (reference) comparison. A fresh arrow function is a fresh reference every render, so `onSave` never compares equal. Wrap it: `const onSave = useCallback(() => save(id), [id])` — now the reference is stable and memo can bail out.",
-        "optionExplanations": [
-          "There are no reserved prop names that bypass memo; the mechanism is purely reference equality.",
-          "React.memo is specifically for function components (classes have PureComponent).",
-          "Correct — inline functions and object literals are the classic memo-defeaters.",
-          "memo is shallow by default; it never inspects function bodies, only references."
-        ],
-        "interviewTip": "Great senior-signal answer: 'memo, useMemo, and useCallback are one system — stable references in, skipped renders out. And I only reach for them after the Profiler shows a problem.'"
-      },
-      "altQuestion": {
-        "id": "r5-alt",
-        "question": "A developer wraps `<Chart data={rows.filter(r => r.active)} />` in `React.memo` and also passes `config={{ theme: 'dark' }}` inline. They've already stabilized every callback with `useCallback`, yet Chart still re-renders on every parent render. What is the most accurate diagnosis?",
-        "options": [
-          "React.memo can only compare primitive props; any object or array prop disables it entirely",
-          "The filter runs on every render, which mutates `rows` and invalidates the memo cache",
-          "`useCallback` doesn't stabilize the component, so the callbacks are still recreated and break memo",
-          "The `data` array and the `config` object are both created fresh inline each render, so their references differ every time and memo's shallow comparison fails — they need `useMemo` (or hoisting the constant)"
-        ],
-        "correctAnswerIndex": 3,
-        "rationale": "`useCallback` fixes function props, but here the memo-defeaters are a freshly-filtered array (`rows.filter(...)`) and an inline object literal (`{ theme: 'dark' }`) — each is a new reference every render. memo's shallow compare sees changed props and re-renders. Fix: `const data = useMemo(() => rows.filter(r => r.active), [rows])` and hoist the constant config out of the component (or `useMemo` it).",
-        "optionExplanations": [
-          "memo compares object/array props fine by reference; stable references (via `useMemo`) allow it to bail out — objects don't disable it.",
-          "`filter` returns a new array without mutating `rows`; the fresh reference, not mutation, is what defeats memo.",
-          "The callbacks are already stabilized with `useCallback`, so they aren't the problem; the array and object props are.",
-          "Correct — inline array/object literals are new references each render and defeat memo's shallow comparison just like inline functions do."
-        ],
-        "interviewTip": "Interviewers escalate from callbacks to values. The complete answer: 'stabilize every non-primitive prop — functions with `useCallback`, arrays/objects with `useMemo` or hoisting — or memo can never bail out.'"
-      }
+      "variants": [
+        {
+          "id": "r5",
+          "question": "A parent renders `<ExpensiveChild onSave={() => save(id)} />` where ExpensiveChild is wrapped in React.memo, yet it still re-renders every time the parent does. Why?",
+          "options": [
+            "onSave is a reserved prop name that bypasses memoization",
+            "React.memo only works on class components",
+            "The inline arrow function is a new reference each render, so memo's shallow prop comparison always sees a changed prop",
+            "memo compares deeply and the save function's body changed"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "memo does a shallow (reference) comparison. A fresh arrow function is a fresh reference every render, so `onSave` never compares equal. Wrap it: `const onSave = useCallback(() => save(id), [id])` — now the reference is stable and memo can bail out.",
+          "optionExplanations": [
+            "There are no reserved prop names that bypass memo; the mechanism is purely reference equality.",
+            "React.memo is specifically for function components (classes have PureComponent).",
+            "Correct — inline functions and object literals are the classic memo-defeaters.",
+            "memo is shallow by default; it never inspects function bodies, only references."
+          ],
+          "interviewTip": "Great senior-signal answer: 'memo, useMemo, and useCallback are one system — stable references in, skipped renders out. And I only reach for them after the Profiler shows a problem.'"
+        },
+        {
+          "id": "r5-alt",
+          "question": "A developer wraps `<Chart data={rows.filter(r => r.active)} />` in `React.memo` and also passes `config={{ theme: 'dark' }}` inline. They've already stabilized every callback with `useCallback`, yet Chart still re-renders on every parent render. What is the most accurate diagnosis?",
+          "options": [
+            "React.memo can only compare primitive props; any object or array prop disables it entirely",
+            "The filter runs on every render, which mutates `rows` and invalidates the memo cache",
+            "`useCallback` doesn't stabilize the component, so the callbacks are still recreated and break memo",
+            "The `data` array and the `config` object are both created fresh inline each render, so their references differ every time and memo's shallow comparison fails — they need `useMemo` (or hoisting the constant)"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "`useCallback` fixes function props, but here the memo-defeaters are a freshly-filtered array (`rows.filter(...)`) and an inline object literal (`{ theme: 'dark' }`) — each is a new reference every render. memo's shallow compare sees changed props and re-renders. Fix: `const data = useMemo(() => rows.filter(r => r.active), [rows])` and hoist the constant config out of the component (or `useMemo` it).",
+          "optionExplanations": [
+            "memo compares object/array props fine by reference; stable references (via `useMemo`) allow it to bail out — objects don't disable it.",
+            "`filter` returns a new array without mutating `rows`; the fresh reference, not mutation, is what defeats memo.",
+            "The callbacks are already stabilized with `useCallback`, so they aren't the problem; the array and object props are.",
+            "Correct — inline array/object literals are new references each render and defeat memo's shallow comparison just like inline functions do."
+          ],
+          "interviewTip": "Interviewers escalate from callbacks to values. The complete answer: 'stabilize every non-primitive prop — functions with `useCallback`, arrays/objects with `useMemo` or hoisting — or memo can never bail out.'"
+        }
+      ]
     }
   ]
 }

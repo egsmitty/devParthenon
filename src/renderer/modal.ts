@@ -26,7 +26,9 @@ import type {
   ParthenonApi,
   ProgressData,
   QuizModule,
+  QuizQuestion,
 } from "../types/schema.js";
+import { pickVariant, sectionVariants } from "./variants.js";
 
 /** Maximum score (as a fraction) recoverable in a Redemption Round. */
 export const REDEMPTION_CAP = 0.15;
@@ -143,7 +145,7 @@ function optionsMarkup(options: string[]): string {
  */
 function wireAnswer(
   el: HTMLElement,
-  q: QuizModule["sections"][number]["question"],
+  q: QuizQuestion,
   continueLabel: string,
   onContinue: (wasCorrect: boolean) => void
 ): void {
@@ -190,7 +192,7 @@ function renderLesson(): void {
   if (!state) return;
   const { quiz, sectionIndex } = state;
   const section = quiz.sections[sectionIndex];
-  const q = section.question;
+  const q = pickVariant(section, { mode: "graded" });
 
   const paragraphs = section.paragraphs
     .slice(0, 3) // hard cap: the chunked-feeding law
@@ -289,9 +291,14 @@ function renderRedeem(): void {
   if (!state) return;
   const { quiz } = state;
   const idx = state.redeemQueue[0];
-  // Redemption uses the parallel variant ("Test B"), not the primary
-  // question, so the concept is re-tested rather than the memorized answer.
-  const q = quiz.sections[idx].altQuestion;
+  // Redemption re-tests the concept with a variant the learner has NOT seen
+  // this attempt — never the graded question they could have memorized.
+  const section = quiz.sections[idx];
+  const gradedId = sectionVariants(section)[0]?.id ?? "";
+  const q = pickVariant(section, {
+    mode: "redeem",
+    usedIds: new Set([gradedId]),
+  });
   const remaining = state.redeemQueue.length;
   const cap = Math.round(REDEMPTION_CAP * 100);
 
