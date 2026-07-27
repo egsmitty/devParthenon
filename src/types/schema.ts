@@ -81,6 +81,26 @@ export interface SaveScoreResult {
   newlyUnlocked: string[];
 }
 
+/**
+ * A snapshot of an in-flight module attempt, autosaved after every answered
+ * check so a renderer reload, crash, or app restart can resume mid-module
+ * instead of restarting from section 1. Cleared on completion or explicit
+ * abandon.
+ */
+export interface ActiveAttempt {
+  nodeId: string;
+  /** Which stage of the module flow the learner is in. */
+  phase: "lesson" | "redeem";
+  /** Next section to show (lesson phase). */
+  sectionIndex: number;
+  correct: number;
+  missed: number[];
+  redeemQueue: number[];
+  redeemPoints: number;
+  /** Stamped by the main process on save. */
+  savedAtISO?: string;
+}
+
 /** API surface exposed on window.parthenon by the preload script. */
 export interface ParthenonApi {
   getProgress(): Promise<ProgressData>;
@@ -88,6 +108,11 @@ export interface ParthenonApi {
   resetProgress(): Promise<ProgressData>;
   getQuiz(quizFile: string): Promise<QuizModule>;
   getGlossary(): Promise<GlossaryEntry[]>;
+  saveAttempt(attempt: ActiveAttempt): Promise<void>;
+  getAttempt(): Promise<ActiveAttempt | null>;
+  clearAttempt(): Promise<void>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
+  /** True when running under the headless smoke check (suppress dialogs). */
+  isSmoke: boolean;
 }

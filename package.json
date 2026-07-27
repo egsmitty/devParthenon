@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && node scripts/copy-assets.js",
     "generate-icon": "node scripts/generate-icon.js",
-    "dev": "npm run build && electron . --dev",
+    "dev": "node scripts/dev.js",
     "start": "electron .",
     "test": "npm run build && node --test tests/",
     "dist:win": "npm run build && npm run generate-icon && electron-builder --win"

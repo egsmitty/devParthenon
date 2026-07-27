@@ -140,6 +140,57 @@ describe("persistence", () => {
   });
 });
 
+describe("attempt persistence (§3.6 reload safety)", () => {
+  const sampleAttempt = {
+    nodeId: "foundation",
+    phase: "lesson",
+    sectionIndex: 3,
+    correct: 2,
+    missed: [1],
+    redeemQueue: [],
+    redeemPoints: 0,
+  };
+
+  test("an attempt survives a save/load round-trip (simulated reload)", () => {
+    store.saveAttempt(paths, sampleAttempt);
+    const loaded = store.loadAttempt(paths);
+    assert.equal(loaded.nodeId, "foundation");
+    assert.equal(loaded.sectionIndex, 3);
+    assert.deepEqual(loaded.missed, [1]);
+    assert.ok(loaded.savedAtISO, "save is timestamped");
+    // No stray temp file — the write was atomic.
+    assert.equal(fs.existsSync(path.join(tmpDir, "attempt.json.tmp")), false);
+  });
+
+  test("no attempt returns null; clear removes it", () => {
+    assert.equal(store.loadAttempt(paths), null);
+    store.saveAttempt(paths, sampleAttempt);
+    store.clearAttempt(paths);
+    assert.equal(store.loadAttempt(paths), null);
+  });
+
+  test("a corrupt attempt file is discarded, not fatal", () => {
+    fs.writeFileSync(path.join(tmpDir, "attempt.json"), "{oops", "utf-8");
+    assert.equal(store.loadAttempt(paths), null);
+    assert.equal(fs.existsSync(path.join(tmpDir, "attempt.json")), false);
+  });
+
+  test("grading a score clears the stale attempt", () => {
+    store.saveAttempt(paths, sampleAttempt);
+    store.saveQuizScore(paths, "foundation", 0.9);
+    assert.equal(store.loadAttempt(paths), null);
+  });
+
+  test("committed progress is untouched by attempt churn", () => {
+    store.saveQuizScore(paths, "foundation", 0.9);
+    store.saveAttempt(paths, { ...sampleAttempt, nodeId: "pillar-react" });
+    store.clearAttempt(paths);
+    const reloaded = store.loadProgress(paths);
+    assert.equal(reloaded.nodes["foundation"].status, "completed");
+    assert.equal(reloaded.nodes["foundation"].score, 0.9);
+  });
+});
+
 describe("data integrity", () => {
   const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
 

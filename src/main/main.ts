@@ -2,12 +2,21 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  clearAttempt,
+  loadAttempt,
   loadProgress,
   resetProgress,
+  saveAttempt,
   saveQuizScore,
   StorePaths,
 } from "./store";
-import type { GlossaryEntry, QuizModule } from "../types/schema";
+import type {
+  ActiveAttempt,
+  GlossaryEntry,
+  QuizModule,
+} from "../types/schema";
+
+const isDev = process.argv.includes("--dev");
 
 // Spec: saves live in %APPDATA%/DevParthenon (no space), so pin the
 // user-data path explicitly instead of relying on productName.
@@ -40,11 +49,37 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Lets the sandboxed preload know smoke mode is on (via process.argv)
+      // so the renderer suppresses blocking dialogs like the resume prompt.
+      additionalArguments:
+        process.env.PARTHENON_SMOKE === "1" ? ["--parthenon-smoke"] : [],
     },
   });
 
   mainWindow.loadFile(path.join(appRoot, "dist", "renderer", "index.html"));
   mainWindow.once("ready-to-show", () => mainWindow?.show());
+
+  // Dev mode (--dev): DevTools open, and any change under dist/renderer
+  // triggers a debounced reload. Committed progress lives in %APPDATA% and is
+  // re-read on every load, so reloading is always safe. The watcher only
+  // observes dist/ — it never touches the save files.
+  if (isDev) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+    const watched = path.join(appRoot, "dist", "renderer");
+    let debounce: NodeJS.Timeout | null = null;
+    try {
+      const watcher = fs.watch(watched, { recursive: true }, () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(() => {
+          console.log("[dev] dist/renderer changed — reloading window");
+          mainWindow?.webContents.reload();
+        }, 200);
+      });
+      mainWindow.on("closed", () => watcher.close());
+    } catch (err) {
+      console.warn("[dev] file watcher unavailable:", err);
+    }
+  }
 
   // Headless smoke check used by CI / build verification:
   // PARTHENON_SMOKE=1 loads the app, counts renderer console errors,
@@ -61,7 +96,13 @@ function createWindow(): void {
       errors++;
       console.error("[smoke] did-fail-load:", code, desc);
     });
+    // Two passes: verify the fresh load, then reload the window (the dev-loop
+    // scenario) and verify again — progress must re-read from disk with zero
+    // renderer errors both times.
+    let loads = 0;
     mainWindow.webContents.on("did-finish-load", () => {
+      loads++;
+      const pass = loads;
       setTimeout(async () => {
         try {
           const nodeCount = await mainWindow!.webContents.executeJavaScript(
@@ -71,14 +112,15 @@ function createWindow(): void {
             "!!document.querySelector('#temple-svg-host svg')"
           );
           console.log(
-            `[smoke] ipc nodes=${nodeCount} templeRendered=${svgOk} rendererErrors=${errors}`
+            `[smoke] pass=${pass} ipc nodes=${nodeCount} templeRendered=${svgOk} rendererErrors=${errors}`
           );
           if (nodeCount !== 8 || !svgOk) errors++;
         } catch (err) {
           errors++;
-          console.error("[smoke] ipc check failed:", err);
+          console.error(`[smoke] pass=${pass} check failed:`, err);
         }
-        app.exit(errors ? 1 : 0);
+        if (pass === 1) mainWindow?.webContents.reload();
+        else app.exit(errors ? 1 : 0);
       }, 2500);
     });
   }
@@ -112,7 +154,26 @@ function registerIpc(): void {
     return saveQuizScore(storePaths, nodeId, score);
   });
 
-  ipcMain.handle("reset-progress", () => resetProgress(storePaths));
+  ipcMain.handle("reset-progress", () => {
+    clearAttempt(storePaths);
+    return resetProgress(storePaths);
+  });
+
+  ipcMain.handle("save-attempt", (_event, attempt: ActiveAttempt) => {
+    if (
+      !attempt ||
+      typeof attempt.nodeId !== "string" ||
+      typeof attempt.sectionIndex !== "number" ||
+      !["lesson", "redeem"].includes(attempt.phase)
+    ) {
+      throw new Error("save-attempt expects a well-formed ActiveAttempt");
+    }
+    saveAttempt(storePaths, attempt);
+  });
+
+  ipcMain.handle("get-attempt", () => loadAttempt(storePaths));
+
+  ipcMain.handle("clear-attempt", () => clearAttempt(storePaths));
 
   ipcMain.handle("get-quiz", (_event, quizFile: string): QuizModule => {
     const raw = fs.readFileSync(safeQuizPath(quizFile), "utf-8");

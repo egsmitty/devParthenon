@@ -21,6 +21,7 @@
  * threshold. Redemption is purely a renderer-side score-improvement pass.
  */
 import type {
+  ActiveAttempt,
   ModuleNode,
   ParthenonApi,
   ProgressData,
@@ -68,21 +69,43 @@ export function openModule(
   node: ModuleNode,
   quiz: QuizModule,
   api: ParthenonApi,
-  onDone: (updated: ProgressData) => void
+  onDone: (updated: ProgressData) => void,
+  resumeFrom?: ActiveAttempt
 ): void {
   state = {
     node,
     quiz,
-    sectionIndex: 0,
-    correct: 0,
-    missed: [],
-    redeemQueue: [],
-    redeemPoints: 0,
+    sectionIndex: resumeFrom?.sectionIndex ?? 0,
+    correct: resumeFrom?.correct ?? 0,
+    missed: resumeFrom?.missed ?? [],
+    redeemQueue: resumeFrom?.redeemQueue ?? [],
+    redeemPoints: resumeFrom?.redeemPoints ?? 0,
   };
   apiRef = api;
   onDoneRef = onDone;
   root().hidden = false;
-  renderLesson();
+  if (resumeFrom?.phase === "redeem") {
+    if (state.redeemQueue.length > 0) renderRedeem();
+    else renderRedemptionIntro();
+  } else {
+    renderLesson();
+  }
+}
+
+/** Snapshot current progress-through-the-module to disk (fire-and-forget). */
+function persistAttempt(phase: ActiveAttempt["phase"]): void {
+  if (!state) return;
+  void apiRef
+    .saveAttempt({
+      nodeId: state.node.id,
+      phase,
+      sectionIndex: state.sectionIndex,
+      correct: state.correct,
+      missed: [...state.missed],
+      redeemQueue: [...state.redeemQueue],
+      redeemPoints: state.redeemPoints,
+    })
+    .catch((err) => console.warn("attempt autosave failed:", err));
 }
 
 function closeModal(): void {
@@ -90,6 +113,12 @@ function closeModal(): void {
   const r = root();
   r.hidden = true;
   r.replaceChildren();
+}
+
+/** Explicit abandon: the learner chose to leave, so the snapshot is void. */
+function abandonModule(): void {
+  void apiRef.clearAttempt().catch(() => {});
+  closeModal();
 }
 
 function card(inner: string): HTMLDivElement {
@@ -183,7 +212,7 @@ function renderLesson(): void {
     </div>
   `);
 
-  el.querySelector('[data-action="abandon"]')!.addEventListener("click", closeModal);
+  el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
 
   const last = sectionIndex === quiz.sections.length - 1;
   wireAnswer(el, q, last ? "See results" : "Continue", (wasCorrect) => {
@@ -193,6 +222,7 @@ function renderLesson(): void {
     if (last) afterLessons();
     else {
       state.sectionIndex++;
+      persistAttempt("lesson");
       renderLesson();
     }
   });
@@ -212,6 +242,7 @@ function afterLessons(): void {
   if (base >= threshold) {
     void finalize(base, { mode: "clean", base });
   } else if (base + REDEMPTION_CAP + 1e-9 >= threshold) {
+    persistAttempt("redeem"); // resume lands on the redemption intro
     renderRedemptionIntro();
   } else {
     void finalize(base, { mode: "tooLow", base });
@@ -242,11 +273,12 @@ function renderRedemptionIntro(): void {
       <button class="primary-btn" data-action="begin">Begin Redemption Round</button>
     </div>
   `);
-  el.querySelector('[data-action="abandon"]')!.addEventListener("click", closeModal);
+  el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
   el.querySelector('[data-action="begin"]')!.addEventListener("click", () => {
     if (!state) return;
     state.redeemQueue = [...state.missed];
     state.redeemPoints = 0;
+    persistAttempt("redeem");
     renderRedeem();
   });
   root().replaceChildren(el);
@@ -276,13 +308,14 @@ function renderRedeem(): void {
       <button class="ghost-btn" data-action="abandon">Leave module</button>
     </div>
   `);
-  el.querySelector('[data-action="abandon"]')!.addEventListener("click", closeModal);
+  el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
 
   const last = remaining === 1;
   wireAnswer(el, q, last ? "See results" : "Next question", (wasCorrect) => {
     if (!state) return;
     if (wasCorrect) state.redeemPoints += 1 / quiz.sections.length;
     state.redeemQueue.shift();
+    if (state.redeemQueue.length > 0) persistAttempt("redeem");
     if (state.redeemQueue.length === 0) {
       const base = state.correct / quiz.sections.length;
       const earnedBack = Math.min(REDEMPTION_CAP, state.redeemPoints);

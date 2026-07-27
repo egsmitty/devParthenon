@@ -7,6 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type {
+  ActiveAttempt,
   ModuleNode,
   ProgressData,
   SaveScoreResult,
@@ -67,6 +68,47 @@ export function resetProgress(paths: StorePaths): ProgressData {
   return fresh;
 }
 
+/* ---------------- In-flight attempt persistence (§3.6) ---------------- */
+
+export function attemptFilePath(paths: StorePaths): string {
+  return path.join(paths.userDataDir, "attempt.json");
+}
+
+/** Persist a mid-module attempt snapshot. Same atomic discipline as progress. */
+export function saveAttempt(paths: StorePaths, attempt: ActiveAttempt): void {
+  if (typeof attempt.nodeId !== "string" || !attempt.nodeId) {
+    throw new Error("saveAttempt requires a nodeId");
+  }
+  fs.mkdirSync(paths.userDataDir, { recursive: true });
+  const file = attemptFilePath(paths);
+  const tmp = file + ".tmp";
+  const stamped: ActiveAttempt = {
+    ...attempt,
+    savedAtISO: new Date().toISOString(),
+  };
+  fs.writeFileSync(tmp, JSON.stringify(stamped, null, 2), "utf-8");
+  fs.renameSync(tmp, file);
+}
+
+/** Load the saved attempt, or null if none / unreadable (corrupt = discard). */
+export function loadAttempt(paths: StorePaths): ActiveAttempt | null {
+  const file = attemptFilePath(paths);
+  if (!fs.existsSync(file)) return null;
+  try {
+    const attempt = JSON.parse(fs.readFileSync(file, "utf-8")) as ActiveAttempt;
+    if (typeof attempt.nodeId !== "string" || !attempt.nodeId) return null;
+    return attempt;
+  } catch {
+    clearAttempt(paths);
+    return null;
+  }
+}
+
+export function clearAttempt(paths: StorePaths): void {
+  const file = attemptFilePath(paths);
+  if (fs.existsSync(file)) fs.rmSync(file, { force: true });
+}
+
 function prerequisitesMet(node: ModuleNode, data: ProgressData): boolean {
   return node.prerequisites.every(
     (id) => data.nodes[id] && data.nodes[id].status === "completed"
@@ -120,5 +162,7 @@ export function saveQuizScore(
   }
 
   writeProgress(paths, data);
+  // A graded score means the attempt reached its end — the snapshot is stale.
+  clearAttempt(paths);
   return { progress: data, passed, newlyUnlocked };
 }

@@ -8,7 +8,11 @@ const api: ParthenonApi = {
   resetProgress: () => ipcRenderer.invoke("reset-progress"),
   getQuiz: (quizFile) => ipcRenderer.invoke("get-quiz", quizFile),
   getGlossary: () => ipcRenderer.invoke("get-glossary"),
+  saveAttempt: (attempt) => ipcRenderer.invoke("save-attempt", attempt),
+  getAttempt: () => ipcRenderer.invoke("get-attempt"),
+  clearAttempt: () => ipcRenderer.invoke("clear-attempt"),
   windowControl: (action) => ipcRenderer.send("window-control", action),
+  isSmoke: process.argv.includes("--parthenon-smoke"),
   onMaximizeChange: (cb) =>
     ipcRenderer.on("window-maximize-changed", (_e, isMax: boolean) =>
       cb(isMax)

@@ -256,6 +256,38 @@ function wireReset(): void {
 
 /* ---------------- Boot ---------------- */
 
+/**
+ * If a mid-module attempt survived a reload/crash, offer to resume it.
+ * Declining (or an attempt for a node that is no longer attemptable)
+ * discards the snapshot.
+ */
+async function offerResume(): Promise<void> {
+  const attempt = await api.getAttempt();
+  if (!attempt) return;
+  const node = progress.nodes[attempt.nodeId];
+  if (!node || !isClickable(node)) {
+    await api.clearAttempt();
+    return;
+  }
+  const where =
+    attempt.phase === "redeem"
+      ? "in its Redemption Round"
+      : `at section ${attempt.sectionIndex + 1}`;
+  const resume = confirm(
+    `You left "${node.title}" ${where}. Resume where you left off?\n\n` +
+      `(Cancel starts the module fresh next time you open it.)`
+  );
+  if (!resume) {
+    await api.clearAttempt();
+    return;
+  }
+  const quiz = await api.getQuiz(node.quizFile);
+  openModule(node, quiz, api, (updated) => {
+    progress = updated;
+    renderTemple();
+  }, attempt);
+}
+
 async function init(): Promise<void> {
   wireTitlebar();
   wireReset();
@@ -264,6 +296,7 @@ async function init(): Promise<void> {
   renderGlossary("");
   const search = document.getElementById("glossary-search") as HTMLInputElement;
   search.addEventListener("input", () => renderGlossary(search.value));
+  if (!api.isSmoke) await offerResume();
 }
 
 init().catch((err) => {
