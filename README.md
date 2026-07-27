@@ -32,6 +32,23 @@ npm run dist:win   # package a Windows installer + portable exe (release/)
 `npm run generate-icon` regenerates `assets/icon.ico` (16/32/64/256 layers)
 from a dependency-free programmatic renderer.
 
+### Troubleshooting `dist:win`
+
+Without Windows Developer Mode (or admin), electron-builder fails extracting
+`winCodeSign-2.6.0.7z` — the archive contains macOS symlinks that Windows
+refuses to create unprivileged. Fix: extract it manually into the cache
+(symlink errors are safe to ignore) and re-run:
+
+```powershell
+$dir = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign\winCodeSign-2.6.0"
+node_modules\7zip-bin\win\x64\7za.exe x winCodeSign-2.6.0.7z -o"$dir" -y
+```
+
+A headless launch check is built in:
+`PARTHENON_SMOKE=1 npx electron .` (or the packaged exe) loads the app,
+round-trips IPC, verifies the temple rendered, and exits non-zero on any
+renderer console error.
+
 ## Layout
 
 ```
