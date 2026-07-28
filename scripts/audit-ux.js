@@ -29,11 +29,23 @@ const correctB0 = foundation.sections[0].variants[1].correctAnswerIndex;
 const SIZES = { wide: { w: 1280, h: 840 }, min: { w: 980, h: 680 } };
 const manifest = [];
 
-function seed(dir, mutate) {
+function seed(dir, mutate, settings) {
   fs.mkdirSync(dir, { recursive: true });
   const data = JSON.parse(fs.readFileSync(template, "utf-8"));
   if (mutate) mutate(data);
   fs.writeFileSync(path.join(dir, "progress.json"), JSON.stringify(data, null, 2));
+  // Default: intro already seen so the welcome rite doesn't cover scenarios.
+  fs.writeFileSync(
+    path.join(dir, "settings.json"),
+    JSON.stringify({
+      theme: "temple-dark",
+      reducedMotion: false,
+      fontScale: 1,
+      optionLabels: "letters",
+      introSeen: true,
+      ...settings,
+    })
+  );
 }
 
 async function launch(dir) {
@@ -271,6 +283,36 @@ async function main() {
       throw new Error(`expected 17 gauntlet questions (5 capstone + 12 pillar), got ${sectionCount}`);
     }
     await shot(page, "17-capstone-gauntlet", "Timed cross-pillar Capstone Gauntlet (17 questions, countdown running)");
+    await app.close();
+  }
+
+  /* ---- Scenario 7: welcome rite + settings panel + parchment theme ---- */
+  {
+    const dir = path.join(tmpRoot, "welcome");
+    seed(dir, undefined, { introSeen: false });
+    const { app, page } = await launch(dir);
+    await page.waitForSelector("#welcome-root.open .welcome-enter");
+    await shot(page, "18-welcome-rite", "First-run welcome overlay (crest, title, three steps)");
+    await page.click(".welcome-enter");
+    await new Promise((r) => setTimeout(r, 500));
+    await page.click("#btn-settings");
+    await page.waitForSelector(".settings-card");
+    await shot(page, "19-settings-panel", "Settings: theme, answer labels, text size, reduce motion");
+    await app.close();
+  }
+  {
+    const dir = path.join(tmpRoot, "parchment");
+    seed(dir, (d) => {
+      const set = (id, st, sc) => { d.nodes[id].status = st; d.nodes[id].score = sc; };
+      set("foundation", "completed", 0.92);
+      set("pillar-react", "completed", 1.0);
+      set("pillar-nextjs", "in_progress", 0.6);
+      d.foundationCompleted = true;
+      d.unlockedPillars = ["pillar-react", "pillar-nextjs"];
+    }, { theme: "parchment" });
+    const { app, page } = await launch(dir);
+    await resize(app, SIZES.wide);
+    await shot(page, "20-parchment-theme", "Parchment (day) theme — sunlit limestone temple");
     await app.close();
   }
 

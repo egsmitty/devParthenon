@@ -27,7 +27,10 @@ import {
   isSettingsOpen,
   motionReduced,
   openSettings,
+  setReplayWelcome,
+  settings,
 } from "./settings.js";
+import { initWelcome, openWelcome } from "./welcome.js";
 
 declare global {
   interface Window {
@@ -783,6 +786,8 @@ async function offerResume(): Promise<void> {
 
 async function init(): Promise<void> {
   await initSettings(api);
+  initWelcome(api);
+  setReplayWelcome(openWelcome);
   wireTitlebar();
   wireReset();
   wireReview();
@@ -791,7 +796,10 @@ async function init(): Promise<void> {
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
   wireCodex();
-  if (!api.isSmoke) await offerResume();
+  if (!api.isSmoke) {
+    if (!settings().introSeen) openWelcome();
+    else await offerResume();
+  }
 }
 
 init().catch((err) => {
