@@ -48,6 +48,44 @@
             "Browsers send no permanent trusted hardware ID; identity rides in cookies/tokens the app issues, precisely because the protocol itself carries none."
           ],
           "interviewTip": "Turn it around: 'the protocol forgets, so the client must remind it every request.' Naming the exact carrier — cookie or Authorization header — shows you know where the continuity physically lives."
+        },
+        {
+          "id": "f1-c",
+          "question": "Your team adds a second app server behind a load balancer. A teammate objects: 'users who logged in through server 1 will break the moment the balancer routes their next request to server 2.' Under stateless HTTP, what actually determines whether this works?",
+          "options": [
+            "It cannot work — HTTP permanently pins each authenticated client to the server that first authenticated it",
+            "It works automatically because the load balancer mirrors each server's memory to the other in real time",
+            "It works as long as every request carries its credential (cookie or token) and session data lives in storage any server can read — no request depends on one server's private memory",
+            "It works only if users are forced to log in again each time the balancer switches which server they hit"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Statelessness is exactly why horizontal scaling works: each request is self-contained, carrying its own credential, so any server can handle it — provided the session lookup hits shared storage (a database, Redis) rather than one machine's RAM. The teammate's fear is only valid if session state was trapped in server 1's memory.",
+          "optionExplanations": [
+            "HTTP pins nothing; there is no protocol-level binding between a client and a server. 'Sticky sessions' exist as a load-balancer workaround, not an HTTP rule.",
+            "Load balancers route packets; they do not replicate application memory. Any real-time memory mirroring would be an application architecture choice, not balancer magic.",
+            "Correct — self-contained requests plus shared session storage means any server can answer any request, which is the payoff of building on a stateless protocol.",
+            "No re-login is needed: the same cookie or token travels with every request regardless of which server receives it, and each server can validate it independently."
+          ],
+          "interviewTip": "If someone proposes sticky sessions, name the trade-off: they paper over in-memory session state but break the moment a server dies. Externalizing sessions to Redis or a database is the answer interviewers want to hear."
+        },
+        {
+          "id": "f1-d",
+          "question": "A junior dev inspects a response, sees `Connection: keep-alive`, and concludes: 'HTTP isn't really stateless — the server is holding our connection open, so it must be remembering us.' What is wrong with that reasoning?",
+          "options": [
+            "Keep-alive reuses the underlying TCP connection to skip repeated handshakes; the requests flowing over it remain independent, and the connection itself carries no application-level memory of who you are",
+            "Nothing — keep-alive was introduced precisely to convert HTTP into a stateful protocol",
+            "Keep-alive does persist your session, but only on HTTPS connections where the TLS layer stores it",
+            "The header is purely informational and has no effect on connection handling at all"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Statelessness lives at the level of protocol semantics, not transport plumbing. Keep-alive (and HTTP/2 multiplexing) reuses the expensive TCP/TLS setup for performance, but each request over that connection must still be fully self-describing — the server derives nothing about your identity from the socket itself.",
+          "optionExplanations": [
+            "Correct — connection reuse is a transport optimization; every request over the reused socket is still processed as an independent, self-contained unit.",
+            "Keep-alive exists to amortize handshake cost, not to add memory. HTTP's request/response semantics are unchanged by it.",
+            "TLS secures the channel; it does not store application sessions, and keep-alive behaves the same with or without HTTPS.",
+            "The header genuinely governs connection reuse (especially in HTTP/1.x) — it just has no bearing on whether the server remembers you."
+          ],
+          "interviewTip": "Separating layers cleanly — 'TCP reuse is performance, statelessness is semantics' — is a strong systems signal. It also sets up a natural segue to HTTP/2 multiplexing if the interviewer wants to go deeper."
         }
       ]
     },
@@ -96,6 +134,44 @@
             "Correct — `PUT` is a full replacement to a known URL; repeating the same replacement leaves identical state, so the retry is inherently safe."
           ],
           "interviewTip": "Don't lump `PATCH` in with `PUT` as 'both safe to retry' — `PATCH` is idempotent only if the patch itself is. That distinction is a common trap."
+        },
+        {
+          "id": "f2-c",
+          "question": "A client sends `DELETE /orders/99` and receives `204 No Content`. A network-layer retry re-sends the identical request and gets `404 Not Found`. A teammate declares: 'see — different responses, so `DELETE` isn't actually idempotent.' Are they right?",
+          "options": [
+            "Yes — an idempotent method must return the same status code on every repetition, by definition",
+            "No — idempotency is defined by the resulting server state, not by identical responses; after either request the order is equally gone, so `DELETE` kept its contract",
+            "Yes — the `404` proves the second request corrupted server state that the first had left intact",
+            "No — but only because the server silently suppressed the second delete; if it had actually executed, idempotency would have been violated"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Idempotency means N identical requests leave the server in the same state as one request. The order is deleted after the first call and still deleted after the retry — state is unchanged. The differing status codes are just the server truthfully describing what it found each time; nothing in the spec requires repeat responses to match.",
+          "optionExplanations": [
+            "The spec defines idempotency in terms of the effect on the server, not the response. `DELETE` then `404` on retry is the textbook-compliant behavior.",
+            "Correct — same final state ('order 99 does not exist') after one call or ten; the response merely reports what the server found at that moment.",
+            "Nothing was corrupted: the `404` reflects that the resource was already gone, which is exactly the state the first `DELETE` produced.",
+            "The server executed both requests honestly; the second simply found nothing to delete. No suppression mechanism is needed for `DELETE` to be idempotent."
+          ],
+          "interviewTip": "Define idempotency precisely — 'same server state after N calls as after 1' — before answering retry questions. Interviewers plant the differing-response red herring specifically to see if your definition is about state or about responses."
+        },
+        {
+          "id": "f2-d",
+          "question": "A team ships `GET /reports/latest/regenerate`, which rebuilds an expensive report and emails it to stakeholders whenever it is hit. Weeks later, stakeholders complain about duplicate report emails arriving at odd hours when nobody was using the app. What is the root design flaw?",
+          "options": [
+            "The URL is too long, which causes some proxies to replay it",
+            "Regeneration replaces the old report file, so the endpoint should have been `PUT` to make the emails idempotent",
+            "`GET` responses are cached by intermediaries, and the emails are being sent from those caches rather than the origin server",
+            "`GET` must be *safe* — free of side effects — because link prefetchers, crawlers, and monitoring probes issue GETs on their own; the endpoint fires without any human deciding to, and should be a `POST`"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The entire web infrastructure — browser prefetching, link previews in chat apps, search crawlers, uptime monitors — assumes GETs are safe to issue speculatively and repeatedly. Hang a side effect (regenerating, emailing) off a GET and that machinery triggers it invisibly. State-changing actions belong on `POST` (or another non-safe method) precisely so automated agents leave them alone.",
+          "optionExplanations": [
+            "URL length has nothing to do with replays; well-behaved intermediaries repeat GETs because GETs are declared safe, regardless of URL size.",
+            "`PUT` would make the *state change* retry-safe, but the email dispatch is a side effect no method makes idempotent — and the real bug is that automated agents trigger the endpoint at all, which switching to `PUT` alone doesn't fully stop since the deeper contract violated is safety.",
+            "Caches store and serve responses; they never execute application logic like sending email. A cache would actually *suppress* origin hits, not multiply emails.",
+            "Correct — the endpoint violates GET's safety contract, so prefetchers, crawlers, and monitors trigger the regeneration and emails autonomously; a `POST` keeps automated GET traffic from causing side effects."
+          ],
+          "interviewTip": "Distinguish *safe* (no side effects: `GET`, `HEAD`) from *idempotent* (repeat leaves same state: `GET`, `PUT`, `DELETE`). All safe methods are idempotent, but not vice versa — interviewers love asking for that exact Venn diagram."
         }
       ]
     },
@@ -144,6 +220,44 @@
             "403 means the identity is known but not permitted; here the identity can't even be established, so re-authenticating is the fix, which is 401's message, not 403's."
           ],
           "interviewTip": "Flip the primary question's trap: here the credentials are the problem, so it's 401, not 403. Note that 401 responses should include a `WWW-Authenticate` header telling the client how to authenticate."
+        },
+        {
+          "id": "f3-c",
+          "question": "While authenticated, you request another tenant's private document by guessing its ID, and the API returns `404 Not Found` — even though you know the document exists. Why would a well-designed API choose this response deliberately?",
+          "options": [
+            "The server hit an internal routing bug that mapped the request to a nonexistent handler",
+            "The API is simply wrong — HTTP mandates `403` whenever a resource exists but access is denied",
+            "Answering `403` would confirm the resource exists; returning `404` for both 'not there' and 'not yours' prevents attackers from enumerating private resources by probing IDs",
+            "`404` responses are cheaper for the server to generate than `403` responses"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A `403` on a guessed ID leaks information: 'something is here, you just can't see it.' By collapsing 'doesn't exist' and 'exists but private' into one indistinguishable `404`, the API denies attackers an oracle for mapping out private data. The HTTP spec explicitly permits `404` in place of `403` for exactly this reason — GitHub does it for private repositories.",
+          "optionExplanations": [
+            "Nothing malfunctioned — the routing worked and access control ran; the `404` is a deliberate policy choice, not an error in dispatch.",
+            "The spec allows a server that wishes to hide a resource's existence to respond `404` instead of `403`; the mandate this option imagines does not exist.",
+            "Correct — uniform `404`s make existing-but-forbidden indistinguishable from nonexistent, closing off resource-enumeration attacks.",
+            "Both are trivial responses to produce; the choice is driven by information leakage, not compute cost."
+          ],
+          "interviewTip": "Volunteering the security angle — '403 confirms existence, so sensitive APIs return 404 instead' — turns a status-code question into a security answer. Cite GitHub's private-repo behavior as your concrete example."
+        },
+        {
+          "id": "f3-d",
+          "question": "A logged-in user tries to delete a teammate's comment and lacks permission. The server responds `401`, and the SPA — following standard convention — clears the session and redirects to the login page, trapping the user in a re-login loop. Which single change fixes both the semantics and the loop?",
+          "options": [
+            "Return `403 Forbidden` — the user is authenticated but not permitted, so the client will render an access-denied message instead of forcing a pointless re-login",
+            "Return `200` with an error flag in the body so the client stops reacting to status codes altogether",
+            "Return `500`, since the delete operation ultimately did not succeed on the server",
+            "Keep the `401` but make the login page auto-submit the saved credentials so the loop becomes invisible to the user"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Clients automate against status codes as a contract: `401` conventionally means 'credentials invalid — re-authenticate,' which is why the SPA nukes the session. The user's credentials are fine; their *role* is insufficient. That is `403`, which client code handles by showing a denial message rather than restarting the auth flow.",
+          "optionExplanations": [
+            "Correct — `403` states 'identity confirmed, permission denied,' so the client's re-auth machinery stays out of it and the loop disappears.",
+            "Tunneling errors through `200` breaks caches, monitoring, and every intermediary that reads status codes; it treats the symptom by discarding the contract.",
+            "Nothing failed on the server — access control worked exactly as designed. A `5xx` would page on-call for correct behavior.",
+            "Auto-submitting login hides the loop while re-authenticating a user whose authentication was never the problem; the wrong code still drives the wrong client behavior."
+          ],
+          "interviewTip": "Frame status codes as a machine-readable contract, not decoration: interceptors key `401` to token-refresh/login flows and `403` to denial UI. Explaining the *client-side consequence* of a wrong code is what separates senior answers."
         }
       ]
     },
@@ -192,6 +306,44 @@
             "Correct — `CNAME` aliases your name to the provider's name, so their IP changes flow through without you editing anything."
           ],
           "interviewTip": "Know the classic `CNAME` gotcha: you can't put a `CNAME` on a zone apex (`example.com` itself) alongside other required records — which is why providers offer `ALIAS`/`ANAME` or flattening for the root domain."
+        },
+        {
+          "id": "f4-c",
+          "question": "The `A` record for `api.example.com` carries a TTL of 86400 (24 hours), and you must cut over to a new IP next Friday with minimal disruption. What is the correct TTL play?",
+          "options": [
+            "On Friday, change the IP and set the TTL to 30 in the same edit — the new low TTL takes effect for everyone immediately",
+            "Lower the TTL to a small value at least 24 hours *before* Friday, let the old long-TTL answers age out of caches, switch the IP, then raise the TTL back once the cutover is verified",
+            "Set the TTL to 0 permanently so resolver caches are never a factor again",
+            "Skip the TTL entirely — it only governs `CNAME` chains, so an `A` record change propagates on the resolvers' own schedule regardless"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The TTL travels *with* the cached answer: resolvers holding the old record honor the 86400 that was attached when they fetched it, so a TTL you set at cutover time reaches no one who already has the old answer. You must lower the TTL at least one full old-TTL period in advance, so that by Friday every cache holds a short-lived answer that expires quickly after the switch.",
+          "optionExplanations": [
+            "Caches that fetched the record before Friday obey the old 86400 they stored — your new TTL is only seen by resolvers fetching *after* the change, which is exactly the population that didn't need it.",
+            "Correct — pre-lowering by at least the old TTL guarantees all caches hold short-lived answers at cutover; raising it afterward restores cheap, low-traffic resolution.",
+            "A TTL of 0 (or near-zero) forever means every request pays a fresh lookup — needless latency and resolver load — and some resolvers clamp or ignore extreme values anyway.",
+            "TTL applies to every cached record type, `A` included; there is no `CNAME`-only rule, and ignoring it is how you get a day of split traffic."
+          ],
+          "interviewTip": "State the timing rule crisply: 'the TTL you need at cutover must be set at least one old-TTL period beforehand.' Interviewers use this to test whether you understand that caching decisions were made in the past, not at the moment you edit the zone."
+        },
+        {
+          "id": "f4-d",
+          "question": "Users on an IPv6-only mobile carrier (no IPv4 path, no NAT64) report your site never loads, while everyone else is fine. Your zone currently contains just one `A` record for the hostname. Which record type must you add so their devices can resolve an address they can actually reach?",
+          "options": [
+            "A second `A` record with a different IPv4 address, for redundancy",
+            "A `TXT` record announcing that the site supports IPv6",
+            "An `MX` record pointing at an IPv6-capable gateway",
+            "An `AAAA` record mapping the hostname to your server's IPv6 address"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "An `A` record answers only IPv4 queries; an IPv6-only client asks for `AAAA` and gets nothing usable back. Publishing an `AAAA` record alongside the `A` record (dual-stack) gives those clients a reachable IPv6 address while IPv4 clients continue using the `A` record.",
+          "optionExplanations": [
+            "More IPv4 addresses cannot help a client with no IPv4 path at all — redundancy within an unreachable family is still unreachable.",
+            "`TXT` records are inert text for humans and verification tooling; resolvers never use them to route traffic anywhere.",
+            "`MX` records direct *email* delivery for the domain; they play no role in resolving a website's hostname for browsers.",
+            "Correct — `AAAA` is the IPv6 counterpart of `A`; adding it lets IPv6-only clients resolve and connect, completing a dual-stack setup."
+          ],
+          "interviewTip": "Pair the record knowledge with the client behavior: dual-stacked browsers race both families via Happy Eyeballs and prefer whichever connects first. Mentioning that turns a flashcard answer into a networking answer."
         }
       ]
     },
@@ -240,6 +392,44 @@
             "Reading and writing the DOM together is fully allowed; nothing is throttled or blocked — it just forces expensive synchronous layouts."
           ],
           "interviewTip": "Name the fix crisply: 'batch reads, then batch writes' — or reach for `requestAnimationFrame` / `getBoundingClientRect` measured up front. Saying 'layout thrashing' by name signals real DOM-performance depth."
+        },
+        {
+          "id": "f5-c",
+          "question": "To render 500 search results, a colleague builds each `<li>` inside a detached `DocumentFragment` and appends the fragment to the live `<ul>` once at the end. Why is this dramatically cheaper than appending each `<li>` to the live list as it's built?",
+          "options": [
+            "`DocumentFragment` compresses its child nodes so they occupy less memory once inserted",
+            "Fragments are rendered on a background thread, leaving the main thread free during construction",
+            "Nodes mutated inside a detached fragment aren't part of the rendered tree, so those 500 insertions can't trigger layout or paint — the live DOM is touched once, costing at most one reflow instead of up to 500",
+            "The browser skips HTML parsing entirely when nodes arrive wrapped in a fragment"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Reflow and repaint are only in play for nodes attached to the rendered document. A detached `DocumentFragment` is off-stage: you can hammer it with hundreds of mutations for free. When the fragment is appended, its children move into the live tree in a single operation, collapsing what could have been hundreds of layout invalidations into one.",
+          "optionExplanations": [
+            "Fragments store perfectly ordinary nodes with no compression; the win is *when* rendering work happens, not how much memory nodes take.",
+            "All of this DOM construction runs on the main thread; fragments change the batching of rendering work, not which thread executes it.",
+            "Correct — off-tree mutations are invisible to the renderer, so the expensive style/layout/paint pipeline runs once at the single live insertion.",
+            "These nodes are built via the DOM API, not parsed from markup — and parsing cost isn't the bottleneck; repeated live-tree layout work is."
+          ],
+          "interviewTip": "Frame `DocumentFragment` as manual batching — 'the same principle React's reconciler automates.' Connecting a vanilla-DOM technique to the framework's reason for existing is a high-signal move."
+        },
+        {
+          "id": "f5-d",
+          "question": "This loop never terminates: `const divs = document.getElementsByTagName('div'); for (let i = 0; i < divs.length; i++) { document.body.appendChild(document.createElement('div')); }` — what property of the DOM explains the hang?",
+          "options": [
+            "`getElementsByTagName` returns a *live* collection — a view into the tree, not a snapshot — so each appended `<div>` grows `divs.length` and the loop condition never catches up",
+            "`appendChild` is asynchronous, so the loop body outpaces the insertions and the two deadlock",
+            "Creating elements inside a loop leaks memory until the tab dies, which merely resembles a hang",
+            "`for` loops cannot read `length` from DOM collections, so the condition always evaluates to `true`"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The DOM is live, and so are the classic collection APIs: `getElementsByTagName` hands back an `HTMLCollection` that reflects the tree *right now*. Every iteration appends a `<div>`, the collection instantly reports one more element, and `i < divs.length` can never become false. A static snapshot — `document.querySelectorAll('div')` or a copied array — breaks the feedback loop.",
+          "optionExplanations": [
+            "Correct — the live `HTMLCollection` updates as the tree changes, so the loop keeps moving its own goalposts; snapshot it first and the loop terminates.",
+            "`appendChild` is fully synchronous — the node is in the tree before the next statement runs. There is no async race here, just a self-growing bound.",
+            "Memory grows because the loop is infinite, not the other way around; the causal bug is the live collection feeding the loop condition.",
+            "Reading `.length` from an `HTMLCollection` works fine anywhere — that's exactly how the loop keeps observing the ever-growing count."
+          ],
+          "interviewTip": "Know which APIs are live and which are static: `getElementsByTagName`/`getElementsByClassName` and `node.children` are live; `querySelectorAll` returns a static `NodeList`. That one-liner defuses a whole family of trick questions."
         }
       ]
     },
@@ -288,6 +478,44 @@
             "Correct — TCP connect, then TLS handshake over it, then the encrypted GET, then the HTML response."
           ],
           "interviewTip": "For HTTPS, remember the layering: TCP first, TLS on top, HTTP inside. Bonus depth: mention that TLS 1.3 cut the handshake to one round trip, and that QUIC/HTTP/3 folds transport and crypto setup together to save round trips."
+        },
+        {
+          "id": "f6-c",
+          "question": "On a cold page load, order these four events as they actually occur: (P) the render-blocking stylesheet is fetched, (Q) the resolver returns the site's IP address, (R) the first pixels are painted, (S) the HTML response begins arriving.",
+          "options": [
+            "Q → P → S → R",
+            "Q → S → P → R",
+            "S → Q → P → R",
+            "Q → S → R → P"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "DNS must resolve before anything can be requested (Q first). The stylesheet's URL lives inside the HTML, so the browser can't discover — let alone fetch — it until the HTML starts arriving and being parsed (S before P). And because the stylesheet is render-blocking, the browser withholds first paint until that CSS is in hand (P before R). Q → S → P → R.",
+          "optionExplanations": [
+            "The browser learns the stylesheet exists from a `<link>` tag in the HTML; it cannot fetch a URL it hasn't seen, so P cannot precede S.",
+            "Correct — resolve the name, receive the HTML, discover and fetch the render-blocking CSS, then paint.",
+            "No HTML can arrive before the browser has an IP to connect to — DNS strictly precedes the response.",
+            "Painting before a *render-blocking* stylesheet arrives is exactly what 'render-blocking' rules out; the browser would risk a flash of unstyled content, so it waits."
+          ],
+          "interviewTip": "Use the phrase 'render-blocking' deliberately and note the browser's preload scanner can *start* the CSS fetch early during parsing — but paint still waits on it. That nuance shows you know the pipeline, not just the flashcard order."
+        },
+        {
+          "id": "f6-d",
+          "question": "A user's first-ever visit to your site takes about 3 seconds, but clicking through to a second page moments later takes about 300 ms. Which pair of mechanisms best explains most of the reclaimed time?",
+          "options": [
+            "The server renders faster once it recognizes the returning browser's user agent",
+            "The second page simply contains less HTML, and HTML byte size dominates load time",
+            "DNS answers are already cached and the TCP+TLS connection is reused via keep-alive, while shared assets (CSS, JS, fonts) are served from the HTTP cache instead of the network",
+            "After the first page, the browser drops HTTP and speaks raw TCP to the server, skipping protocol overhead"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The first visit pays every setup cost: DNS resolution, TCP handshake, TLS negotiation, and a cold download of every asset. The second navigation skips nearly all of it — the OS/resolver cache answers DNS instantly, the still-warm connection is reused, and the stylesheet, scripts, and fonts shared across pages come from the local HTTP cache. Only the new page's HTML (and any unique assets) touches the network.",
+          "optionExplanations": [
+            "Servers don't get faster by recognizing a user agent; the savings are on the client and connection side, not in server rendering speed.",
+            "HTML is typically a small slice of total transfer; the dominant first-visit costs are connection setup and the cold asset downloads that the second navigation avoids.",
+            "Correct — cached DNS, a reused TCP+TLS connection, and HTTP-cached shared assets eliminate the setup and re-download costs that dominated the first load.",
+            "HTTP is never abandoned for raw TCP; subsequent requests still speak HTTP — they're just carried over an already-established, already-encrypted connection."
+          ],
+          "interviewTip": "Enumerate the caches by layer — DNS cache, warm connection, HTTP asset cache — and you've implicitly answered the follow-up 'so what would you optimize for first-time visitors?' (fewer round trips, preconnect, caching headers)."
         }
       ]
     }

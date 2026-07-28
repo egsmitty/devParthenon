@@ -48,6 +48,44 @@
             "Correct — mutating in place keeps the same reference, and React's referential equality check concludes nothing changed."
           ],
           "interviewTip": "Name the trap explicitly: array methods like `splice`, `sort`, and `reverse` mutate in place. Say 'I reach for `filter`, `map`, or a spread to produce a new reference React can detect.'"
+        },
+        {
+          "id": "r1-c",
+          "question": "A leaderboard runs `setScores(scores.sort((a, b) => b.points - a.points))` when new results arrive, but the on-screen order never changes. A `console.log(scores)` right after confirms the array *is* sorted. What's going on?",
+          "options": [
+            "`sort` is asynchronous, so `setScores` fired before the ordering finished",
+            "`sort` sorts the array in place and returns that same array, so `setScores` receives the exact reference React already holds and the update bails out",
+            "Comparator functions that return numbers aren't supported; React requires `localeCompare`-style comparators",
+            "The list is missing a `key` prop, so React cannot detect the new ordering"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`Array.prototype.sort` mutates in place and returns the array it was called on. The log proves the data changed, but `Object.is(prev, next)` compares references, sees the same array, and React skips the render — the sorted data is invisible until some other update happens to re-render. Fix: `setScores([...scores].sort(...))` or the non-mutating `scores.toSorted(...)`.",
+          "optionExplanations": [
+            "`sort` is fully synchronous; by the time `setScores` is called the array is already ordered — the log even proves it.",
+            "Correct — same array in, same reference out: React's referential equality check concludes nothing changed, so the already-sorted data never paints.",
+            "Numeric comparators are the standard JavaScript idiom and React never inspects them; the comparator isn't involved in the bailout.",
+            "Keys govern how list items are matched *during* a render; here no render happens at all, so keys never enter the picture."
+          ],
+          "interviewTip": "The devious part of this trap is that logging shows 'correct' data, which sends people hunting in the wrong place. Say: 'the state changed but the reference didn't — React answers to `Object.is`, not to `console.log`.'"
+        },
+        {
+          "id": "r1-d",
+          "question": "Hoping to 'avoid stale state', a developer writes `setForm(prev => { prev.email = value; return prev; })`. Now the email input stops updating entirely as the user types. Why doesn't the functional updater save them here?",
+          "options": [
+            "The updater mutates `prev` and returns the same object, so `Object.is(prev, next)` is true and React skips the re-render — the functional form does not excuse mutation",
+            "Functional updaters only accept primitive state values, not objects",
+            "React deep-freezes state objects, so the assignment to `prev.email` throws silently",
+            "React defers functional updates to the next event, so the value appears one keystroke late rather than immediately"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The functional updater solves *staleness* (reading the latest state), not *immutability*. Whatever the updater returns is still compared to the previous state with `Object.is` — returning the mutated `prev` means same reference, so React bails out on every keystroke. The fix is to return a new object: `setForm(prev => ({ ...prev, email: value }))`.",
+          "optionExplanations": [
+            "Correct — the updater's return value goes through the same referential equality check as any other update; mutating and returning `prev` guarantees a bailout.",
+            "Functional updaters work with any state shape — objects, arrays, Maps; the constraint is on references, not types.",
+            "React does not freeze your state objects; the assignment succeeds, which is exactly why the mutation is dangerous rather than loud.",
+            "Batching happens within the same event tick, not across keystrokes; here the update never lands at all because the reference never changed."
+          ],
+          "interviewTip": "Draw the distinction sharply: 'the functional updater fixes stale closures; spreading into a new object fixes referential equality. You often need both — `setForm(prev => ({ ...prev, email: value }))`.'"
         }
       ]
     },
@@ -96,6 +134,44 @@
             "Adding `handle` to deps causes more resubscribes, not fewer, and still leaks without a cleanup to remove the prior listener."
           ],
           "interviewTip": "Whenever you 'subscribe', 'listen', 'open', or 'start' something in an effect, immediately ask 'where do I unsubscribe?' The cleanup function is the answer, and it's what makes StrictMode's double-invoke a non-event."
+        },
+        {
+          "id": "r2-c",
+          "question": "A profile page fetches with `useEffect(() => { fetch('/api/user/' + id).then(r => r.json()).then(setUser) }, [id])`. When the user clicks quickly from profile 1 to profile 2, the page sometimes settles on user 1's data even though `id` is 2. What is the disciplined fix?",
+          "options": [
+            "Add `user` to the dependency array so the effect keeps re-running until the data matches the id",
+            "Switch to `useLayoutEffect` so the fetch resolves before the browser paints",
+            "In the effect's cleanup, abort the request with an `AbortController` (or flip an `ignore` flag checked before `setUser`) so a superseded response can never commit state",
+            "Wrap `setUser` in `useCallback` so only the latest reference is allowed to update state"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "This is a race: the effect for `id=1` and the effect for `id=2` both have in-flight requests, and whichever resolves *last* wins. The cleanup function is the built-in place to invalidate the previous run — abort the fetch or set a closure-scoped `ignore = true` that the `.then` checks before calling `setUser`. This is also precisely the class of bug StrictMode's mount-unmount-remount is designed to flush out in development.",
+          "optionExplanations": [
+            "Depending on `user` makes the effect re-run after its own `setUser`, inviting an infinite fetch loop while doing nothing to stop the stale response from landing first.",
+            "`useLayoutEffect` changes *when* the effect runs, not the ordering of network responses; the race between two in-flight requests is untouched.",
+            "Correct — each effect run must be able to cancel or disown its async work in cleanup, so only the newest run's response can ever reach state.",
+            "`setUser` from `useState` is already referentially stable across renders; wrapping it in `useCallback` is a no-op against a network race."
+          ],
+          "interviewTip": "Say the word 'race condition' out loud, then: 'every async effect needs a way to disown its result in cleanup — `AbortController` or an `ignore` flag.' Bonus points for noting StrictMode's double-invoke exists to surface exactly this."
+        },
+        {
+          "id": "r2-d",
+          "question": "A component calls `useState('')` inside `if (props.editable) { ... }`. Everything works until `editable` flips mid-session, then React throws `Rendered more hooks than during the previous render`. What rule was broken, and why does React enforce it?",
+          "options": [
+            "Hooks may not read props during render; `editable` needs to come from context instead",
+            "`useState` may only be called once per component, and the conditional created a second call that collided with the first",
+            "The error is a StrictMode development artifact and will not occur in production builds",
+            "Hooks must be called unconditionally in the same order every render, because React associates each hook call with its stored state by call position, not by variable name"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "React keeps each component's hook state in an ordered list and pairs the Nth hook call of this render with the Nth slot from the last render. A hook inside `if` changes the count and order when the condition flips, so every hook after it reads the wrong slot — hence the hard error. The fix: call the hook unconditionally at the top level and branch inside the render logic (or inside the hook's usage) instead.",
+          "optionExplanations": [
+            "Reading props during render is the entire point of components; the restriction is on *where* hooks are called, not what they read.",
+            "Components routinely call `useState` many times; the problem is the conditional call order, not the call count in itself.",
+            "This is a genuine invariant violation, not a StrictMode simulation — production crashes identically once the condition flips.",
+            "Correct — hooks are tracked by call order, so conditional calls shift every subsequent hook into the wrong state slot; that's why the rule exists."
+          ],
+          "interviewTip": "Don't just recite 'top level only' — explain the mechanism: 'React has no hook names, only call positions, so a skipped hook misaligns every hook after it.' Explaining *why* the rule exists is what separates senior answers."
         }
       ]
     },
@@ -144,6 +220,44 @@
             "Correct — positional keys keep DOM/input state at each slot while the underlying data reorders, the classic reorder failure; stable ids fix it."
           ],
           "interviewTip": "Push past deletion examples — reordering is the harder case. Say 'with index keys, the key describes a slot, not a record, so any reorder detaches state from data.'"
+        },
+        {
+          "id": "r3-c",
+          "question": "A chat log renders newest-first and *prepends* each incoming message, using `key={index}`. Two symptoms appear: the Profiler shows every existing row re-rendering on each new message, and a row's open emoji picker jumps to a neighboring message. What explains both?",
+          "options": [
+            "Prepending shifts every message to a new index, so no key is stable: React sees every row's content change (defeating any bailout) while per-position component state like the open picker stays at its slot as the data slides underneath it",
+            "Prepending to an array is O(n), and the expensive copy is what causes both the re-renders and the visual glitch",
+            "React cannot diff lists rendered newest-first; storing the array oldest-first and reversing in CSS fixes both symptoms",
+            "Popover components cannot live inside keyed lists without a portal, and the missing portal also forces the extra renders"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "With index keys, a prepend re-labels every message: the item that was key `0` is now key `1`, and so on. React matches by key, so it pairs each old row with a *different* message's data — every row's props 'changed' (mass re-render) and any state held per row (the open picker) stays with its position while the message it belonged to moves down. Keying by the message id makes only the one new row mount and keeps state glued to its message.",
+          "optionExplanations": [
+            "Correct — prepending is the stress test that breaks index keys in both directions at once: no stable keys means no render bailouts *and* positional state detaching from data.",
+            "Copying even a few thousand array elements is microseconds; the cost and the misattached picker both trace to key identity, not array mechanics.",
+            "React diffs any ordering fine; the direction of the list is irrelevant when keys carry stable identity.",
+            "Portals change where DOM is attached, not how reconciliation matches rows; keyed lists host popovers without issue when keys are stable."
+          ],
+          "interviewTip": "Deletion, reordering, *and prepending* all break index keys — prepending is the sneakiest because the list 'looks' append-only in the code. Say: 'any operation that changes an item's position rewrites its identity under index keys.'"
+        },
+        {
+          "id": "r3-d",
+          "question": "Having read that index keys are dangerous, a developer switches a list to `key={crypto.randomUUID()}`, generating the id during render. Now every keystroke in a row's `<input>` blurs the field, and row animations restart on every parent render. Why?",
+          "options": [
+            "Random UUIDs occasionally collide, and duplicate keys corrupt React's diffing structures",
+            "A key generated during render is different on every render, so React treats each row as a brand-new component — unmounting and remounting it, destroying DOM state, focus, and component state every time",
+            "Keys must be stable-length strings; variable randomness breaks the reconciler's hashing",
+            "The blur is caused by the inputs being uncontrolled; random keys are otherwise a legitimate fix for index keys"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A key is an identity claim. Generating it during render tells React 'this is a row it has never seen' on every single pass, so reconciliation can never match old to new: every row is torn down and rebuilt, taking focus, input contents, scroll, and animation state with it. This is strictly worse than index keys. The id must be created *once* — when the data is created — and stored on the record, not minted in render.",
+          "optionExplanations": [
+            "UUID collisions are vanishingly rare and not the mechanism here; the keys fail because they are *always* different, not occasionally identical.",
+            "Correct — a changed key means a new identity, and a new identity means unmount-and-remount; render-time key generation guarantees that on every render.",
+            "React compares keys with simple equality; their length and format are irrelevant to reconciliation.",
+            "Controlled inputs would preserve the *value* but still lose focus and remount the DOM node each render; the key strategy is the root cause."
+          ],
+          "interviewTip": "Frame the spectrum: 'index keys give unstable identity on reorder; random keys give no identity at all. The requirement is a key that is unique among siblings *and* stable across renders — which is why it belongs in the data.'"
         }
       ]
     },
@@ -192,6 +306,44 @@
             "A ref holds a value across renders but doesn't trigger re-render, so the displayed total would go stale — worse, not better."
           ],
           "interviewTip": "The tell for this anti-pattern is 'a value that's always recomputed from other state inside an effect.' Answer: 'if it's derivable, derive it in render — effects that mirror state into more state cause exactly this off-by-one-render lag.'"
+        },
+        {
+          "id": "r4-c",
+          "question": "A `ProductList` and a `ProductDetail` sit side by side. Each keeps its own `selectedId` in `useState`, and each calls a callback to push changes into the other's state. Occasionally a rapid double-click leaves the list highlighting one product while the detail pane shows another. What's the principled fix?",
+          "options": [
+            "Add a `useEffect` in the parent that watches both values and reconciles them whenever they disagree",
+            "Share `selectedId` through a ref in context so updates bypass re-render timing entirely",
+            "Have `ProductDetail` read the list's state directly via a forwarded ref, making the list the de facto owner",
+            "Lift `selectedId` into the closest common ancestor and pass it down to both components as props — with one source of truth, disagreement becomes unrepresentable"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Two copies of the same fact, synced by hand, will eventually drift — the double-click just exposes the window between the two setters. Lifting the state up replaces synchronization with sharing: the ancestor owns `selectedId`, both children render from the same value, and there is no second copy to fall out of step. This is the canonical 'lifting state up' refactor.",
+          "optionExplanations": [
+            "A reconciling effect is a third participant in the sync dance — it fires a render *after* the disagreement has already painted, and choosing which copy 'wins' is itself a bug farm.",
+            "A ref doesn't trigger re-renders, so components reading it would display stale selections; it trades a drift bug for a staleness bug.",
+            "Reaching into a sibling's internals through refs inverts the data-flow model and still leaves two stateful owners; props-down is the supported direction.",
+            "Correct — duplicated state is the disease and syncing is a symptom-patch; a single lifted owner makes the two panes consistent by construction."
+          ],
+          "interviewTip": "The phrase 'single source of truth' lands best with the follow-up: 'I don't sync state, I share it — if two components can disagree, the state is owned in the wrong place.'"
+        },
+        {
+          "id": "r4-d",
+          "question": "A signup form keeps `email` and `password` in state, plus a third state `isValid`, updated by a `useEffect` watching both fields. The submit button enables one keystroke late, so a teammate proposes *also* calling `setIsValid` inside each `onChange` handler. Evaluate the proposal.",
+          "options": [
+            "Sound — updating `isValid` at the event source removes the lag, and the effect stays behind as a safety net",
+            "Close, but the effect should become a `useLayoutEffect` so validity is corrected before the browser paints",
+            "Wrong direction — delete the `isValid` state and its effect entirely, and compute `const isValid = validate(email, password)` during render; the lag exists only because derived data was stored",
+            "Wrong direction — merge all three values into one `useReducer` so field and validity updates commit atomically"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "`isValid` is a pure function of `email` and `password`, so storing it means the component can render with fresh fields and a stale flag — that *is* the one-keystroke lag. The teammate's patch adds a third write site to keep in sync, deepening the anti-pattern. Deriving the value in render makes it correct on the same pass the fields change, with less code and no effect at all.",
+          "optionExplanations": [
+            "Duplicating the write into every handler means validity logic now lives in N places; miss one handler (paste, autofill) and the drift returns.",
+            "`useLayoutEffect` hides the visible flash but keeps the redundant state, the extra render pass, and the synchronization burden.",
+            "Correct — a derivable value should never be state; computing it in render eliminates the lag and the entire category of desync bugs.",
+            "A reducer centralizes updates but each action must still remember to recompute `isValid` — the second source of truth survives, just relocated."
+          ],
+          "interviewTip": "When offered a fix, first ask whether the state should exist at all. 'Can this be computed from what I already have?' — if yes, say 'delete the state, derive in render' before discussing anything about timing."
         }
       ]
     },
@@ -240,6 +392,44 @@
             "Correct — inline array/object literals are new references each render and defeat memo's shallow comparison just like inline functions do."
           ],
           "interviewTip": "Interviewers escalate from callbacks to values. The complete answer: 'stabilize every non-primitive prop — functions with `useCallback`, arrays/objects with `useMemo` or hoisting — or memo can never bail out.'"
+        },
+        {
+          "id": "r5-c",
+          "question": "`Sidebar` is wrapped in `React.memo` and receives one stable primitive prop plus JSX children: `<Sidebar width={W}><nav>{links}</nav></Sidebar>`. Every callback in the app is already memoized, yet the Profiler shows `Sidebar` re-rendering whenever its parent does. What's the diagnosis?",
+          "options": [
+            "`React.memo` deliberately ignores the `children` prop, so the re-render must be caused by something else",
+            "JSX children compile to a fresh element object on every parent render, and `children` is a prop like any other — so memo's shallow comparison always sees it change; hoist the static children or memoize the element",
+            "`width` being a primitive forces re-renders, because memo can only bail out when all props are objects",
+            "memo compares element trees deeply, and the `<nav>` subtree is too large, so React re-renders defensively"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`<nav>{links}</nav>` is a call that returns a new element object each time the parent renders, and that object is passed as the `children` prop. To memo's shallow compare, `children !== prevChildren` every single time, so the bailout never fires. Fixes: hoist truly static children to a constant outside the component, wrap the element in `useMemo`, or restructure so the parent passes children it received (which stay referentially stable when the parent re-renders for its own state).",
+          "optionExplanations": [
+            "`children` participates in the shallow comparison exactly like named props — memo doesn't special-case it, which is precisely why inline JSX defeats it.",
+            "Correct — inline JSX is an object literal in disguise; the freshly created element makes the `children` prop fail reference equality on every render.",
+            "Primitives are memo's easiest case: compared by value, `width={W}` matches whenever `W` is unchanged. It's not the culprit.",
+            "memo never walks element trees; the comparison is shallow and reference-based, and there is no size-based defensive re-render."
+          ],
+          "interviewTip": "Few candidates realize JSX children are just another prop holding a freshly allocated element. Saying '`children` fails shallow comparison because JSX creates a new element object per render' is a genuine differentiator."
+        },
+        {
+          "id": "r5-d",
+          "question": "Every consumer of `ThemeContext` is wrapped in `React.memo`, yet all of them re-render whenever `App` re-renders for unrelated reasons. The provider reads `<ThemeContext.Provider value={{ theme, setTheme }}>`. Why doesn't memo help, and what's the fix?",
+          "options": [
+            "The inline `value` object is a new reference on every provider render, so context reports a change to every consumer — and `React.memo` cannot block context-driven re-renders; memoize the value: `useMemo(() => ({ theme, setTheme }), [theme])`",
+            "`setTheme` gets a new identity each render, so wrapping it in `useCallback` alone would stabilize the value object",
+            "Consumers must be wrapped in `useMemo` in addition to `React.memo` before they can skip context updates",
+            "A provider re-render always re-renders every consumer regardless of the value; splitting into multiple contexts is the only mitigation"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Context propagation runs on its own track: a consumer re-renders whenever the provider's `value` fails `Object.is` against the previous one, and `React.memo` (which guards *props*) has no say in it. An object literal in the provider's JSX fails that check on every render, so every consumer wakes up even when `theme` is unchanged. Memoizing the value object with `useMemo` restores a stable reference between actual theme changes.",
+          "optionExplanations": [
+            "Correct — context updates bypass memo entirely, so the only lever is the `value` reference itself; a memoized object makes unrelated parent renders invisible to consumers.",
+            "The `setTheme` returned by `useState` is already stable across renders — the fresh *wrapper object* is the culprit, and `useCallback` on a stable function changes nothing.",
+            "`useMemo` memoizes computed values inside a component; it isn't a component wrapper and has no role in whether a consumer responds to context.",
+            "Consumers re-render on value *change* (`Object.is`), not on every provider render — with a memoized value they correctly skip. Context splitting is a real optimization for unrelated values, but it's not the only or primary fix here."
+          ],
+          "interviewTip": "State the exception crisply: '`React.memo` guards props, not context — a context consumer re-renders whenever the provider value fails `Object.is`, so provider values must be memoized like any other non-primitive.'"
         }
       ]
     }

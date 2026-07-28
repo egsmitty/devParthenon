@@ -48,6 +48,44 @@
             "A mega-repo of course clones dilutes the one strong project into noise; consolidation doesn't add engineering signal."
           ],
           "interviewTip": "Steer the reviewer toward the project you can talk about for twenty minutes. One app you know cold beats a dozen you'd have to re-read to discuss."
+        },
+        {
+          "id": "c1-c",
+          "question": "You have a deployed recipe-manager app — CRUD, login, Postgres — and exactly two weeks before you start applying. Which use of that time most improves your odds of getting interviews?",
+          "options": [
+            "Start a second project in a different domain — a chat app — so the portfolio shows range",
+            "Port the recipe app to a trendier framework to demonstrate adaptability",
+            "Add one genuinely hard feature to the existing app — full-text ingredient search, or image uploads with server-side processing — and document the design decisions in the README",
+            "Polish the visual design and add page-transition animations, since first impressions decide screening"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The CRUD-plus-auth baseline is already proven; what the portfolio lacks is the hard feature that generates interview conversation. Two weeks spent deep on one real capability — and writing down why you built it that way — compounds into material you control in the room. A second shallow app or a framework port adds surface area without adding a single defensible decision.",
+          "optionExplanations": [
+            "A second half-finished app splits the two weeks into two shallow halves — neither will be deep enough to carry a twenty-minute conversation.",
+            "A framework port produces the same feature set with new syntax; it demonstrates churn, not decisions.",
+            "Correct — the hard feature is what interviewers ask about, and documenting the decisions turns it into a talking point you scripted in advance.",
+            "Visual polish helps at the margin but doesn't survive 'what was hard about this?' — animations aren't engineering signal in a developer screen."
+          ],
+          "interviewTip": "Pick the feature that forces a real design decision — pagination vs infinite scroll, sync processing vs a job queue. Decisions are what you'll be asked to defend; features are just the occasion for them."
+        },
+        {
+          "id": "c1-d",
+          "question": "Two hours before you publish your portfolio project, you have time to rewrite the README once. Which structure earns the most from a hiring manager's 30-second skim?",
+          "options": [
+            "A complete dependency list with step-by-step local install instructions for every platform",
+            "A screenshot gallery, CI badges, and a bulleted feature list",
+            "A single line linking to the live site, letting the deployed app speak for itself",
+            "The problem it solves, the stack with reasons for each choice, a small architecture sketch, the tradeoffs you accepted, and what you'd build next"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "A README structured as a case study — problem, reasoned stack, architecture, tradeoffs, next steps — answers exactly the questions a reviewer is silently asking, and every section becomes an interview prompt you've already rehearsed. Install instructions and badges describe plumbing every project has; a bare link proves the app runs but discards your one chance to narrate the reasoning.",
+          "optionExplanations": [
+            "Dependency lists and install steps answer no question a reviewer is asking in a screening pass — they describe plumbing, not judgment.",
+            "Screenshots and badges show that the project exists, not why it's built the way it is; the skim ends without a single decision on display.",
+            "The live app proves it runs but can't explain anything — you've thrown away the document that interviews for you in absentia.",
+            "Correct — problem, reasoned stack, architecture, tradeoffs, next steps: a case study that doubles as an interview script you wrote for yourself."
+          ],
+          "interviewTip": "Draft the tradeoffs section first. If you can't name a tradeoff you consciously made, the project hasn't forced enough decisions to discuss yet — go make one."
         }
       ]
     },
@@ -96,6 +134,44 @@
             "Correct — recognize the row is truly gone, keep it removed (idempotent reconcile), and message 'already deleted' instead of a false error or a phantom rollback."
           ],
           "interviewTip": "When asked about a failure response, first ask 'does this status actually mean my goal failed?' A `409` on a delete often means you already won — treat it accordingly instead of reflexively rolling back."
+        },
+        {
+          "id": "c2-c",
+          "question": "Mid-walkthrough of a checkout form, the interviewer asks: 'the user double-clicks Place Order and two `POST` requests fire — what should the client and the server each be doing?' What's the strongest answer?",
+          "options": [
+            "Client: disable the button and show a pending state on the first click; server: accept an idempotency key or enforce a uniqueness constraint, so a duplicate `POST` can't create a second order even when one slips through",
+            "Debounce the click handler by 300ms — that window is long enough to absorb any double-click",
+            "Duplicate prevention is purely the client's job; a well-built frontend makes the second request impossible",
+            "Switch order placement to a `GET` request, since browsers de-duplicate identical GETs automatically"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "This is a defense-in-depth question wearing a UI costume. Disabling the button fixes the common case and gives the user feedback, but network retries, back-button resubmits, and non-browser clients all get past the frontend — so the server must be the layer that guarantees at-most-one order. Naming both halves, and the mechanism (idempotency key or uniqueness constraint), is what the interviewer is fishing for.",
+          "optionExplanations": [
+            "Correct — disable-plus-pending handles the UX, but only server-side idempotency guarantees one order when a duplicate arrives anyway.",
+            "A debounce narrows the window without closing it — automatic retries, resubmits, and slow networks all sail past 300ms.",
+            "The client can be bypassed entirely (curl, flaky-connection retries, a second tab); a server that trusts the client to send each request exactly once will eventually double-charge someone.",
+            "GETs aren't reliably de-duplicated the way this hopes, and using a read verb for a purchase breaks HTTP semantics — caches and prefetchers could start placing orders for you."
+          ],
+          "interviewTip": "Whenever money or side effects are in the flow, say the word 'idempotency' unprompted — it signals you know the client can never be trusted to send each request exactly once."
+        },
+        {
+          "id": "c2-d",
+          "question": "Narrating the form flow, you mention validating the email field in React before the request is sent. The interviewer pushes back: 'then why validate it again on the server?' What's the strongest answer?",
+          "options": [
+            "You shouldn't — duplicating validation violates DRY; pick one side and keep the logic there",
+            "Client validation is a UX courtesy that anyone can bypass — the API can be hit directly with `curl` or a modified client — so the server must re-validate as the actual integrity and security boundary",
+            "Server validation is mainly a fallback for older browsers where JavaScript might be disabled",
+            "Validating twice roughly halves the odds that a malformed value slips through either check"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The two validations serve different masters: the client check exists for instant feedback and a smooth experience, while the server check exists because it's the only layer an attacker — or any non-browser HTTP client — cannot simply skip. Framing it as a trust boundary, rather than duplication, is what distinguishes a systems answer from a syntax answer.",
+          "optionExplanations": [
+            "DRY governs code duplication, not trust boundaries — the two checks serve different purposes (UX vs integrity) and can't be consolidated onto one side.",
+            "Correct — the client validates for user experience; the server validates because nothing before the request arrives can be trusted.",
+            "Disabled-JS browsers are a historical footnote; the real issue is that any HTTP client can address your API without ever loading your React code.",
+            "This treats validation as probabilistic — but a bypassed client check contributes exactly zero, and the server check alone must be sufficient on its own."
+          ],
+          "interviewTip": "Frame it as a boundary, in one sentence: everything before the request leaves the browser is UX; everything after it arrives is security. Interviewers listen for exactly that line."
         }
       ]
     },
@@ -144,6 +220,44 @@
             "Swapping the library is changing something before you've localized the fault — and it may not even be the library's fault."
           ],
           "interviewTip": "With flaky or intermittent bugs, say 'my first goal is a reliable reproduction' — then hunt the variable that splits failing from passing cases. Interviewers score that instinct heavily."
+        },
+        {
+          "id": "c3-c",
+          "question": "In a debugging round, a feature works flawlessly on the laptop in front of you but returns a `500` from the deployed environment — same code, same commit. What's the strongest FIRST move?",
+          "options": [
+            "Redeploy with verbose logging sprinkled through the whole request path and wait for the error to recur",
+            "Diff the codebase against the last known-good release to spot the breaking change",
+            "Copy production data down to your machine, since an environment-only bug must be data-dependent",
+            "Pull the actual error from the production logs — the stack trace localizes the failing layer immediately — then enumerate what differs between the two environments: env vars, database, runtime versions, secrets"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The failure is happening right now and its stack trace is already written down — reading it costs nothing and instantly collapses the search space to one layer. Since the code is identical in both environments, the bug lives in the differences between them, so the follow-up move is to enumerate that diff (config, secrets, versions, data) rather than to theorize about any single cause.",
+          "optionExplanations": [
+            "Blanket logging changes many things at once and defers diagnosis to a future recurrence — when the current failure is reproducible on demand and already logged.",
+            "The code is identical in both environments by construction — diffing it searches the one place the difference cannot be.",
+            "Data is one hypothesis among several (env vars, service versions, missing secrets); copying production data down is an expensive commitment to an unverified guess.",
+            "Correct — read the error that already exists, then bisect across the environment diff; smallest step, maximum information."
+          ],
+          "interviewTip": "'Works on my machine' bugs are environment diffs by definition. Say out loud that you're enumerating what differs — config, secrets, versions, data — because that list *is* the search space."
+        },
+        {
+          "id": "c3-d",
+          "question": "A dashboard that rendered fine last week now crashes on load, and `git log` shows roughly 60 commits have landed since. The interviewer hands you the keyboard and asks how you'd find the cause. Strongest answer?",
+          "options": [
+            "Read the 60 commits' diffs newest-first until one looks suspicious",
+            "Revert the whole week, then re-apply commits one at a time until the crash returns",
+            "`git bisect`: mark last week's commit good and `HEAD` bad, and let binary search converge on the offending commit in about six checkouts",
+            "Set a breakpoint at the crash site and step through — once you can see the broken state, the culprit commit doesn't matter"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Sixty commits is about six bisect steps — `git bisect` is the literal binary search the debugging round is designed to reward, cutting the suspect range in half with each checkout while you run the same repro check. The linear alternatives cost an order of magnitude more effort, and skipping the history entirely throws away the diff, the intent, and usually the fix.",
+          "optionExplanations": [
+            "Linear reading is O(n) with human error stacked on top — sixty diffs deep, 'looks suspicious' is a far worse filter than an automated repro check.",
+            "Re-applying one commit at a time is O(n) builds and rewrites history to get there; bisect reaches the same answer in six steps without touching it.",
+            "Correct — bisect is binary search over history: ~6 checkouts isolate one commit out of 60, and the commit hands you diff, intent, and often the fix.",
+            "The breakpoint shows the broken state but not which change introduced it — and knowing the commit gives you the author's intent and a minimal diff to reason about."
+          ],
+          "interviewTip": "Say the arithmetic out loud — 'sixty commits is about six bisect steps.' Showing you know *why* binary search wins, not merely that the command exists, is the differentiator."
         }
       ]
     },
@@ -192,6 +306,44 @@
             "Correct — size, format, latency tolerance, and frequency determine whether this is a simple endpoint or a whole async pipeline; scope before structure."
           ],
           "interviewTip": "When a brief hides a sync-vs-async fork ('export', 'report', 'notify', 'process'), your first questions should target size and latency — they decide the entire shape of the design."
+        },
+        {
+          "id": "c4-c",
+          "question": "'Design a notification system for our app,' the interviewer says, sliding you a marker. Which opening move scores first?",
+          "options": [
+            "Ask what 'notification' means here: which channels (in-app, email, push)? Triggered by which events? Real-time or batched into digests? Roughly what volume per user per day?",
+            "Sketch a message queue with a fan-out worker pool, since every notification system converges on that shape eventually",
+            "Lock in the push provider first (say, Firebase), because vendor choice is the hardest decision to reverse later",
+            "Start from the data model: a `notifications` table with `user_id`, `type`, and `read_at` columns"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The word 'notification' spans everything from a bell icon reading one table to a multi-channel delivery pipeline with queues, retries, and digest scheduling — designs that differ by an order of magnitude. Channels, triggers, latency tolerance, and volume are precisely the questions that decide which system you should draw, and asking them first is what the rubric explicitly rewards.",
+          "optionExplanations": [
+            "Correct — channels, triggers, latency, and volume separate a `notifications` table with a bell icon from a genuine delivery pipeline; scope decides which one you draw.",
+            "In-app-only at modest volume needs no queue at all — reaching for fan-out workers first is designing for a load nobody has confirmed exists.",
+            "Vendor selection is a late-stage detail, and it's entirely moot if the requirement turns out to be in-app notifications only.",
+            "A plausible table, but whether `read_at` even exists depends on whether notifications are in-app at all — the model follows the requirements, not the other way round."
+          ],
+          "interviewTip": "Words like 'notification', 'feed', and 'search' hide a 10x design fork behind each unanswered question. Count the ambiguities in the brief before you draw anything."
+        },
+        {
+          "id": "c4-d",
+          "question": "You've proposed Postgres as the store for your URL-shortener design, and the interviewer probes: 'why not just Redis for everything, since lookups dominate?' Which reply demonstrates what the round is actually scoring?",
+          "options": [
+            "Concede and redraw the design around Redis — the interviewer has clearly signaled the preferred answer",
+            "Name the tradeoff: Postgres keeps the canonical mapping durable and consistent, and if read load explodes you'd add Redis as a cache in front — while acknowledging what that costs: cache invalidation and a second system to operate",
+            "Defend Postgres as the industry standard that most companies would pick for this workload",
+            "Explain that Redis is in-memory and therefore can never serve as a primary datastore"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Push-back questions test whether your choice had a 'because'. The strong answer keeps the durable store as the source of truth, shows the evolution path (cache in front) rather than a rip-and-replace, and — critically — names the price of its own proposal. Stating what you're giving up is what separates a decision from a preference, and it's the line the rubric is listening for.",
+          "optionExplanations": [
+            "Folding at the first push-back reads as preference, not reasoning — interviewers probe precisely to find out whether the choice was load-bearing.",
+            "Correct — canonical store plus cache-in-front, with the costs named out loud: a decision with a stated price is exactly what's being scored.",
+            "'Industry standard' is an appeal to popularity, not a property of your workload — it names no tradeoff and survives no follow-up question.",
+            "Overstated — Redis has persistence options and some teams do run it as a primary store; absolute claims about tools are easy for an interviewer to puncture."
+          ],
+          "interviewTip": "Every 'why not X?' is an invitation to name what X buys and what it costs. If your answer contains no cost, it's a preference wearing a decision's clothes."
         }
       ]
     },
@@ -240,6 +392,44 @@
             "Reciting a coding philosophy sidesteps the concrete interpersonal story the question explicitly asked for."
           ],
           "interviewTip": "For 'disagreement' questions, make the hero move collaboration under uncertainty, not being proven right. 'We ran a quick spike to settle it with data' beats 'I told them so' every time."
+        },
+        {
+          "id": "c5-c",
+          "question": "'Tell me about a project that failed,' the interviewer asks. Which answer structure lands best?",
+          "options": [
+            "Choose a story where the failure traces cleanly to shifting stakeholder requirements, keeping your own contributions above reproach",
+            "Pick a minor near-miss and reframe it as a success, so the word 'failure' never attaches to you",
+            "Answer honestly that none of your projects have truly failed, since most shipped in some form",
+            "STAR with ownership: the goal, where it went wrong, the part *you* misjudged, what you did once you saw it, and the specific practice you changed afterward — with evidence the lesson stuck"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The failure question is an ownership probe. A strong answer names your own misjudgment specifically, shows what you did the moment you recognized it, and lands on a concretely changed practice — proof the failure purchased something. Stories engineered to keep you blameless, or dodges that deny failure outright, answer a different question than the one asked.",
+          "optionExplanations": [
+            "A story engineered to keep you blameless answers a different question — they asked about failure to see ownership, and you've narrated its absence.",
+            "Interviewers ask this precisely to test candor; a visible dodge suggests the real failures are being hidden, which is worse than any story you could tell.",
+            "'Nothing failed' reads as 'nothing was attempted at the edge of my ability' — and everyone in the room knows that shipping 'in some form' hides plenty.",
+            "Correct — ownership of your specific misjudgment plus a changed practice afterward turns a failure story into evidence of growth."
+          ],
+          "interviewTip": "The failure story's payload is the sentence after the failure: 'since then, I always ___.' Pick a story where that sentence is concrete and verifiably true of how you work today."
+        },
+        {
+          "id": "c5-d",
+          "question": "You leave a real interview having stumbled badly on 'how does database indexing work?' — you rambled, and the interviewer moved on. What do the fastest-improving candidates do that evening?",
+          "options": [
+            "Move on quickly — replaying a missed question only builds anxiety before the next interview",
+            "Email the interviewer a corrected answer to demonstrate follow-through and recover the lost points",
+            "Log the exact question while it's fresh, then turn it into a drill: study indexing properly, write the 90-second answer you wish you'd given, and rehearse it aloud until it's a prepared story",
+            "Conclude that indexing questions are niche trivia and reallocate prep time toward more common topics"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The candidates who improve fastest treat interviews as instrumented test runs of themselves: every stumble is a captured failure case, and each one gets converted into a drill and a rehearsed answer before the next run. The stumble already cost you the question — reviewing it that evening is how you collect what the failure paid for.",
+          "optionExplanations": [
+            "Unexamined stumbles repeat; one uncomfortable evening of review is the tuition, and skipping it forfeits a lesson you already paid for.",
+            "A follow-up email rarely changes the evaluation and isn't the point — the durable win is closing the gap before the next interviewer finds it.",
+            "Correct — capture the failure, build the drill, rehearse aloud: the interview becomes a test run whose failures you convert into prepared strengths.",
+            "A question asked once will be asked again — interviews sample from a shared canon, and 'niche trivia' usually means 'fundamentals I haven't drilled yet'."
+          ],
+          "interviewTip": "Keep a running 'questions I fumbled' file and rehearse the answers out loud, not in your head — the gap between knowing and articulating is exactly what interviews measure."
         }
       ]
     }
