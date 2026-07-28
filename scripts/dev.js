@@ -16,21 +16,17 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
-const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 
+// shell:true so npm/npx resolve on Windows — Node blocks direct .cmd spawns.
 console.log("[dev] initial build...");
-const build = spawnSync(
-  process.platform === "win32" ? "npm.cmd" : "npm",
-  ["run", "build"],
-  { cwd: root, stdio: "inherit", shell: false }
-);
+const build = spawnSync("npm run build", { cwd: root, stdio: "inherit", shell: true });
 if (build.status !== 0) process.exit(build.status ?? 1);
 
 const children = [];
 function watchTsc(project, label) {
-  const child = spawn(npx, ["tsc", "-w", "--preserveWatchOutput", "-p", project], {
+  const child = spawn(`npx tsc -w --preserveWatchOutput -p ${project}`, {
     cwd: root,
-    shell: false,
+    shell: true,
   });
   child.stdout.on("data", (d) => {
     const line = d.toString().trim();
@@ -64,10 +60,10 @@ fs.watch(srcRenderer, (_event, file) => {
 });
 
 console.log("[dev] launching Electron (--dev: DevTools + auto-reload on dist changes)");
-const electron = spawn(npx, ["electron", ".", "--dev"], {
+const electron = spawn("npx electron . --dev", {
   cwd: root,
   stdio: "inherit",
-  shell: false,
+  shell: true,
 });
 
 electron.on("exit", (code) => {

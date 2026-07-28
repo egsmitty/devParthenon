@@ -4,6 +4,10 @@ A gamified, offline Windows desktop app that takes a developer from web
 foundations to interview-ready full-stack mastery — visualized as a Greek
 Parthenon temple you build stone by stone.
 
+> **Working on this project?** Start with [`CLAUDE.md`](CLAUDE.md) (guardrails,
+> architecture, the gate, gotchas), then [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md)
+> (current features + backlog). Run `npm run verify` before every commit.
+
 - **The steps (stylobate)** — Web basics: client/server, HTTP, status codes, DNS, the DOM.
 - **Six pillars** — React · Next.js · Node/APIs · Databases/ORMs · Tailwind/CSS · Git/Testing/CI-CD.
 - **The pediment** — Capstone portfolio strategy and mock technical interviews. Stays an uncarved outline until all six pillars stand.

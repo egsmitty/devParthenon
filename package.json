@@ -13,6 +13,7 @@
     "start": "electron .",
     "launch": "npm run build && electron .",
     "test": "npm run build && node --test tests/",
+    "verify": "node scripts/verify.js",
     "audit:ux": "npm run build && node scripts/audit-ux.js",
     "dist:win": "npm run build && npm run generate-icon && electron-builder --win"
   },
