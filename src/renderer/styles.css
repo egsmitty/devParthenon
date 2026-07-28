@@ -2007,3 +2007,13 @@ html[data-motion="reduce"] .burst-spark { display: none; }
   padding-top: 14px;
   border-top: 1px solid rgba(181, 131, 51, 0.2);
 }
+
+/* Codex statues breathe with a gentle idle float. */
+.statue-niche:nth-child(odd) .statue { animation: statue-float 6s ease-in-out infinite; }
+.statue-niche:nth-child(even) .statue { animation: statue-float 6s ease-in-out infinite; animation-delay: -3s; }
+@keyframes statue-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@media (prefers-reduced-motion: reduce) { .statue { animation: none !important; } }
+html[data-motion="reduce"] .statue { animation: none !important; }

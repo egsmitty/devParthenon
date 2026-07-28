@@ -545,11 +545,25 @@ const STATUE_MUSE = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
   <path d="M56 46 C 60 36 78 36 82 46" fill="none" stroke="#e6c063" stroke-width="2.2"/>
 </svg>`;
 
+/** Poseidon — bearded, robed, three-pronged trident. */
+const STATUE_POSEIDON = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <line x1="36" y1="20" x2="36" y2="230" stroke="#cfc7b0" stroke-width="2.6"/>
+  <path d="M28 26 v-10 M36 22 v-14 M44 26 v-10 M28 16 h16" fill="none" stroke="#e6c063" stroke-width="2.4"/>
+  <path d="M70 72 C 55 74 51 94 52 112 L 44 234 L 96 234 L 88 112 C 89 94 85 74 70 72 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 104 L 54 230"/><path d="M70 106 L 70 232"/><path d="M80 104 L 86 230"/></g>
+  <path d="M86 88 C 98 94 102 118 98 138 C 96 146 91 145 90 138 C 92 118 84 98 78 92 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="15" fill="url(#mb)"/>
+  <circle cx="70" cy="47" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M58 54 C 60 68 80 68 82 54 C 80 62 60 62 58 54 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.6"/>
+  <path d="M56 40 C 60 30 80 30 84 40" fill="none" stroke="#b3ab95" stroke-width="2"/>
+</svg>`;
+
 const GALLERY = [
   { art: STATUE_ATHENA, name: "Athena", epithet: "Wisdom & Craft" },
   { art: STATUE_MUSE, name: "Mnemosyne", epithet: "Memory" },
   { art: STATUE_BUST, name: "Sophos", epithet: "The Scholar" },
-  { art: STATUE_ATHENA, name: "Nike", epithet: "Victory" },
+  { art: STATUE_POSEIDON, name: "Poseidon", epithet: "Depths & Flow" },
 ];
 
 function renderStatues(): void {
