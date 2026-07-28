@@ -191,5 +191,29 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
       go(-1);
       break;
+    case "Tab":
+      trapTab(e);
+      break;
   }
 });
+
+/** Keep Tab focus inside the panel — it sits over the still-open Codex. */
+function trapTab(e: KeyboardEvent): void {
+  const panel = fcRoot().querySelector<HTMLElement>(".fc-panel");
+  if (!panel) return;
+  const focusables = Array.from(
+    panel.querySelectorAll<HTMLElement>("button:not([disabled])")
+  ).filter((el) => el.offsetParent !== null);
+  if (focusables.length === 0) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  const inside = active !== null && panel.contains(active);
+  if (e.shiftKey && (!inside || active === first)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (!inside || active === last)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
