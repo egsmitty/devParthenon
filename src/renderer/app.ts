@@ -144,13 +144,21 @@ function nodeGroup(node: ModuleNode): SVGGElement {
     g.style.cursor = "pointer";
     activate(() => launchModule(node, "practice"));
   } else if (node.status === "locked") {
-    // Locked feedback: brief shake, no open.
+    // Locked feedback: brief shake + a toast naming what's still needed.
     g.addEventListener("click", () => {
       g.classList.remove("shake");
       // Force a reflow so re-clicking replays the animation.
       void (g as unknown as HTMLElement).getBoundingClientRect();
       g.classList.add("shake");
       setTimeout(() => g.classList.remove("shake"), 450);
+      const missing = node.prerequisites
+        .filter((id) => progress.nodes[id]?.status !== "completed")
+        .map((id) => progress.nodes[id]?.title ?? id);
+      showToast(
+        missing.length
+          ? `Sealed — first complete: ${missing.join(" · ")}`
+          : "Sealed."
+      );
     });
   }
   return g;
@@ -182,6 +190,20 @@ function ironwork(cx: number, cy: number, span: number): SVGGElement {
     class: "ironwork", "stroke-width": 1.4,
   }));
   g.appendChild(el("circle", { cx, cy: cy + 7, r: 2, fill: "#1c202b", stroke: "none" }));
+  return g;
+}
+
+/** Torch sconce: stone bowl + flickering gold flame flanking the pediment. */
+function torch(cx: number, cy: number): SVGGElement {
+  const g = el("g");
+  g.appendChild(el("rect", {
+    x: cx - 6, y: cy, width: 12, height: 7, rx: 2,
+    fill: "url(#grad-stone)", stroke: "#39404f", "stroke-width": 1,
+  }));
+  g.appendChild(el("path", {
+    d: `M ${cx} ${cy - 16} C ${cx + 6} ${cy - 9} ${cx + 5} ${cy - 4} ${cx} ${cy + 1} C ${cx - 5} ${cy - 4} ${cx - 6} ${cx > 500 ? cy - 9 : cy - 9} ${cx} ${cy - 16} Z`,
+    fill: "url(#grad-gold)", class: "flame",
+  }));
   return g;
 }
 
@@ -232,6 +254,10 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   if (pediment.status === "locked") pg.appendChild(ironwork(500, 88, 120));
   else if (pediment.status === "completed") pg.appendChild(seal(500, 95, pediment.score));
   svg.appendChild(pg);
+
+  // Torch sconces flanking the temple front.
+  svg.appendChild(torch(116, 160));
+  svg.appendChild(torch(884, 160));
 
   /* --- Entablature: architrave + triglyph frieze (static masonry) --- */
   const ent = el("g");
@@ -423,6 +449,34 @@ function renderGlossary(filter: string): void {
     .join("");
 }
 
+/* ---------------- Toast & parallax ---------------- */
+
+let toastTimer: number | undefined;
+
+function showToast(message: string): void {
+  const toast = document.getElementById("toast")!;
+  toast.textContent = message;
+  toast.classList.add("show");
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2600);
+}
+
+/** Subtle pointer parallax on the atmosphere layer (rAF-throttled). */
+function wireParallax(): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const atmo = document.getElementById("atmosphere")!;
+  let raf = 0;
+  document.addEventListener("mousemove", (e) => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const dx = (e.clientX / window.innerWidth - 0.5) * 10;
+      const dy = (e.clientY / window.innerHeight - 0.5) * 6;
+      atmo.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+    });
+  });
+}
+
 /* ---------------- Chrome wiring ---------------- */
 
 function wireTitlebar(): void {
@@ -507,6 +561,7 @@ async function init(): Promise<void> {
   wireTitlebar();
   wireReset();
   wireReview();
+  wireParallax();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
   renderGlossary("");
