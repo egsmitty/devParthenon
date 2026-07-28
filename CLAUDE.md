@@ -16,10 +16,13 @@ inventory + backlog), [`docs/MASTER_PROMPT.md`](docs/MASTER_PROMPT.md)
   loop, smoke hooks, window-state), `store.ts` (progress + attempt persistence
   + progression rules — **Electron-free, unit-tested**), `review.ts` (spaced-
   repetition scheduler — also Electron-free/tested), `preload.ts` (contextBridge).
-- `src/renderer/` — `app.ts` (temple SVG + codex), `modal.ts` (quiz/redemption/
-  practice/gauntlet/review flows + keyboard), `variants.ts` (variant-pool
-  selection — pure/tested), `styles.css`, `fonts.css` + `fonts/` (bundled
-  Cinzel), `index.html`.
+- `src/renderer/` — `app.ts` (temple SVG, codex, wiring), `modal.ts` (quiz/
+  redemption/practice/gauntlet/review flows + keyboard + answer badges),
+  `variants.ts` (variant-pool selection — pure/tested), `settings.ts`
+  (settings state + panel), `welcome.ts`, `chronicle.ts`, `help.ts`,
+  `sound.ts` (Web-Audio cues), `styles.css`, `fonts.css` + `fonts/` (bundled
+  Cinzel), `index.html`. Overlays follow one pattern: an `#x-root` div, an
+  open/close pair, backdrop+Esc close, focus management.
 - `src/types/schema.ts` — the shared contracts. Start here to understand data.
 - `data/` — `progress.json` (v2 template), `glossary.json`, `quizzes/*.json`
   (8 modules, 41 sections, 4 variants each = 164 questions).
