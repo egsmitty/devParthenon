@@ -13,8 +13,14 @@ import type {
   NodeStatus,
   ParthenonApi,
   ProgressData,
+  QuizModule,
 } from "../types/schema.js";
-import { escapeHtml, openModule, openReviewDrill } from "./modal.js";
+import {
+  escapeHtml,
+  ModuleMode,
+  openModule,
+  openReviewDrill,
+} from "./modal.js";
 
 declare global {
   interface Window {
@@ -406,11 +412,41 @@ function renderStats(): void {
     (avg === null ? "" : `<span class="stat">Mastery <b>${avg}%</b></span>`);
 }
 
+/**
+ * The pediment's graded attempt is the Capstone Gauntlet: its own mock-
+ * interview sections plus two randomly sampled sections from every pillar,
+ * shuffled into one timed exam. Practice on a completed pediment replays
+ * just the capstone module normally.
+ */
+async function buildGauntlet(node: ModuleNode): Promise<QuizModule> {
+  const capstone = await api.getQuiz(node.quizFile);
+  const sections = [...capstone.sections];
+  for (const p of PILLAR_ORDER) {
+    const pillarQuiz = await api.getQuiz(progress.nodes[p.id].quizFile);
+    const pool = [...pillarQuiz.sections];
+    for (let k = 0; k < 2 && pool.length > 0; k++) {
+      const i = Math.floor(Math.random() * pool.length);
+      sections.push(pool.splice(i, 1)[0]);
+    }
+  }
+  for (let i = sections.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [sections[i], sections[j]] = [sections[j], sections[i]];
+  }
+  return {
+    id: "gauntlet",
+    title: "The Pediment — Capstone Gauntlet",
+    passThreshold: capstone.passThreshold,
+    sections,
+  };
+}
+
 async function launchModule(
   node: ModuleNode,
-  mode: "graded" | "practice" = "graded"
+  mode: ModuleMode = "graded"
 ): Promise<void> {
-  const quiz = await api.getQuiz(node.quizFile);
+  const gauntlet = node.id === "pediment" && mode === "graded";
+  const quiz = gauntlet ? await buildGauntlet(node) : await api.getQuiz(node.quizFile);
   openModule(
     node,
     quiz,
@@ -420,7 +456,7 @@ async function launchModule(
       renderTemple();
     },
     undefined,
-    mode
+    gauntlet ? "gauntlet" : mode
   );
 }
 

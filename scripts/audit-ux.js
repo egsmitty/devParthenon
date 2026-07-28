@@ -240,6 +240,41 @@ async function main() {
     await app.close();
   }
 
+  /* ---- Scenario 6: the Capstone Gauntlet (pediment unlocked) ---- */
+  {
+    const dir = path.join(tmpRoot, "gauntlet");
+    seed(dir, (d) => {
+      for (const id of Object.keys(d.nodes)) {
+        if (id !== "pediment") {
+          d.nodes[id].status = "completed";
+          d.nodes[id].score = 0.9;
+        }
+      }
+      d.nodes["pediment"].status = "unlocked";
+      d.foundationCompleted = true;
+      d.unlockedPillars = Object.keys(d.nodes).filter((k) => k.startsWith("pillar-"));
+    });
+    const { app, page } = await launch(dir);
+    await clickNode(page, "pediment");
+    // The gauntlet: shuffled cross-pillar exam with a countdown, no lessons.
+    const heading = await page.locator(".modal-card h2").textContent();
+    if (!/Gauntlet/i.test(heading || "")) {
+      throw new Error(`expected gauntlet title, got: ${heading}`);
+    }
+    await page.waitForSelector("#gauntlet-timer");
+    const lessons = await page.locator(".lesson-paragraph").count();
+    if (lessons !== 0) throw new Error("gauntlet must not show lesson paragraphs");
+    const sectionCount = await page
+      .locator(".modal-progress")
+      .textContent()
+      .then((t) => Number(/of (\d+)/.exec(t || "")?.[1]));
+    if (sectionCount !== 17) {
+      throw new Error(`expected 17 gauntlet questions (5 capstone + 12 pillar), got ${sectionCount}`);
+    }
+    await shot(page, "17-capstone-gauntlet", "Timed cross-pillar Capstone Gauntlet (17 questions, countdown running)");
+    await app.close();
+  }
+
   fs.writeFileSync(
     path.join(outDir, "manifest.json"),
     JSON.stringify({ generatedFrom: "scripts/audit-ux.js", shots: manifest }, null, 2)

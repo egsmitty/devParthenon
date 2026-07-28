@@ -38,8 +38,13 @@ export const REDEMPTION_CAP = 0.15;
  * "graded" is the real, unlock-affecting attempt. "practice" re-runs a
  * completed module with random variants for drilling — it feeds the
  * spaced-repetition scheduler but never touches score or unlock state.
+ * "gauntlet" is the pediment's mock interview: graded stakes, shuffled
+ * random variants, a countdown, no lesson paragraphs, not resumable.
  */
-export type ModuleMode = "graded" | "practice";
+export type ModuleMode = "graded" | "practice" | "gauntlet";
+
+/** Mock-interview pacing: seconds allotted per gauntlet question. */
+export const GAUNTLET_SECONDS_PER_QUESTION = 40;
 
 export function escapeHtml(s: string): string {
   return s
@@ -66,6 +71,11 @@ interface ModalState {
   redeemQueue: number[];
   /** Uncapped points earned back so far in redemption. */
   redeemPoints: number;
+  /** Variant id actually shown per section (redemption must avoid repeats). */
+  shownIds: Record<number, string>;
+  /** Gauntlet countdown state. */
+  deadline?: number;
+  timerId?: number;
 }
 
 let state: ModalState | null = null;
@@ -79,6 +89,9 @@ function root(): HTMLElement {
 /** Record one answered check for the spaced-repetition scheduler. */
 function recordResult(sectionIndex: number, correct: boolean): void {
   if (!state) return;
+  // Gauntlet sections are sampled across modules, so indices don't map to
+  // the pediment's own sections — an exam, not tracked drilling. Skip.
+  if (state.mode === "gauntlet") return;
   void apiRef
     .recordSectionResult(state.node.id, sectionIndex, correct)
     .catch((err) => console.warn("section-stat record failed:", err));
@@ -101,16 +114,65 @@ export function openModule(
     missed: resumeFrom?.missed ?? [],
     redeemQueue: resumeFrom?.redeemQueue ?? [],
     redeemPoints: resumeFrom?.redeemPoints ?? 0,
+    shownIds: {},
   };
   apiRef = api;
   onDoneRef = onDone;
   root().hidden = false;
+  if (mode === "gauntlet") startGauntletClock();
   if (resumeFrom?.phase === "redeem") {
     if (state.redeemQueue.length > 0) renderRedeem();
     else renderRedemptionIntro();
   } else {
     renderLesson();
   }
+}
+
+/* ---------------- Gauntlet countdown ---------------- */
+
+function startGauntletClock(): void {
+  if (!state) return;
+  state.deadline =
+    Date.now() + state.quiz.sections.length * GAUNTLET_SECONDS_PER_QUESTION * 1000;
+  state.timerId = window.setInterval(() => {
+    if (!state?.deadline) return;
+    const left = state.deadline - Date.now();
+    if (left <= 0) {
+      expireGauntlet();
+      return;
+    }
+    const chip = document.getElementById("gauntlet-timer");
+    if (chip) {
+      const m = Math.floor(left / 60000);
+      const s = Math.floor((left % 60000) / 1000);
+      chip.textContent = `${m}:${String(s).padStart(2, "0")}`;
+      chip.classList.toggle("urgent", left < 60000);
+    }
+  }, 500);
+}
+
+function stopGauntletClock(): void {
+  if (state?.timerId) {
+    window.clearInterval(state.timerId);
+    state.timerId = undefined;
+  }
+}
+
+/** Time called: every unanswered question counts as missed; straight to results. */
+function expireGauntlet(): void {
+  if (!state) return;
+  stopGauntletClock();
+  for (let i = state.sectionIndex; i < state.quiz.sections.length; i++) {
+    if (!state.missed.includes(i)) state.missed.push(i);
+  }
+  state.sectionIndex = state.quiz.sections.length - 1;
+  afterLessons();
+}
+
+function timerChip(): string {
+  return state?.mode === "gauntlet"
+    ? ` &middot; <span id="gauntlet-timer" class="gauntlet-timer"></span>`
+    : "";
 }
 
 /**
@@ -133,6 +195,7 @@ function persistAttempt(phase: ActiveAttempt["phase"]): void {
 }
 
 function closeModal(): void {
+  stopGauntletClock();
   state = null;
   const r = root();
   r.hidden = true;
@@ -293,26 +356,37 @@ function renderLesson(): void {
   if (!state) return;
   const { quiz, sectionIndex, mode } = state;
   const section = quiz.sections[sectionIndex];
-  // Practice rotates through the variant bank at random; graded pins the
-  // canonical Test A so the unlock bar is identical for everyone.
+  // Practice and the gauntlet rotate through the variant bank at random;
+  // graded pins the canonical Test A so the unlock bar is identical for all.
   const q =
+    mode === "graded"
+      ? pickVariant(section, { mode: "graded" })
+      : pickVariant(section, { mode: "practice" });
+  state.shownIds[sectionIndex] = q.id;
+
+  // The gauntlet is an exam: no teaching text, just concept + question.
+  const paragraphs =
+    mode === "gauntlet"
+      ? ""
+      : section.paragraphs
+          .slice(0, 3) // hard cap: the chunked-feeding law
+          .map((p) => `<p class="lesson-paragraph">${rich(p)}</p>`)
+          .join("");
+
+  const tag =
     mode === "practice"
-      ? pickVariant(section, { mode: "practice" })
-      : pickVariant(section, { mode: "graded" });
-
-  const paragraphs = section.paragraphs
-    .slice(0, 3) // hard cap: the chunked-feeding law
-    .map((p) => `<p class="lesson-paragraph">${rich(p)}</p>`)
-    .join("");
-
-  const tag = mode === "practice" ? " &middot; <em>practice</em>" : "";
+      ? " &middot; <em>practice</em>"
+      : mode === "gauntlet"
+        ? " &middot; <em>gauntlet</em>"
+        : "";
+  const label = mode === "gauntlet" ? "Interview question" : "Interactive check";
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
     <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
-      &middot; ${state.correct} correct so far${tag}</div>
+      &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
     <h3 class="lesson-heading">${rich(section.heading)}</h3>
     ${paragraphs}
-    <div class="check-label">Interactive check</div>
+    <div class="check-label">${label}</div>
     <div class="question-text">${rich(q.question)}</div>
     <div class="options">${optionsMarkup(q.options)}</div>
     <div class="feedback-slot"></div>
@@ -344,6 +418,7 @@ function renderLesson(): void {
 
 function afterLessons(): void {
   if (!state) return;
+  stopGauntletClock();
   const total = state.quiz.sections.length;
   const base = state.correct / total;
   const threshold = state.quiz.passThreshold;
@@ -434,10 +509,12 @@ function renderRedeem(): void {
   // Redemption re-tests the concept with a variant the learner has NOT seen
   // this attempt — never the graded question they could have memorized.
   const section = quiz.sections[idx];
-  const gradedId = sectionVariants(section)[0]?.id ?? "";
+  // Avoid whichever variant was actually shown this attempt (graded runs pin
+  // variants[0]; the gauntlet shows a random one).
+  const shownId = state.shownIds[idx] ?? sectionVariants(section)[0]?.id ?? "";
   const q = pickVariant(section, {
     mode: "redeem",
-    usedIds: new Set([gradedId]),
+    usedIds: new Set([shownId]),
   });
   const remaining = state.redeemQueue.length;
   const cap = Math.round(REDEMPTION_CAP * 100);

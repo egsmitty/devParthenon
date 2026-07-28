@@ -661,6 +661,15 @@ text.score-badge {
   border-bottom: 1px solid rgba(181, 131, 51, 0.25);
 }
 
+.gauntlet-timer {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+}
+
+.gauntlet-timer.urgent { color: var(--ember); }
+
 .lesson-heading {
   font-family: "Cinzel", serif;
   font-size: 0.95rem;
