@@ -4,12 +4,24 @@
   <meta charset="UTF-8" />
   <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self';"
   />
   <title>Dev Parthenon</title>
+  <link rel="stylesheet" href="./fonts.css" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <!-- Ambient atmosphere: light beams, drifting motes, vignette -->
+  <div id="atmosphere" aria-hidden="true">
+    <div class="beam beam-1"></div>
+    <div class="beam beam-2"></div>
+    <span class="mote"></span><span class="mote"></span><span class="mote"></span>
+    <span class="mote"></span><span class="mote"></span><span class="mote"></span>
+    <span class="mote"></span><span class="mote"></span><span class="mote"></span>
+    <span class="mote"></span><span class="mote"></span><span class="mote"></span>
+    <div class="vignette"></div>
+  </div>
+
   <div id="titlebar">
     <div class="titlebar-drag">
       <span class="titlebar-mark">&#9650;</span>
@@ -29,7 +41,7 @@
   </div>
 
   <div id="layout">
-    <main id="temple-pane">
+    <main id="temple-pane" class="carved-panel">
       <header id="temple-header">
         <h1>Dev Parthenon</h1>
         <p id="temple-subtitle">
@@ -44,7 +56,7 @@
       </footer>
     </main>
 
-    <aside id="glossary-pane">
+    <aside id="glossary-pane" class="carved-panel">
       <h2>Jargon Glossary</h2>
       <input
         id="glossary-search"

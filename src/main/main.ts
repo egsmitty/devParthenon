@@ -20,7 +20,13 @@ const isDev = process.argv.includes("--dev");
 
 // Spec: saves live in %APPDATA%/DevParthenon (no space), so pin the
 // user-data path explicitly instead of relying on productName.
-app.setPath("userData", path.join(app.getPath("appData"), "DevParthenon"));
+// PARTHENON_USERDATA overrides it for tests/audits so harnesses can run
+// against a throwaway save without ever touching the learner's real one.
+app.setPath(
+  "userData",
+  process.env.PARTHENON_USERDATA ??
+    path.join(app.getPath("appData"), "DevParthenon")
+);
 
 // app.getAppPath() resolves to the project root in dev and to the packaged
 // app root (inside the asar) in production, so data/ resolves in both.
@@ -118,6 +124,17 @@ function createWindow(): void {
         } catch (err) {
           errors++;
           console.error(`[smoke] pass=${pass} check failed:`, err);
+        }
+        // Optional visual capture for UI review: PARTHENON_SHOT=<path.png>
+        const shot = process.env.PARTHENON_SHOT;
+        if (shot && pass === 2 && mainWindow) {
+          try {
+            const image = await mainWindow.webContents.capturePage();
+            fs.writeFileSync(shot, image.toPNG());
+            console.log(`[smoke] screenshot -> ${shot}`);
+          } catch (err) {
+            console.error("[smoke] screenshot failed:", err);
+          }
         }
         if (pass === 1) mainWindow?.webContents.reload();
         else app.exit(errors ? 1 : 0);

@@ -1,6 +1,11 @@
 /**
  * Renderer entry: renders the interactive Parthenon SVG from progress state,
  * drives the glossary sidebar, and wires the custom title bar.
+ *
+ * Visual language (RPG temple skin): weathered dark stone for locked nodes
+ * (with ironwork + shake on click), pulsing gold runes for attemptable ones,
+ * polished marble with gold filigree, a seal medallion and sparks for
+ * completed ones. Gradients/filters live in <defs>; states are CSS classes.
  */
 import type {
   GlossaryEntry,
@@ -24,10 +29,10 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const PILLAR_ORDER = [
   { id: "pillar-react", label: "React" },
   { id: "pillar-nextjs", label: "Next.js" },
-  { id: "pillar-node", label: "Node APIs" },
-  { id: "pillar-databases", label: "Databases" },
+  { id: "pillar-node", label: "Node" },
+  { id: "pillar-databases", label: "Data" },
   { id: "pillar-tailwind", label: "CSS" },
-  { id: "pillar-git", label: "Git · CI" },
+  { id: "pillar-git", label: "Git·CI" },
 ];
 
 let progress: ProgressData;
@@ -42,6 +47,64 @@ function el<K extends keyof SVGElementTagNameMap>(
   const node = document.createElementNS(SVG_NS, tag);
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
   return node;
+}
+
+function gradient(
+  id: string,
+  stops: Array<[number, string]>,
+  vertical = true
+): SVGLinearGradientElement {
+  const g = el("linearGradient", {
+    id,
+    x1: 0,
+    y1: 0,
+    x2: vertical ? 0 : 1,
+    y2: vertical ? 1 : 0,
+  });
+  for (const [offset, color] of stops) {
+    g.appendChild(el("stop", { offset, "stop-color": color }));
+  }
+  return g;
+}
+
+/** feTurbulence grain overlaid on the shape — stone or marble character. */
+function grainFilter(id: string, freq: string, rgba: string): SVGFilterElement {
+  const f = el("filter", { id, x: "-5%", y: "-5%", width: "110%", height: "110%" });
+  f.appendChild(
+    el("feTurbulence", {
+      type: "fractalNoise",
+      baseFrequency: freq,
+      numOctaves: 3,
+      stitchTiles: "stitch",
+      result: "noise",
+    })
+  );
+  f.appendChild(
+    el("feColorMatrix", { in: "noise", type: "matrix", values: rgba, result: "grain" })
+  );
+  f.appendChild(el("feComposite", { in: "grain", in2: "SourceGraphic", operator: "atop", result: "tinted" }));
+  const merge = el("feMerge");
+  merge.appendChild(el("feMergeNode", { in: "SourceGraphic" }));
+  merge.appendChild(el("feMergeNode", { in: "tinted" }));
+  f.appendChild(merge);
+  return f;
+}
+
+function buildDefs(): SVGDefsElement {
+  const defs = el("defs");
+  defs.appendChild(gradient("grad-stone", [[0, "#2b313e"], [0.5, "#1d222d"], [1, "#141821"]]));
+  defs.appendChild(gradient("grad-stone-dark", [[0, "#1d212b"], [1, "#0d1017"]]));
+  defs.appendChild(gradient("grad-stone-warm", [[0, "#2e2a1c"], [0.55, "#211d13"], [1, "#17140c"]]));
+  defs.appendChild(gradient("grad-marble", [[0, "#ffffff"], [0.45, "#efece2"], [0.8, "#d9d3c3"], [1, "#c3bba6"]]));
+  defs.appendChild(gradient("grad-gold", [[0, "#fde68a"], [0.4, "#f59e0b"], [0.7, "#b45309"], [1, "#fcd34d"]]));
+  // Coarse dark grain for weathered stone; long soft veins for marble.
+  defs.appendChild(
+    grainFilter("tex-stone", "0.55", "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.16 0")
+  );
+  defs.appendChild(
+    grainFilter("tex-marble", "0.012 0.06", "0 0 0 0 0.45  0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0.10 0")
+  );
+  return defs;
 }
 
 function isClickable(node: ModuleNode): boolean {
@@ -60,31 +123,61 @@ function nodeGroup(node: ModuleNode): SVGGElement {
   g.appendChild(title);
   if (isClickable(node)) {
     g.addEventListener("click", () => launchModule(node));
+  } else if (node.status === "locked") {
+    // Locked feedback: brief shake, no open.
+    g.addEventListener("click", () => {
+      g.classList.remove("shake");
+      // Force a reflow so re-clicking replays the animation.
+      void (g as unknown as HTMLElement).getBoundingClientRect();
+      g.classList.add("shake");
+      setTimeout(() => g.classList.remove("shake"), 450);
+    });
   }
   return g;
 }
 
-function lockBadge(cx: number, cy: number): SVGGElement {
+/** Iron padlock + chain links draped over a locked stone. */
+function ironwork(cx: number, cy: number, span: number): SVGGElement {
   const g = el("g");
-  g.appendChild(
-    el("rect", {
-      x: cx - 7, y: cy - 3, width: 14, height: 11, rx: 2,
-      class: "lock-badge", stroke: "none",
-    })
-  );
-  g.appendChild(
-    el("path", {
-      d: `M ${cx - 4} ${cy - 3} v -3 a 4 4 0 0 1 8 0 v 3`,
-      fill: "none", stroke: "#55607a", "stroke-width": 2,
-    })
-  );
+  g.classList.add("ironwork-g");
+  // Chain: a row of small links across the span.
+  const links = Math.max(3, Math.floor(span / 16));
+  for (let i = 0; i < links; i++) {
+    const lx = cx - span / 2 + (span / (links - 1)) * i;
+    const sag = Math.sin((i / (links - 1)) * Math.PI) * 7;
+    g.appendChild(
+      el("ellipse", {
+        cx: lx, cy: cy - 12 + sag, rx: 4.6, ry: 3.4,
+        class: "ironwork", "stroke-width": 1.6, "fill-opacity": 0.25,
+      })
+    );
+  }
+  // Padlock body + shackle.
+  g.appendChild(el("path", {
+    d: `M ${cx - 5.5} ${cy + 1} v -4.5 a 5.5 5.5 0 0 1 11 0 v 4.5`,
+    fill: "none", class: "ironwork", "stroke-width": 2.2,
+  }));
+  g.appendChild(el("rect", {
+    x: cx - 8.5, y: cy + 1, width: 17, height: 13, rx: 2,
+    class: "ironwork", "stroke-width": 1.4,
+  }));
+  g.appendChild(el("circle", { cx, cy: cy + 7, r: 2, fill: "#1c202b", stroke: "none" }));
   return g;
 }
 
-function scoreBadge(cx: number, cy: number, score: number | null): SVGTextElement {
-  const t = el("text", { x: cx, y: cy, class: "score-badge" });
-  t.textContent = score === null ? "" : `${Math.round(score * 100)}%`;
-  return t;
+/** Gold completion seal with the score engraved. */
+function seal(cx: number, cy: number, score: number | null): SVGGElement {
+  const g = el("g");
+  g.appendChild(el("circle", { cx, cy, r: 15, class: "seal-disc" }));
+  g.appendChild(el("circle", { cx, cy, r: 11.5, class: "seal-ring" }));
+  const t = el("text", { x: cx, y: cy + 4, class: "score-badge" });
+  t.textContent = score === null ? "" : `${Math.round(score * 100)}`;
+  g.appendChild(t);
+  // Twinkling sparks around the seal.
+  g.appendChild(el("circle", { cx: cx - 20, cy: cy - 14, r: 1.8, class: "spark" }));
+  g.appendChild(el("circle", { cx: cx + 19, cy: cy - 6, r: 1.4, class: "spark s2" }));
+  g.appendChild(el("circle", { cx: cx + 8, cy: cy + 19, r: 1.6, class: "spark s3" }));
+  return g;
 }
 
 /* ---------------- Temple construction ---------------- */
@@ -93,40 +186,60 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   const svg = el("svg", { viewBox: "0 0 1000 720" });
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Parthenon progress map");
+  svg.appendChild(buildDefs());
 
   /* --- Pediment (capstone) --- */
   const pediment = data.nodes["pediment"];
   const pg = nodeGroup(pediment);
-  pg.appendChild(
-    el("polygon", {
-      points: "150,168 850,168 500,42",
-      class: "shape",
-    })
-  );
-  // Gold accent lines, visible once completed ("carved").
+  // Raking cornice: outer triangle + inner tympanum face.
+  pg.appendChild(el("polygon", { points: "146,170 854,170 500,38", class: "shape" }));
   pg.appendChild(el("polygon", {
-    points: "185,158 815,158 500,62",
+    points: "180,160 820,160 500,58",
     fill: "none", class: "accent-line",
   }));
-  const pLabel = el("text", { x: 500, y: 135, class: "node-label" });
-  pLabel.textContent = "Capstone Projects · Mock Interviews";
+  // Acroteria: small gold finials at the three corners (completed flourish).
+  pg.appendChild(el("path", { d: "M 500 38 l -7 -12 h 14 z", class: "relief" }));
+  pg.appendChild(el("path", { d: "M 146 170 l -10 -14 h 16 z", class: "relief" }));
+  pg.appendChild(el("path", { d: "M 854 170 l -6 -14 h 16 z", class: "relief" }));
+  // Tympanum relief: a meander line carved when complete.
+  pg.appendChild(el("path", {
+    d: "M 380 150 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18",
+    class: "relief",
+  }));
+  const pLabel = el("text", { x: 500, y: 128, class: "node-label" });
+  pLabel.textContent = "Capstone · Mock Interviews";
   pg.appendChild(pLabel);
-  if (pediment.status === "locked") pg.appendChild(lockBadge(500, 95));
-  else if (pediment.status === "completed") pg.appendChild(scoreBadge(500, 112, pediment.score));
+  if (pediment.status === "locked") pg.appendChild(ironwork(500, 88, 120));
+  else if (pediment.status === "completed") pg.appendChild(seal(500, 95, pediment.score));
   svg.appendChild(pg);
 
-  /* --- Entablature (static beam between pediment and columns) --- */
-  svg.appendChild(
-    el("rect", {
-      x: 140, y: 172, width: 720, height: 26,
-      fill: "#171c29", stroke: "#333d54", "stroke-width": 1.5,
-    })
-  );
+  /* --- Entablature: architrave + triglyph frieze (static masonry) --- */
+  const ent = el("g");
+  ent.appendChild(el("rect", {
+    x: 136, y: 172, width: 728, height: 12,
+    fill: "url(#grad-stone)", stroke: "#39404f", "stroke-width": 1.2,
+  }));
+  ent.appendChild(el("rect", {
+    x: 136, y: 184, width: 728, height: 18,
+    fill: "url(#grad-stone-dark)", stroke: "#39404f", "stroke-width": 1.2,
+  }));
+  // Triglyphs: paired grooved blocks along the frieze.
+  for (let tx = 156; tx <= 830; tx += 52) {
+    const block = el("g");
+    block.appendChild(el("rect", {
+      x: tx, y: 185.5, width: 15, height: 15,
+      fill: "url(#grad-stone)", stroke: "#2c3140", "stroke-width": 1,
+    }));
+    block.appendChild(el("line", { x1: tx + 5, y1: 187, x2: tx + 5, y2: 199, stroke: "#12151d", "stroke-width": 1.6 }));
+    block.appendChild(el("line", { x1: tx + 10, y1: 187, x2: tx + 10, y2: 199, stroke: "#12151d", "stroke-width": 1.6 }));
+    ent.appendChild(block);
+  }
+  svg.appendChild(ent);
 
   /* --- Six pillars --- */
   const left = 170;
   const right = 830;
-  const colW = 68;
+  const colW = 66;
   const n = PILLAR_ORDER.length;
   const gap = (right - left - n * colW) / (n + 1);
 
@@ -136,39 +249,58 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     const cx = x + colW / 2;
     const g = nodeGroup(node);
 
-    g.appendChild(el("rect", { x: x - 9, y: 200, width: colW + 18, height: 16, class: "shape" })); // capital
-    g.appendChild(el("rect", { x, y: 216, width: colW, height: 302, class: "shape" }));            // shaft
-    g.appendChild(el("rect", { x: x - 9, y: 518, width: colW + 18, height: 16, class: "shape" })); // base
+    // Doric capital: abacus slab + flared echinus.
+    g.appendChild(el("rect", { x: x - 11, y: 203, width: colW + 22, height: 9, class: "shape" }));
+    g.appendChild(el("path", {
+      d: `M ${x - 7} 212 Q ${x - 2} 222 ${x + 3} 224 L ${x + colW - 3} 224 Q ${x + colW + 2} 222 ${x + colW + 7} 212 Z`,
+      class: "shape",
+    }));
+    // Shaft with entasis-suggesting taper.
+    g.appendChild(el("path", {
+      d: `M ${x + 2} 224 L ${x + colW - 2} 224 L ${x + colW - 5} 512 L ${x + 5} 512 Z`,
+      class: "shape",
+    }));
+    // Base: torus + plinth.
+    g.appendChild(el("rect", { x: x - 6, y: 512, width: colW + 12, height: 10, rx: 4, class: "shape" }));
+    g.appendChild(el("rect", { x: x - 11, y: 522, width: colW + 22, height: 12, class: "shape" }));
 
-    // Fluting: appears when the pillar turns to marble.
-    for (let f = 1; f <= 3; f++) {
-      const fx = x + (colW / 4) * f;
-      g.appendChild(el("line", { x1: fx, y1: 224, x2: fx, y2: 510, class: "flute" }));
+    // Fluting: always present, brightening as the pillar turns to marble.
+    for (let f = 1; f <= 4; f++) {
+      const fx = x + (colW / 5) * f;
+      g.appendChild(el("line", { x1: fx, y1: 228, x2: fx, y2: 508, class: "flute" }));
     }
-    g.appendChild(el("line", { x1: x - 9, y1: 213, x2: x + colW + 9, y2: 213, class: "accent-line" }));
-    g.appendChild(el("line", { x1: x - 9, y1: 521, x2: x + colW + 9, y2: 521, class: "accent-line" }));
+    g.appendChild(el("line", { x1: x - 11, y1: 208, x2: x + colW + 11, y2: 208, class: "accent-line" }));
+    g.appendChild(el("line", { x1: x - 6, y1: 517, x2: x + colW + 6, y2: 517, class: "accent-line" }));
 
-    const label = el("text", { x: cx, y: 250, class: "node-label" });
+    const label = el("text", { x: cx, y: 258, class: "node-label" });
     label.textContent = p.label;
     g.appendChild(label);
 
-    if (node.status === "locked") g.appendChild(lockBadge(cx, 370));
-    else if (node.status === "completed") g.appendChild(scoreBadge(cx, 380, node.score));
+    if (node.status === "locked") g.appendChild(ironwork(cx, 368, colW - 4));
+    else if (node.status === "completed") g.appendChild(seal(cx, 380, node.score));
     svg.appendChild(g);
   });
 
-  /* --- Foundation: stylobate + steps --- */
+  /* --- Foundation: stylobate + weathered steps --- */
   const foundation = data.nodes["foundation"];
   const fg = nodeGroup(foundation);
-  fg.appendChild(el("rect", { x: 150, y: 540, width: 700, height: 40, class: "shape" }));
-  fg.appendChild(el("rect", { x: 115, y: 580, width: 770, height: 40, class: "shape" }));
-  fg.appendChild(el("rect", { x: 80, y: 620, width: 840, height: 40, class: "shape" }));
-  fg.appendChild(el("line", { x1: 150, y1: 544, x2: 850, y2: 544, class: "accent-line" }));
-  const fLabel = el("text", { x: 500, y: 605, class: "node-label" });
+  fg.appendChild(el("rect", { x: 150, y: 534, width: 700, height: 40, class: "shape" }));
+  fg.appendChild(el("rect", { x: 113, y: 574, width: 774, height: 40, class: "shape" }));
+  fg.appendChild(el("rect", { x: 76, y: 614, width: 848, height: 42, class: "shape" }));
+  // Masonry joints on the steps.
+  for (const [sy, sx, sw, seg] of [[554, 150, 700, 7], [594, 113, 774, 8], [634, 76, 848, 9]] as const) {
+    for (let j = 1; j < seg; j++) {
+      const jx = sx + (sw / seg) * j;
+      fg.appendChild(el("line", { x1: jx, y1: sy - 16, x2: jx, y2: sy + 16, class: "flute" }));
+    }
+  }
+  fg.appendChild(el("line", { x1: 150, y1: 538, x2: 850, y2: 538, class: "accent-line" }));
+  fg.appendChild(el("line", { x1: 76, y1: 618, x2: 924, y2: 618, class: "accent-line" }));
+  const fLabel = el("text", { x: 500, y: 600, class: "node-label" });
   fLabel.textContent = "Web Foundations — HTTP · DNS · Client/Server · DOM";
   fg.appendChild(fLabel);
-  if (foundation.status === "locked") fg.appendChild(lockBadge(500, 645));
-  else if (foundation.status === "completed") fg.appendChild(scoreBadge(500, 650, foundation.score));
+  if (foundation.status === "locked") fg.appendChild(ironwork(500, 640, 160));
+  else if (foundation.status === "completed") fg.appendChild(seal(500, 638, foundation.score));
   svg.appendChild(fg);
 
   return svg;
@@ -193,9 +325,9 @@ function renderStats(): void {
     : null;
   const stats = document.getElementById("temple-stats")!;
   stats.innerHTML =
-    `<span class="stat"><b>${done.length}</b>/${nodes.length} modules complete</span>` +
-    `<span class="stat">Foundation: <b>${progress.foundationCompleted ? "laid" : "not laid"}</b></span>` +
-    (avg === null ? "" : `<span class="stat">Average score: <b>${avg}%</b></span>`);
+    `<span class="stat"><b>${done.length}</b>/${nodes.length} stones set</span>` +
+    `<span class="stat">Foundation <b>${progress.foundationCompleted ? "laid" : "unlaid"}</b></span>` +
+    (avg === null ? "" : `<span class="stat">Mastery <b>${avg}%</b></span>`);
 }
 
 async function launchModule(node: ModuleNode): Promise<void> {
@@ -254,7 +386,7 @@ function wireReset(): void {
   });
 }
 
-/* ---------------- Boot ---------------- */
+/* ---------------- Resume-in-progress attempts ---------------- */
 
 /**
  * If a mid-module attempt survived a reload/crash, offer to resume it.
@@ -287,6 +419,8 @@ async function offerResume(): Promise<void> {
     renderTemple();
   }, attempt);
 }
+
+/* ---------------- Boot ---------------- */
 
 async function init(): Promise<void> {
   wireTitlebar();
