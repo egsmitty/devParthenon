@@ -653,6 +653,14 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
         .join("")}<div class="result-score pass">${pct}%</div></div>`
     : `<div class="result-score fail">${pct}%</div>`;
 
+  // On a graded pass, recap the key takeaways (the section summaries).
+  const recap =
+    result.passed && state.mode === "graded" && quiz.sections.some((s) => s.summary)
+      ? `<div class="result-recap"><h3>What you carry forward</h3><ul>${quiz.sections
+          .map((s) => (s.summary ? `<li>${rich(s.summary)}</li>` : ""))
+          .join("")}</ul></div>`
+      : "";
+
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
     ${scoreBlock}
@@ -663,6 +671,7 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
         ? `<div class="unlock-note">Unlocked: ${unlockNames.join(" &middot; ")}</div>`
         : ""
     }
+    ${recap}
     <div class="modal-actions">
       <button class="primary-btn" data-action="done">Return to the temple</button>
     </div>

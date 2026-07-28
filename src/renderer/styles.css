@@ -2204,3 +2204,36 @@ html[data-theme="parchment"] .lesson-summary { color: #3d2e15; }
 .guide-done { color: var(--text-dim); font-style: italic; font-size: 0.9rem; }
 @media (prefers-reduced-motion: reduce) { .guide-btn { animation: none; } }
 html[data-motion="reduce"] .guide-btn { animation: none; }
+
+/* ---------------- Result recap ("what you carry forward") ---------------- */
+.result-recap {
+  margin-top: 16px;
+  padding: 14px 18px;
+  border: 1px solid rgba(181, 131, 51, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06), transparent);
+  text-align: left;
+}
+.result-recap h3 {
+  font-family: "Cinzel", serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+  margin-bottom: 8px;
+}
+.result-recap ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.result-recap li {
+  position: relative;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.result-recap li::before {
+  content: "\25B8";
+  position: absolute;
+  left: 2px;
+  color: var(--gold);
+}
+html[data-theme="parchment"] .result-recap li { color: #3d2e15; }
