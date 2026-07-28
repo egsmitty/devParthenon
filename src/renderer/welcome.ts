@@ -24,8 +24,9 @@ const CREST = `<svg viewBox="0 0 220 140" class="welcome-crest" aria-hidden="tru
   <rect x="20" y="64" width="180" height="8" fill="url(#wc-gold)" opacity="0.55"/>
   ${[0, 1, 2, 3, 4, 5]
     .map(
+      // 6 columns of width 13 at pitch 27 → centered on the 110 axis (start 36).
       (i) =>
-        `<rect x="${30 + i * 27}" y="76" width="13" height="48" fill="none" stroke="url(#wc-gold)" stroke-width="2.4"/>`
+        `<rect x="${36 + i * 27}" y="76" width="13" height="48" fill="none" stroke="url(#wc-gold)" stroke-width="2.4"/>`
     )
     .join("")}
   <rect x="14" y="124" width="192" height="7" fill="url(#wc-gold)" opacity="0.65"/>
