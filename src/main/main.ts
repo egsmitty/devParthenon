@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, screen } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -43,10 +43,85 @@ const storePaths: StorePaths = {
 
 let mainWindow: BrowserWindow | null = null;
 
+/* ---------------- Window-state persistence (§5.4) ---------------- */
+
+interface WindowState {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  isMaximized?: boolean;
+}
+
+const windowStatePath = () =>
+  path.join(app.getPath("userData"), "window-state.json");
+
+function loadWindowState(): WindowState {
+  const fallback: WindowState = { width: 1280, height: 840 };
+  try {
+    const s = JSON.parse(
+      fs.readFileSync(windowStatePath(), "utf-8")
+    ) as WindowState;
+    if (typeof s.width !== "number" || typeof s.height !== "number") {
+      return fallback;
+    }
+    // Discard a remembered position that no longer lands on any display
+    // (unplugged monitor, changed resolution) — size is kept.
+    if (typeof s.x === "number" && typeof s.y === "number") {
+      const visible = screen.getAllDisplays().some((d) => {
+        const a = d.workArea;
+        return (
+          s.x! + s.width > a.x + 40 &&
+          s.x! < a.x + a.width - 40 &&
+          s.y! > a.y - 20 &&
+          s.y! < a.y + a.height - 40
+        );
+      });
+      if (!visible) {
+        delete s.x;
+        delete s.y;
+      }
+    }
+    return s;
+  } catch {
+    return fallback;
+  }
+}
+
+let windowStateTimer: NodeJS.Timeout | null = null;
+
+function saveWindowState(win: BrowserWindow, immediate = false): void {
+  const write = () => {
+    try {
+      const isMaximized = win.isMaximized();
+      // Remember the normal (restored) bounds so un-maximizing feels right.
+      const bounds = isMaximized ? win.getNormalBounds() : win.getBounds();
+      const state: WindowState = { ...bounds, isMaximized };
+      const file = windowStatePath();
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      const tmp = file + ".tmp";
+      fs.writeFileSync(tmp, JSON.stringify(state), "utf-8");
+      fs.renameSync(tmp, file);
+    } catch {
+      /* window-state persistence is best-effort */
+    }
+  };
+  if (immediate) {
+    if (windowStateTimer) clearTimeout(windowStateTimer);
+    write();
+    return;
+  }
+  if (windowStateTimer) clearTimeout(windowStateTimer);
+  windowStateTimer = setTimeout(write, 400);
+}
+
 function createWindow(): void {
+  const winState = loadWindowState();
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 840,
+    width: winState.width,
+    height: winState.height,
+    x: winState.x,
+    y: winState.y,
     minWidth: 980,
     minHeight: 680,
     frame: false,
@@ -145,6 +220,8 @@ function createWindow(): void {
     });
   }
 
+  if (winState.isMaximized) mainWindow.maximize();
+
   const sendMaxState = () =>
     mainWindow?.webContents.send(
       "window-maximize-changed",
@@ -152,6 +229,13 @@ function createWindow(): void {
     );
   mainWindow.on("maximize", sendMaxState);
   mainWindow.on("unmaximize", sendMaxState);
+
+  const remember = () => mainWindow && saveWindowState(mainWindow);
+  mainWindow.on("resize", remember);
+  mainWindow.on("move", remember);
+  mainWindow.on("maximize", remember);
+  mainWindow.on("unmaximize", remember);
+  mainWindow.on("close", () => mainWindow && saveWindowState(mainWindow, true));
   mainWindow.on("closed", () => (mainWindow = null));
 }
 
