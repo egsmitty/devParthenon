@@ -593,15 +593,18 @@ function openCodex(): void {
 /** The book-opening page-flip flourish (skipped when motion is reduced). */
 function playBookFlip(): void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const book = document.querySelector(".codex-book");
-  if (!book) return;
-  book.querySelector(".flip-layer")?.remove();
+  // Anchor the flip to the page spread (not the whole book) so the leaves sit
+  // below the title band and match the page/binding height.
+  const spread =
+    document.querySelector(".book-spread") ?? document.querySelector(".codex-book");
+  if (!spread) return;
+  spread.querySelector(".flip-layer")?.remove();
   const layer = document.createElement("div");
   layer.className = "flip-layer";
   layer.setAttribute("aria-hidden", "true");
   layer.innerHTML =
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
-  book.appendChild(layer);
+  spread.appendChild(layer);
   window.setTimeout(() => layer.remove(), 1300);
 }
 

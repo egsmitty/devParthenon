@@ -698,10 +698,12 @@ text.score-badge {
 
 .flip-page {
   position: absolute;
-  top: 7%;
-  bottom: 7%;
+  /* Anchored to .book-spread: fill nearly its full height so a turning leaf
+     matches the page/binding, hinged at the central spine. */
+  top: 1.5%;
+  bottom: 1.5%;
   left: 50%;
-  width: 45%;
+  width: 47%;
   transform-origin: left center;
   border: 1px solid rgba(120, 90, 40, 0.4);
   border-radius: 0 5px 5px 0;
@@ -792,6 +794,7 @@ text.score-badge {
 
 /* The two-page spread */
 .book-spread {
+  position: relative; /* anchor for the page-flip layer */
   flex: 1;
   min-height: 0;
   display: flex;
