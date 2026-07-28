@@ -5,10 +5,12 @@ import {
   clearAttempt,
   loadAttempt,
   loadProgress,
+  loadSettings,
   recordSectionResult,
   resetProgress,
   saveAttempt,
   saveQuizScore,
+  saveSettings,
   StorePaths,
 } from "./store";
 import { isDue, orderDeck } from "./review";
@@ -17,6 +19,7 @@ import type {
   GlossaryEntry,
   QuizModule,
   ReviewDeckEntry,
+  Settings,
 } from "../types/schema";
 
 const isDev = process.argv.includes("--dev");
@@ -294,6 +297,15 @@ function registerIpc(): void {
       recordSectionResult(storePaths, nodeId, sectionIndex, correct);
     }
   );
+
+  ipcMain.handle("get-settings", () => loadSettings(storePaths));
+
+  ipcMain.handle("save-settings", (_event, patch: Partial<Settings>) => {
+    if (patch === null || typeof patch !== "object") {
+      throw new Error("save-settings expects a settings patch object");
+    }
+    return saveSettings(storePaths, patch);
+  });
 
   ipcMain.handle("get-review-deck", (_event, limit?: number) => {
     const data = loadProgress(storePaths);

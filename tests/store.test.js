@@ -337,6 +337,38 @@ describe("SM-2-lite scheduler (review.ts)", () => {
   });
 });
 
+describe("settings persistence", () => {
+  test("defaults when no file exists", () => {
+    const s = store.loadSettings(paths);
+    assert.equal(s.theme, "temple-dark");
+    assert.equal(s.optionLabels, "letters");
+    assert.equal(s.fontScale, 1);
+    assert.equal(s.introSeen, false);
+  });
+
+  test("save merges a patch and persists atomically", () => {
+    store.saveSettings(paths, { theme: "parchment", introSeen: true });
+    const s = store.loadSettings(paths);
+    assert.equal(s.theme, "parchment");
+    assert.equal(s.introSeen, true);
+    assert.equal(s.optionLabels, "letters"); // untouched
+    assert.equal(fs.existsSync(path.join(tmpDir, "settings.json.tmp")), false);
+  });
+
+  test("sanitizes bad values", () => {
+    store.saveSettings(paths, { theme: "neon", fontScale: 99, optionLabels: "x" });
+    const s = store.loadSettings(paths);
+    assert.equal(s.theme, "temple-dark");
+    assert.equal(s.fontScale, 1.4); // clamped
+    assert.equal(s.optionLabels, "letters");
+  });
+
+  test("corrupt settings file falls back to defaults", () => {
+    fs.writeFileSync(path.join(tmpDir, "settings.json"), "{broken", "utf-8");
+    assert.equal(store.loadSettings(paths).theme, "temple-dark");
+  });
+});
+
 describe("data integrity", () => {
   const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
 

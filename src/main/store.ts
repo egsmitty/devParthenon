@@ -11,6 +11,7 @@ import type {
   ModuleNode,
   ProgressData,
   SaveScoreResult,
+  Settings,
 } from "../types/schema";
 import { recordResult } from "./review";
 
@@ -91,6 +92,55 @@ export function resetProgress(paths: StorePaths): ProgressData {
   const fresh = JSON.parse(raw) as ProgressData;
   writeProgress(paths, fresh);
   return fresh;
+}
+
+/* ---------------- User settings (settings.json) ---------------- */
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: "temple-dark",
+  reducedMotion: false,
+  fontScale: 1,
+  optionLabels: "letters",
+  introSeen: false,
+};
+
+export function settingsFilePath(paths: StorePaths): string {
+  return path.join(paths.userDataDir, "settings.json");
+}
+
+/** Load settings merged over defaults (tolerates missing/corrupt file). */
+export function loadSettings(paths: StorePaths): Settings {
+  try {
+    const raw = fs.readFileSync(settingsFilePath(paths), "utf-8");
+    return sanitizeSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function sanitizeSettings(s: Settings): Settings {
+  const themes = ["temple-dark", "parchment"];
+  const labels = ["letters", "numbers", "none"];
+  return {
+    theme: themes.includes(s.theme) ? s.theme : DEFAULT_SETTINGS.theme,
+    reducedMotion: Boolean(s.reducedMotion),
+    fontScale: Math.max(0.8, Math.min(1.4, Number(s.fontScale) || 1)),
+    optionLabels: labels.includes(s.optionLabels)
+      ? s.optionLabels
+      : DEFAULT_SETTINGS.optionLabels,
+    introSeen: Boolean(s.introSeen),
+  };
+}
+
+/** Merge a patch over current settings and persist atomically. */
+export function saveSettings(paths: StorePaths, patch: Partial<Settings>): Settings {
+  const merged = sanitizeSettings({ ...loadSettings(paths), ...patch });
+  fs.mkdirSync(paths.userDataDir, { recursive: true });
+  const file = settingsFilePath(paths);
+  const tmp = file + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(merged, null, 2), "utf-8");
+  fs.renameSync(tmp, file);
+  return merged;
 }
 
 /* ---------------- In-flight attempt persistence (§3.6) ---------------- */

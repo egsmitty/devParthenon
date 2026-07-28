@@ -21,6 +21,7 @@ import {
   openModule,
   openReviewDrill,
 } from "./modal.js";
+import { initSettings, motionReduced } from "./settings.js";
 
 declare global {
   interface Window {
@@ -592,7 +593,7 @@ function openCodex(): void {
 
 /** The book-opening page-flip flourish (skipped when motion is reduced). */
 function playBookFlip(): void {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (motionReduced()) return;
   const book = document.querySelector(".codex-book");
   if (!book) return;
   book.querySelector(".flip-layer")?.remove();
@@ -652,7 +653,7 @@ function showToast(message: string): void {
 
 /** Subtle pointer parallax on the atmosphere layer (rAF-throttled). */
 function wireParallax(): void {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (motionReduced()) return;
   const atmo = document.getElementById("atmosphere")!;
   let raf = 0;
   document.addEventListener("mousemove", (e) => {
@@ -747,6 +748,7 @@ async function offerResume(): Promise<void> {
 /* ---------------- Boot ---------------- */
 
 async function init(): Promise<void> {
+  await initSettings(api);
   wireTitlebar();
   wireReset();
   wireReview();

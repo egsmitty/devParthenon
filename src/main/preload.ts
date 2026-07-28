@@ -14,6 +14,8 @@ const api: ParthenonApi = {
   recordSectionResult: (nodeId, sectionIndex, correct) =>
     ipcRenderer.invoke("record-section-result", nodeId, sectionIndex, correct),
   getReviewDeck: (limit) => ipcRenderer.invoke("get-review-deck", limit),
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  saveSettings: (patch) => ipcRenderer.invoke("save-settings", patch),
   windowControl: (action) => ipcRenderer.send("window-control", action),
   isSmoke: process.argv.includes("--parthenon-smoke"),
   onMaximizeChange: (cb) =>

@@ -91,6 +91,21 @@ export interface ProgressData {
   sectionStats?: Record<string, SectionStat>;
 }
 
+export type ThemeName = "temple-dark" | "parchment";
+export type OptionLabelStyle = "letters" | "numbers" | "none";
+
+/** User preferences — persisted separately from progress in settings.json. */
+export interface Settings {
+  theme: ThemeName;
+  /** User override; effective reduced motion is this OR the OS preference. */
+  reducedMotion: boolean;
+  /** Root font-size multiplier, clamped 0.8..1.4. */
+  fontScale: number;
+  optionLabels: OptionLabelStyle;
+  /** First-run welcome shown yet? */
+  introSeen: boolean;
+}
+
 /** One reviewable concept, resolved with display metadata. */
 export interface ReviewDeckEntry {
   key: string;
@@ -146,6 +161,8 @@ export interface ParthenonApi {
     correct: boolean
   ): Promise<void>;
   getReviewDeck(limit?: number): Promise<ReviewDeckEntry[]>;
+  getSettings(): Promise<Settings>;
+  saveSettings(patch: Partial<Settings>): Promise<Settings>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */

@@ -28,9 +28,20 @@
   --ember: #e05b4b;
   --laurel: #58c98a;
   --titlebar-h: 36px;
+  --user-font-scale: 1;
   /* Scale the whole rem-based UI with the viewport so it reads correctly on
-     big monitors instead of staying laptop-sized in an ocean of black. */
-  font-size: clamp(15px, 0.62vw + 0.5vh + 4px, 23px);
+     big monitors instead of staying laptop-sized in an ocean of black.
+     Multiplied by the user's font-scale setting. */
+  font-size: calc(clamp(15px, 0.62vw + 0.5vh + 4px, 23px) * var(--user-font-scale));
+}
+
+/* User-toggled reduced motion (in addition to the OS-driven @media blocks). */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
