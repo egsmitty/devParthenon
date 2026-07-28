@@ -245,10 +245,12 @@ function onModalKeydown(e: KeyboardEvent): void {
     return;
   }
 
-  if (e.key >= "1" && e.key <= "4") {
-    const btn = r.querySelectorAll<HTMLButtonElement>(".option-btn")[
-      Number(e.key) - 1
-    ];
+  // Answer with 1–4 or A–D regardless of the label style shown.
+  let optIndex = -1;
+  if (e.key >= "1" && e.key <= "4") optIndex = Number(e.key) - 1;
+  else if (/^[a-dA-D]$/.test(e.key)) optIndex = e.key.toLowerCase().charCodeAt(0) - 97;
+  if (optIndex >= 0) {
+    const btn = r.querySelectorAll<HTMLButtonElement>(".option-btn")[optIndex];
     if (btn && !btn.disabled) {
       e.preventDefault();
       btn.click();
@@ -290,11 +292,20 @@ function onModalKeydown(e: KeyboardEvent): void {
 // Bound once per page load; a no-op while the modal is hidden.
 document.addEventListener("keydown", onModalKeydown);
 
+/** A/B/C/D or 1/2/3/4 or nothing, per the user's option-label setting. */
+function optionBadge(i: number): string {
+  const style = document.documentElement.dataset.optionLabels ?? "letters";
+  if (style === "none") return "";
+  const mark = style === "numbers" ? String(i + 1) : "ABCD"[i] ?? "";
+  return `<span class="opt-badge" aria-hidden="true">${mark}</span>`;
+}
+
 function optionsMarkup(options: string[]): string {
   return options
     .map(
       (opt, i) =>
-        `<button class="option-btn" data-index="${i}">${rich(opt)}</button>`
+        `<button class="option-btn" data-index="${i}">` +
+        `${optionBadge(i)}<span class="opt-text">${rich(opt)}</span></button>`
     )
     .join("");
 }
