@@ -5,6 +5,8 @@ foundations to interview-readiness, visualized as a Greek temple you build
 stone by stone. Zero runtime dependencies. Windows-first.
 
 This file is auto-loaded every session. Read it before making changes.
+**Picking up open work? Read [`docs/TODO.md`](docs/TODO.md) first** — it holds
+the in-progress tasks and the next steps.
 Deeper docs: [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) (current feature
 inventory + backlog), [`docs/MASTER_PROMPT.md`](docs/MASTER_PROMPT.md)
 (original build spec + design brief), [`docs/RUNNING.md`](docs/RUNNING.md)
