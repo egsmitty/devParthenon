@@ -1883,3 +1883,90 @@ html[data-theme="parchment"] .welcome-step p { color: #5a4620; }
   font-size: 0.82rem;
 }
 .chron-locked .chron-name, .chron-locked .chron-score { color: var(--text-dim); }
+
+/* ---------------- Help / keyboard reference ---------------- */
+
+.tb-help {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--gold-hi);
+}
+
+#help-root {
+  position: fixed;
+  inset: var(--titlebar-h) 0 0 0;
+  z-index: 58;
+  background: radial-gradient(90% 90% at 50% 45%, rgba(8, 10, 15, 0.72), rgba(3, 4, 7, 0.9));
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#help-root[hidden] { display: none; }
+
+.help-card { width: min(560px, 94vw); animation: tablet-in 0.28s ease; }
+.help-rows { display: flex; flex-direction: column; }
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 4px;
+  border-bottom: 1px solid rgba(181, 131, 51, 0.14);
+}
+.help-row:last-child { border-bottom: none; }
+.help-keys {
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+.help-what { color: var(--text); font-size: 0.9rem; }
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--stone-edge);
+  border-bottom-width: 2px;
+  background: linear-gradient(180deg, var(--granite-2), var(--granite-1));
+  color: var(--gold-hi);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* ---------------- Extra polish ---------------- */
+
+/* Option press: a subtle inset "click". */
+.option-btn:active:not(:disabled) { transform: translateX(2px) scale(0.995); }
+
+/* Gilded underline that grows under lesson section headings. */
+.lesson-heading {
+  position: relative;
+  padding-bottom: 6px;
+}
+.lesson-heading::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 44px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  animation: rule-grow 0.5s ease both;
+}
+@keyframes rule-grow { from { width: 0; opacity: 0; } to { width: 44px; opacity: 1; } }
+
+/* Footer buttons lift a hair on hover for tactility. */
+#temple-footer .ghost-btn { transition: transform 0.12s ease, border-color 0.15s ease, color 0.15s ease; }
+#temple-footer .ghost-btn:hover { transform: translateY(-2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-heading::after { animation: none; width: 44px; opacity: 1; }
+}

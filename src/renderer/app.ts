@@ -32,6 +32,7 @@ import {
 } from "./settings.js";
 import { initWelcome, openWelcome } from "./welcome.js";
 import { closeChronicle, isChronicleOpen, openChronicle } from "./chronicle.js";
+import { closeHelp, isHelpOpen, openHelp } from "./help.js";
 
 declare global {
   interface Window {
@@ -728,6 +729,38 @@ function wireSettings(): void {
   });
 }
 
+function anyOverlayOpen(): boolean {
+  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "codex"].some(
+    (id) => {
+      const el = document.getElementById(id);
+      return el && !el.hasAttribute("hidden");
+    }
+  );
+}
+
+function wireHelp(): void {
+  document.getElementById("btn-help")!.addEventListener("click", openHelp);
+  const root = document.getElementById("help-root")!;
+  root.addEventListener("click", (e) => {
+    if (e.target === root) closeHelp();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (isHelpOpen() && e.key === "Escape") {
+      e.preventDefault();
+      closeHelp();
+      return;
+    }
+    // "?" opens help when nothing else is focused/open.
+    const typing =
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement;
+    if (e.key === "?" && !typing && !anyOverlayOpen()) {
+      e.preventDefault();
+      openHelp();
+    }
+  });
+}
+
 function wireChronicle(): void {
   document.getElementById("btn-chronicle")!.addEventListener("click", () =>
     openChronicle(progress)
@@ -810,6 +843,7 @@ async function init(): Promise<void> {
   wireReview();
   wireSettings();
   wireChronicle();
+  wireHelp();
   wireParallax();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
