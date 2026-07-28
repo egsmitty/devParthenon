@@ -142,18 +142,69 @@ function isClickable(node: ModuleNode): boolean {
   return node.status === "unlocked" || node.status === "in_progress";
 }
 
+/* ---------------- Node hover cartouche ---------------- */
+
+function tooltipFor(node: ModuleNode): string {
+  const pct = node.score === null ? null : Math.round(node.score * 100);
+  switch (node.status) {
+    case "locked": {
+      const need = node.prerequisites
+        .map((id) => progress.nodes[id]?.title ?? id)
+        .join(" · ");
+      return `Sealed — first complete ${need || "its prerequisites"}.`;
+    }
+    case "completed":
+      return `Mastered at ${pct}%. Click to practice (no stakes).`;
+    case "in_progress":
+      return `In progress${pct === null ? "" : ` — best ${pct}%`}. Click to continue.`;
+    default:
+      return "Ready. Click to begin.";
+  }
+}
+
+function nodeTip(): HTMLElement {
+  return document.getElementById("temple-tip")!;
+}
+
+function showNodeTipAt(node: ModuleNode, x: number, y: number): void {
+  const tip = nodeTip();
+  tip.innerHTML =
+    `<strong>${escapeHtml(node.title)}</strong>` +
+    `<span>${escapeHtml(tooltipFor(node))}</span>`;
+  tip.hidden = false;
+  tip.style.left = `${x}px`;
+  tip.style.top = `${y}px`;
+}
+
+function showNodeTip(node: ModuleNode, e: MouseEvent): void {
+  showNodeTipAt(node, e.clientX, e.clientY);
+}
+function moveNodeTip(e: MouseEvent): void {
+  const tip = nodeTip();
+  if (tip.hidden) return;
+  tip.style.left = `${e.clientX}px`;
+  tip.style.top = `${e.clientY}px`;
+}
+function hideNodeTip(): void {
+  nodeTip().hidden = true;
+}
+
 function nodeGroup(node: ModuleNode): SVGGElement {
   const g = el("g");
   g.classList.add("node", node.status);
   g.setAttribute("data-node-id", node.id);
-  const title = el("title");
-  title.textContent =
-    node.status === "locked"
-      ? `${node.title} — locked. Complete: ${node.prerequisites.join(", ")}`
-      : node.status === "completed"
-        ? `${node.title} — mastered. Click to practice (no stakes).`
-        : node.title;
-  g.appendChild(title);
+  // Accessible name via aria-label (no <title>, so no native tooltip competes
+  // with the custom cartouche below).
+  const tipText = tooltipFor(node);
+  g.setAttribute("aria-label", `${node.title}. ${tipText}`);
+  g.addEventListener("mouseenter", (e) => showNodeTip(node, e as MouseEvent));
+  g.addEventListener("mousemove", (e) => moveNodeTip(e as MouseEvent));
+  g.addEventListener("mouseleave", hideNodeTip);
+  g.addEventListener("focus", () => {
+    const r = (g as unknown as SVGGraphicsElement).getBoundingClientRect();
+    showNodeTipAt(node, r.left + r.width / 2, r.top);
+  });
+  g.addEventListener("blur", hideNodeTip);
   const activate = (fn: () => void) => {
     // Keyboard-first: temple stones are real buttons, not just click targets.
     g.setAttribute("tabindex", "0");

@@ -2017,3 +2017,45 @@ html[data-motion="reduce"] .burst-spark { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .statue { animation: none !important; } }
 html[data-motion="reduce"] .statue { animation: none !important; }
+
+/* ---------------- Node hover cartouche tooltip ---------------- */
+
+#temple-tip {
+  position: fixed;
+  z-index: 45;
+  pointer-events: none;
+  max-width: 280px;
+  transform: translate(-50%, calc(-100% - 14px));
+  padding: 9px 14px;
+  border: 1px solid var(--brass-dark);
+  border-radius: 5px;
+  background: linear-gradient(180deg, #1c212b, #12151d);
+  box-shadow: inset 0 0 0 1px rgba(181, 131, 51, 0.3), 0 8px 22px rgba(0, 0, 0, 0.6);
+  animation: tip-in 0.14s ease;
+}
+#temple-tip[hidden] { display: none; }
+#temple-tip strong {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 0.9rem;
+  color: var(--gold-hi);
+  letter-spacing: 0.03em;
+}
+#temple-tip span { display: block; margin-top: 3px; color: var(--text-dim); font-size: 0.8rem; line-height: 1.4; }
+/* Little pointer at the bottom, aimed at the stone. */
+#temple-tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #12151d;
+  border-right: 1px solid var(--brass-dark);
+  border-bottom: 1px solid var(--brass-dark);
+}
+html[data-theme="parchment"] #temple-tip { background: linear-gradient(180deg, #f5ecd5, #e9dcbd); }
+html[data-theme="parchment"] #temple-tip::after { background: #e9dcbd; }
+@keyframes tip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)); } }
+@media (prefers-reduced-motion: reduce) { #temple-tip { animation: none; } }
