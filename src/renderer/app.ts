@@ -10,6 +10,7 @@
 import type {
   GlossaryEntry,
   ModuleNode,
+  NodeStatus,
   ParthenonApi,
   ProgressData,
 } from "../types/schema.js";
@@ -327,9 +328,39 @@ function buildTemple(data: ProgressData): SVGSVGElement {
 
 /* ---------------- Rendering & state sync ---------------- */
 
+/**
+ * Status snapshot from the previous render — the transition detector for
+ * one-shot celebration animations. Never fire on boot or plain re-renders.
+ */
+const lastStatuses = new Map<string, NodeStatus>();
+let firstRender = true;
+
 function renderTemple(): void {
   const host = document.getElementById("temple-svg-host")!;
-  host.replaceChildren(buildTemple(progress));
+  const svg = buildTemple(progress);
+
+  if (!firstRender) {
+    for (const node of Object.values(progress.nodes)) {
+      const prev = lastStatuses.get(node.id);
+      // Stone set: this node just turned to marble.
+      if (prev && prev !== "completed" && node.status === "completed") {
+        svg.querySelector(`[data-node-id="${node.id}"]`)?.classList.add("just-completed");
+      }
+      // The grand moment: all six pillars stood, the pediment opens.
+      if (node.id === "pediment" && prev === "locked" && node.status !== "locked") {
+        svg.classList.add("grand-unlock");
+        const atmo = document.getElementById("atmosphere");
+        atmo?.classList.add("grand");
+        setTimeout(() => atmo?.classList.remove("grand"), 3600);
+      }
+    }
+  }
+  firstRender = false;
+  for (const node of Object.values(progress.nodes)) {
+    lastStatuses.set(node.id, node.status);
+  }
+
+  host.replaceChildren(svg);
   renderStats();
 }
 

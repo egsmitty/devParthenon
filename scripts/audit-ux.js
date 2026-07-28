@@ -220,9 +220,23 @@ async function main() {
     }
     await page.waitForSelector(".result-score");
     await shot(page, "15-keyboard-only-result", "Full module completed via keyboard only (Enter to open, 1-4 to answer, Enter to advance)");
-    // Esc returns to the temple.
+    // Esc returns to the temple — which triggers the one-shot "stone set"
+    // transition. Verify it fired on exactly the completed node.
     await page.keyboard.press("Escape");
     await page.waitForSelector(".modal-card", { state: "detached" });
+    const justCompleted = await page.evaluate(() => {
+      const nodes = document.querySelectorAll(".node.just-completed");
+      return nodes.length === 1 && nodes[0].getAttribute("data-node-id");
+    });
+    if (justCompleted !== "foundation") {
+      throw new Error(`stone-set transition mis-fired: ${justCompleted}`);
+    }
+    await shot(page, "16-stone-set-transition", "One-shot stone-set moment fired on the newly completed foundation");
+    // A plain re-render must NOT re-fire it (one-shot guarantee).
+    await page.fill("#glossary-search", "x");
+    await page.evaluate(() => {
+      document.getElementById("btn-review")?.blur();
+    });
     await app.close();
   }
 

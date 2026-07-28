@@ -813,6 +813,76 @@ text.score-badge {
   filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
 }
 
+/* ---------- One-shot celebration moments (fired on status transitions) ---------- */
+
+/* Stone set: dark rock floods into lit marble, filigree flares on, the seal
+   stamps down, sparks burst. Triggered once by .just-completed. */
+.node.just-completed .shape {
+  animation: stone-set 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes stone-set {
+  0% { filter: brightness(0.28) saturate(0.4); }
+  55% { filter: brightness(1.45) drop-shadow(0 0 24px rgba(253, 230, 138, 0.95)); }
+  100% { filter: brightness(1) drop-shadow(0 0 7px rgba(245, 158, 11, 0.4)); }
+}
+
+.node.just-completed .accent-line,
+.node.just-completed .relief {
+  animation: filigree-in 1s ease 0.5s both;
+}
+
+@keyframes filigree-in {
+  from { opacity: 0; }
+  70% { opacity: 1; filter: drop-shadow(0 0 9px rgba(245, 158, 11, 1)); }
+  to { opacity: 0.95; }
+}
+
+.node.just-completed .seal-disc {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-stamp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.85s both;
+}
+
+@keyframes seal-stamp {
+  from { transform: scale(2.3); opacity: 0; }
+  60% { transform: scale(0.92); opacity: 1; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.node.just-completed .spark {
+  animation:
+    spark-burst 1.1s ease-out 0.95s both,
+    spark-twinkle 2.8s ease-in-out 2.2s infinite;
+}
+
+@keyframes spark-burst {
+  0% { opacity: 0; transform: scale(0.2); }
+  30% { opacity: 1; transform: scale(2.1); }
+  100% { opacity: 0.5; transform: scale(1); }
+}
+
+/* The grand moment: the pediment opens. Temple-wide gold surge; the light
+   beams flare via #atmosphere.grand (removed by timer). */
+svg.grand-unlock {
+  animation: temple-surge 2.2s ease both;
+}
+
+@keyframes temple-surge {
+  0% { filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.6)); }
+  35% {
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.6))
+      drop-shadow(0 0 38px rgba(245, 158, 11, 0.6)) brightness(1.18);
+  }
+  100% { filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.6)); }
+}
+
+#atmosphere.grand .beam {
+  opacity: 1;
+  filter: blur(4px) brightness(1.7);
+  transition: filter 1.2s ease, opacity 1.2s ease;
+}
+
 /* ---------- Reduced motion: snap every animation to its end state ---------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -821,8 +891,12 @@ text.score-badge {
   #temple-header h1,
   .node,
   .node .shape,
+  .node .accent-line,
+  .node .relief,
+  .node .seal-disc,
   .node.locked.shake,
   .spark,
+  #temple-svg-host svg,
   .modal-card,
   .feedback {
     animation: none !important;
