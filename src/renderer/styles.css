@@ -457,7 +457,7 @@ body {
   filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.8));
 }
 
-.relief { fill: none; stroke: var(--gold-deep); stroke-width: 1.4; opacity: 0; }
+.relief { fill: none; stroke: var(--gold-deep); stroke-width: 2.2; opacity: 0; }
 .node.completed .relief { opacity: 0.9; }
 
 /* Completion seal: gold medallion + score */
@@ -545,6 +545,9 @@ text.score-badge {
   flex: 1;
   min-height: 0;
   padding-right: 4px;
+  /* Fade the last rows out — an idle hint that more terms sit below. */
+  mask-image: linear-gradient(to bottom, black calc(100% - 22px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 22px), transparent);
 }
 
 .glossary-entry {
@@ -749,7 +752,7 @@ text.score-badge {
 .feedback.good { background: rgba(20, 48, 31, 0.55); border: 1px solid #2b5c42; }
 .feedback.bad { background: rgba(51, 21, 18, 0.55); border: 1px solid #6b3238; }
 
-.feedback .why-wrong { margin-top: 7px; color: var(--text-dim); }
+.feedback .why-wrong { margin-top: 7px; color: #bcc3d3; }
 
 .interview-tip {
   margin-top: 9px;
@@ -793,4 +796,27 @@ text.score-badge {
   font-size: 0.86rem;
   letter-spacing: 0.05em;
   filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+}
+
+/* ---------- Reduced motion: snap every animation to its end state ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .beam,
+  .mote,
+  #temple-header h1,
+  .node,
+  .node .shape,
+  .node.locked.shake,
+  .spark,
+  .modal-card,
+  .feedback {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* Static equivalents: glow without pulse, sparks lit, motes gone. */
+  .mote { opacity: 0; }
+  .spark { opacity: 0.8; transform: none; }
+  .node.unlocked .shape, .node.in_progress .shape {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.7));
+  }
 }

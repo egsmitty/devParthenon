@@ -43,13 +43,15 @@ async function launch(dir) {
     env: { ...process.env, PARTHENON_USERDATA: dir },
   });
   const page = await app.firstWindow();
+  // Deterministic captures: with reduced motion honored, nodes are stable
+  // and clickable without force — which also verifies the a11y guard works.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.waitForSelector("#temple-svg-host svg", { timeout: 15000 });
   return { app, page };
 }
 
-/** Nodes carry a breathing animation; force past Playwright's stability wait. */
 async function clickNode(page, nodeId) {
-  await page.click(`g.node[data-node-id="${nodeId}"]`, { force: true });
+  await page.click(`g.node[data-node-id="${nodeId}"]`);
   await page.waitForSelector(".modal-card");
 }
 
