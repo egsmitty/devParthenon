@@ -1685,9 +1685,10 @@ html[data-theme="parchment"] #codex-tab {
 #welcome-root.open { opacity: 1; }
 
 .welcome-card {
-  width: min(640px, 92vw);
+  width: min(660px, 92vw);
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   text-align: center;
   padding: 8px 30px 30px;
   transform: translateY(24px) scale(0.97);
@@ -1696,7 +1697,7 @@ html[data-theme="parchment"] #codex-tab {
 #welcome-root.open .welcome-card { transform: none; }
 
 .welcome-crest {
-  width: 190px;
+  width: clamp(130px, 22vw, 180px);
   height: auto;
   filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.5));
   animation: crest-glow 3.5s ease-in-out infinite;
@@ -1709,9 +1710,12 @@ html[data-theme="parchment"] #codex-tab {
 .welcome-title {
   font-family: "Cinzel Decorative", "Cinzel", serif;
   font-weight: 700;
-  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
-  letter-spacing: 0.1em;
+  /* vw-dominant so the long single word always fits the card, never clips. */
+  font-size: min(2.7rem, 8.5vw);
+  line-height: 1.06;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+  max-width: 100%;
   margin-top: 4px;
   background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 35%, var(--bronze) 55%, var(--gold-hi) 75%, var(--brass) 100%);
   background-size: 100% 220%;
