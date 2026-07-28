@@ -89,6 +89,8 @@ export interface ProgressData {
   nodes: Record<string, ModuleNode>;
   /** v2+: keyed by "<nodeId>/<sectionIndex>". */
   sectionStats?: Record<string, SectionStat>;
+  /** v3+: consecutive-day practice streak. */
+  activity?: { streak: number; lastActiveDay: string };
 }
 
 export type ThemeName = "temple-dark" | "parchment";

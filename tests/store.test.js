@@ -295,6 +295,25 @@ describe("v1 -> v2 migration (review scheduler)", () => {
   test("recordSectionResult rejects unknown nodes", () => {
     assert.throws(() => store.recordSectionResult(paths, "pillar-cobol", 0, true), /Unknown/);
   });
+
+  test("touchActivity tracks a consecutive-day streak", () => {
+    const d = { activity: { streak: 0, lastActiveDay: "" } };
+    store.touchActivity(d, "2026-07-01");
+    assert.equal(d.activity.streak, 1);
+    store.touchActivity(d, "2026-07-01"); // same day, no change
+    assert.equal(d.activity.streak, 1);
+    store.touchActivity(d, "2026-07-02"); // next day, +1
+    assert.equal(d.activity.streak, 2);
+    store.touchActivity(d, "2026-07-05"); // gap, reset
+    assert.equal(d.activity.streak, 1);
+  });
+
+  test("answering updates the streak on disk", () => {
+    store.recordSectionResult(paths, "foundation", 0, true);
+    const data = store.loadProgress(paths);
+    assert.ok(data.activity.streak >= 1);
+    assert.ok(data.activity.lastActiveDay);
+  });
 });
 
 describe("SM-2-lite scheduler (review.ts)", () => {

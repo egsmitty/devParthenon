@@ -88,6 +88,7 @@ export function openChronicle(
         ${summary("Stones set", `${done} / ${nodes.length}`)}
         ${summary("Concepts tracked", String(entries.length))}
         ${summary("Recall accuracy", recall === null ? "—" : recall + "%")}
+        ${summary("Day streak", `${progress.activity?.streak ?? 0}`)}
       </div>
     </div>
     <h3 class="chron-heading">Standing of the temple</h3>

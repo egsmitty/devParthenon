@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "foundationCompleted": false,
   "unlockedPillars": [],
   "nodes": {
@@ -103,5 +103,9 @@
       "quizFile": "capstone.json"
     }
   },
-  "sectionStats": {}
+  "sectionStats": {},
+  "activity": {
+    "streak": 0,
+    "lastActiveDay": ""
+  }
 }

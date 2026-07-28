@@ -15,7 +15,7 @@ import type {
 } from "../types/schema";
 import { recordResult } from "./review";
 
-export const PROGRESS_VERSION = 2;
+export const PROGRESS_VERSION = 3;
 
 export const PASS_THRESHOLD = 0.85;
 
@@ -62,7 +62,7 @@ export function migrateProgress(
   paths?: StorePaths
 ): ProgressData {
   let changed = false;
-  if (!data.version || data.version < 2) {
+  if (!data.version || data.version < PROGRESS_VERSION) {
     data.version = PROGRESS_VERSION;
     changed = true;
   }
@@ -70,8 +70,26 @@ export function migrateProgress(
     data.sectionStats = {};
     changed = true;
   }
+  if (!data.activity) {
+    data.activity = { streak: 0, lastActiveDay: "" };
+    changed = true;
+  }
   if (changed && paths) writeProgress(paths, data);
   return data;
+}
+
+/**
+ * Bump the consecutive-day streak: +1 if the last active day was yesterday,
+ * unchanged if already today, reset to 1 otherwise. `today` is YYYY-MM-DD.
+ */
+export function touchActivity(data: ProgressData, today: string): void {
+  const a = data.activity ?? (data.activity = { streak: 0, lastActiveDay: "" });
+  if (a.lastActiveDay === today) return;
+  const yesterday = new Date(Date.parse(today) - 86400000)
+    .toISOString()
+    .slice(0, 10);
+  a.streak = a.lastActiveDay === yesterday ? a.streak + 1 : 1;
+  a.lastActiveDay = today;
 }
 
 /**
@@ -201,6 +219,7 @@ export function recordSectionResult(
   const key = `${nodeId}/${sectionIndex}`;
   const stats = data.sectionStats ?? (data.sectionStats = {});
   stats[key] = recordResult(stats[key], correct, new Date().toISOString());
+  touchActivity(data, new Date().toISOString().slice(0, 10));
   writeProgress(paths, data);
 }
 
@@ -256,6 +275,7 @@ export function saveQuizScore(
     }
   }
 
+  touchActivity(data, new Date().toISOString().slice(0, 10));
   writeProgress(paths, data);
   // A graded score means the attempt reached its end — the snapshot is stale.
   clearAttempt(paths);
