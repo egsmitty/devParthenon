@@ -80,7 +80,9 @@ async function advance(page, label) {
 }
 
 async function main() {
-  fs.rmSync(outDir, { recursive: true, force: true });
+  // Clear only generated output — FINDINGS.md (the committed report) stays.
+  fs.rmSync(shots, { recursive: true, force: true });
+  fs.rmSync(path.join(outDir, "manifest.json"), { force: true });
   fs.mkdirSync(shots, { recursive: true });
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "parthenon-audit-"));
 
