@@ -623,7 +623,10 @@ text.score-badge {
   font-family: "Cinzel", serif;
   font-weight: 700;
   font-size: 1.2rem;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.6em;
+  /* letter-spacing adds trailing space after the last glyph; nudge left to
+     keep the spread word visually centered on the spine. */
+  text-indent: 0.6em;
   color: var(--gold-hi);
   text-shadow: 0 1px 3px #000;
 }
@@ -634,9 +637,10 @@ text.score-badge {
   position: fixed;
   inset: var(--titlebar-h) 0 0 0;
   z-index: 60;
-  /* Depth for the book-opening swing. */
+  /* Depth for the book-opening fold — viewpoint biased toward the right-edge
+     spine hinge so the fold reads dimensionally. */
   perspective: 2800px;
-  perspective-origin: 50% 42%;
+  perspective-origin: 68% 42%;
 }
 
 #codex[hidden] { display: none; }
@@ -667,9 +671,12 @@ text.score-badge {
     inset 0 0 0 2px rgba(245, 158, 11, 0.35),
     inset 0 0 0 6px rgba(20, 12, 4, 0.9),
     0 40px 100px rgba(0, 0, 0, 0.8);
-  /* Closed: swung shut on a left-edge hinge, nearly edge-on to the viewer. */
-  transform-origin: left center;
-  transform: rotateY(-92deg) translateX(-30px) scale(0.9);
+  /* Closed: folded shut on the RIGHT-edge spine hinge, collapsed toward the
+     book tab. Opening unfolds it left into the spread; closing folds it back
+     into the tab — a book bound on the right, opening and shutting the same
+     way both directions. */
+  transform-origin: right center;
+  transform: rotateY(92deg) translateX(30px) scale(0.9);
   opacity: 0;
   transition: transform 0.55s cubic-bezier(0.22, 0.72, 0.24, 1), opacity 0.4s ease;
 }
