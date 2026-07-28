@@ -7,6 +7,7 @@
  */
 import type { ParthenonApi, Settings } from "../types/schema.js";
 import { escapeHtml } from "./modal.js";
+import { playCue, setSoundEnabled } from "./sound.js";
 
 let current: Settings | null = null;
 let apiRef: ParthenonApi;
@@ -38,6 +39,7 @@ export function applySettings(s: Settings): void {
   root.dataset.motion = s.reducedMotion ? "reduce" : "full";
   root.dataset.optionLabels = s.optionLabels;
   root.style.setProperty("--user-font-scale", String(s.fontScale));
+  setSoundEnabled(s.sound);
 }
 
 export async function initSettings(api: ParthenonApi): Promise<Settings> {
@@ -137,6 +139,13 @@ function renderSettingsPanel(): void {
       </button>
     </div>
     <div class="settings-row">
+      <div class="settings-label"><h3>Sound</h3><p>Soft chimes as you answer and build.</p></div>
+      <button class="toggle${s.sound ? " on" : ""}" id="set-sound"
+        role="switch" aria-checked="${s.sound}" aria-label="Sound">
+        <span class="toggle-knob"></span>
+      </button>
+    </div>
+    <div class="settings-row">
       <div class="settings-label"><h3>Welcome</h3><p>Revisit the opening rite.</p></div>
       <button class="ghost-btn gold-btn" id="set-replay">Replay welcome</button>
     </div>
@@ -166,6 +175,12 @@ function renderSettingsPanel(): void {
   card.querySelector("#set-motion")!.addEventListener("click", async () => {
     await updateSettings({ reducedMotion: !settings().reducedMotion });
     onSettingsChange?.();
+    renderSettingsPanel();
+  });
+
+  card.querySelector("#set-sound")!.addEventListener("click", async () => {
+    await updateSettings({ sound: !settings().sound });
+    if (settings().sound) playCue("correct"); // a taste of what you enabled
     renderSettingsPanel();
   });
 

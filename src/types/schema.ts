@@ -102,6 +102,8 @@ export interface Settings {
   /** Root font-size multiplier, clamped 0.8..1.4. */
   fontScale: number;
   optionLabels: OptionLabelStyle;
+  /** Synthesized UI sound cues. */
+  sound: boolean;
   /** First-run welcome shown yet? */
   introSeen: boolean;
 }

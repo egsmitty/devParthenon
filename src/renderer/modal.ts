@@ -30,6 +30,7 @@ import type {
   ReviewDeckEntry,
 } from "../types/schema.js";
 import { pickVariant, sectionVariants } from "./variants.js";
+import { playCue } from "./sound.js";
 
 /** Maximum score (as a fraction) recoverable in a Redemption Round. */
 export const REDEMPTION_CAP = 0.15;
@@ -327,6 +328,7 @@ function wireAnswer(
       resolved = true;
       const chosen = Number(btn.dataset.index);
       const isCorrect = chosen === q.correctAnswerIndex;
+      playCue(isCorrect ? "correct" : "wrong");
 
       el.querySelectorAll<HTMLButtonElement>(".option-btn").forEach((b) => {
         const i = Number(b.dataset.index);
@@ -577,6 +579,7 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
   if (!state) return;
   const { node, quiz } = state;
   const result = await apiRef.saveQuizScore(node.id, score);
+  if (result.passed) playCue("pass");
   const pct = Math.round(score * 100);
   const threshold = Math.round(quiz.passThreshold * 100);
 

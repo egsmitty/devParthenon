@@ -33,6 +33,7 @@ import {
 import { initWelcome, openWelcome } from "./welcome.js";
 import { closeChronicle, isChronicleOpen, openChronicle } from "./chronicle.js";
 import { closeHelp, isHelpOpen, openHelp } from "./help.js";
+import { playCue } from "./sound.js";
 
 declare global {
   interface Window {
@@ -407,6 +408,7 @@ function renderTemple(): void {
       // Stone set: this node just turned to marble.
       if (prev && prev !== "completed" && node.status === "completed") {
         svg.querySelector(`[data-node-id="${node.id}"]`)?.classList.add("just-completed");
+        playCue("seal");
       }
       // The grand moment: all six pillars stood, the pediment opens.
       if (node.id === "pediment" && prev === "locked" && node.status !== "locked") {
@@ -609,6 +611,7 @@ function openCodex(): void {
   codex.hidden = false;
   tab.setAttribute("aria-expanded", "true");
   requestAnimationFrame(() => codex.classList.add("open"));
+  playCue("open");
   playBookFlip();
   (document.getElementById("codex-search") as HTMLInputElement).focus();
 }

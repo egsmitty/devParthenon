@@ -101,6 +101,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: false,
   fontScale: 1,
   optionLabels: "letters",
+  sound: true,
   introSeen: false,
 };
 
@@ -128,6 +129,7 @@ function sanitizeSettings(s: Settings): Settings {
     optionLabels: labels.includes(s.optionLabels)
       ? s.optionLabels
       : DEFAULT_SETTINGS.optionLabels,
+    sound: s.sound === undefined ? DEFAULT_SETTINGS.sound : Boolean(s.sound),
     introSeen: Boolean(s.introSeen),
   };
 }
