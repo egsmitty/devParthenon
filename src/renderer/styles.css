@@ -598,24 +598,32 @@ text.score-badge {
 }
 
 .codex-tab-book {
-  position: relative;
+  position: absolute;
+  top: 22px;
+  left: 50%;
   z-index: 2;
   fill: none;
   stroke: var(--gold-hi);
   stroke-width: 1.6;
   filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
-  transform: scale(1.35);
+  transform: translateX(-50%) scale(1.4);
 }
 
 .codex-tab-label {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   z-index: 2;
-  writing-mode: vertical-rl;
-  text-orientation: upright;
+  white-space: nowrap;
+  /* Rotated 90deg counter-clockwise so the word runs along the spine
+     (reads bottom-to-top). transform rotation is universally supported,
+     unlike writing-mode: sideways-lr. */
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center;
   font-family: "Cinzel", serif;
   font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.22em;
+  font-size: 1.2rem;
+  letter-spacing: 0.34em;
   color: var(--gold-hi);
   text-shadow: 0 1px 3px #000;
 }
