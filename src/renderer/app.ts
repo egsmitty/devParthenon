@@ -144,6 +144,11 @@ function buildDefs(): SVGDefsElement {
   defs.appendChild(gradient("grad-marble", [[0, "#ffffff"], [0.45, "#efece2"], [0.8, "#d9d3c3"], [1, "#c3bba6"]]));
   defs.appendChild(gradient("grad-gold", [[0, "#fde68a"], [0.4, "#f59e0b"], [0.7, "#b45309"], [1, "#fcd34d"]]));
 
+  // Warm light-pool cast by each torch flame.
+  defs.appendChild(
+    radial("grad-torch-glow", [[0, "#ffd27a", 0.6], [0.5, "#f59e0b", 0.16], [1, "#f59e0b", 0]])
+  );
+
   // Coarse dark grain for weathered stone; long soft veins for marble.
   defs.appendChild(
     grainFilter("tex-stone", "0.55", "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.16 0")
@@ -293,6 +298,8 @@ function ironwork(cx: number, cy: number, span: number): SVGGElement {
 /** Torch sconce: stone bowl + flickering gold flame flanking the pediment. */
 function torch(cx: number, cy: number): SVGGElement {
   const g = el("g");
+  // Soft warm light-pool the flame throws onto the surrounding stone.
+  g.appendChild(el("circle", { cx, cy: cy - 6, r: 40, fill: "url(#grad-torch-glow)", class: "torch-glow" }));
   g.appendChild(el("rect", {
     x: cx - 6, y: cy, width: 12, height: 7, rx: 2,
     fill: "url(#grad-stone)", stroke: "#39404f", "stroke-width": 1,
@@ -477,6 +484,9 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     const x = left + gap + i * (colW + gap);
     const cx = x + colW / 2;
     const g = nodeGroup(node);
+    // Per-pillar topic tint, read by the CSS hover glow (CSSOM — the self-only
+    // CSP forbids inline style attributes).
+    g.style.setProperty("--pillar-tint", p.tint);
 
     // Doric capital: abacus slab + flared echinus.
     g.appendChild(el("rect", { x: x - 11, y: 203, width: colW + 22, height: 9, class: "shape" }));
