@@ -525,14 +525,19 @@ const GALLERY = [
 ];
 
 function renderStatues(): void {
-  const gallery = document.getElementById("codex-statues")!;
-  gallery.innerHTML = GALLERY.map(
-    (s) => `
+  const spine = document.getElementById("codex-statues")!;
+  // The gilded spine carries statue medallions spaced down its length; they
+  // stay in view while the two pages scroll independently beside them.
+  spine.innerHTML =
+    `<div class="spine-rule"></div>` +
+    GALLERY.map(
+      (s) => `
     <figure class="statue-niche">
       <div class="niche">${s.art}</div>
       <figcaption><span class="niche-name">${s.name}</span><span class="niche-epithet">${s.epithet}</span></figcaption>
     </figure>`
-  ).join("");
+    ).join("") +
+    `<div class="spine-rule"></div>`;
 }
 
 function renderCodex(filter: string): void {
@@ -547,18 +552,29 @@ function renderCodex(filter: string): void {
       e.tags.some((t) => t.toLowerCase().includes(q))
   );
 
-  const cardFor = (e: GlossaryEntry) =>
-    `<article class="codex-entry"><h3 class="term">${escapeHtml(e.term)}</h3>` +
-    `<p class="definition">${escapeHtml(e.definition)}</p></article>`;
+  const cardFor = (e: GlossaryEntry) => {
+    const seals = e.tags
+      .map((t) => `<span class="term-seal">${escapeHtml(t)}</span>`)
+      .join("");
+    return (
+      `<article class="codex-entry">` +
+      `<h3 class="term">${escapeHtml(e.term)}</h3>` +
+      `<p class="definition">${escapeHtml(e.definition)}</p>` +
+      (seals ? `<div class="term-seals">${seals}</div>` : "") +
+      `<div class="entry-flourish" aria-hidden="true">&#10087;</div>` +
+      `</article>`
+    );
+  };
 
   if (matches.length === 0) {
     left.innerHTML = `<div class="codex-empty">No entry in the lexicon matches &ldquo;${escapeHtml(filter)}&rdquo;.</div>`;
     right.innerHTML = "";
     return;
   }
-  // Alternate terms into the two flanking colonnades.
-  left.innerHTML = matches.filter((_, i) => i % 2 === 0).map(cardFor).join("");
-  right.innerHTML = matches.filter((_, i) => i % 2 === 1).map(cardFor).join("");
+  // Fill the left page first, then the right — like reading a real spread.
+  const half = Math.ceil(matches.length / 2);
+  left.innerHTML = matches.slice(0, half).map(cardFor).join("");
+  right.innerHTML = matches.slice(half).map(cardFor).join("");
 }
 
 function openCodex(): void {

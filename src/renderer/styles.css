@@ -600,34 +600,51 @@ text.score-badge {
 
 #codex.open .codex-backdrop { opacity: 1; }
 
-.codex-panel {
+/* The great open book — near-fullscreen, centered on a lectern of shadow. */
+.codex-book {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(1180px, 92vw);
+  inset: clamp(10px, 2.5vh, 34px) clamp(12px, 2vw, 48px);
   display: flex;
   flex-direction: column;
-  border-left: 3px solid var(--gold-deep);
+  border-radius: 8px;
+  /* Tooled leather cover peeking around the page block. */
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.6 0 0 0 0 0.55 0 0 0 0 0.45 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #171b24 0%, #10131b 60%, #0c0f16 100%);
+    linear-gradient(180deg, #3a2412, #241407);
+  padding: clamp(10px, 1.4vw, 22px);
   box-shadow:
-    inset 0 0 0 1px rgba(181, 131, 51, 0.25),
-    -18px 0 60px rgba(0, 0, 0, 0.7);
-  transform: translateX(100%);
-  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.3, 1);
+    inset 0 0 0 2px rgba(245, 158, 11, 0.35),
+    inset 0 0 0 6px rgba(20, 12, 4, 0.9),
+    0 40px 100px rgba(0, 0, 0, 0.8);
+  transform: scale(0.94) translateY(14px);
+  opacity: 0;
+  transition: transform 0.36s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.36s ease;
 }
 
-#codex.open .codex-panel { transform: translateX(0); }
+#codex.open .codex-book { transform: scale(1) translateY(0); opacity: 1; }
 
-.codex-header {
+.codex-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--brass-dark);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2a1a0c, #1a0f05);
+  color: var(--gold-hi);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.codex-close:hover { border-color: var(--ember); color: var(--ember); }
+
+.book-headband {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(181, 131, 51, 0.35);
-  background: linear-gradient(180deg, rgba(245, 158, 11, 0.05), transparent);
+  gap: 26px;
+  padding: 6px 60px 12px 12px;
 }
 
 .codex-title { flex-shrink: 0; }
@@ -635,153 +652,203 @@ text.score-badge {
 .codex-title h2 {
   font-family: "Cinzel Decorative", "Cinzel", serif;
   font-weight: 700;
-  font-size: 1.5rem;
-  letter-spacing: 0.06em;
+  font-size: clamp(1.4rem, 2.1vw, 2.1rem);
+  letter-spacing: 0.05em;
   background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--brass) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.9));
 }
 
-.codex-sub { color: var(--text-dim); font-style: italic; font-size: 0.82rem; margin-top: 2px; }
+.codex-sub { color: #cbb483; font-style: italic; font-size: 0.9rem; margin-top: 2px; }
 
 #codex-search {
   flex: 1;
-  background: linear-gradient(180deg, #0b0e14, #12151d);
-  border: 1px solid var(--stone-edge);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
-  color: var(--text);
+  background: linear-gradient(180deg, #0b0e14, #17120a);
+  border: 1px solid var(--brass-dark);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  color: var(--gold-hi);
   border-radius: 4px;
-  padding: 10px 14px;
-  font-size: 0.95rem;
+  padding: 11px 16px;
+  font-size: 1rem;
   outline: none;
 }
 
+#codex-search::placeholder { color: #9a8354; }
 #codex-search:focus {
   border-color: var(--gold);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 10px rgba(245, 158, 11, 0.35);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7), 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
-.codex-close {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--stone-edge);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--granite-2), var(--granite-1));
-  color: var(--text-dim);
-  font-size: 1.1rem;
-  cursor: pointer;
-}
-
-.codex-close:hover { border-color: var(--ember); color: var(--ember); }
-
-.codex-body {
+/* The two-page spread */
+.book-spread {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   display: flex;
   align-items: stretch;
-  gap: 26px;
-  padding: 24px 28px 40px;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-.codex-col {
+/* A parchment page — warm vellum with aged grain and gilt edges. */
+.book-page {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 34px clamp(26px, 3vw, 64px) 48px;
+  color: #3a2c17;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.14 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f3e9d0 0%, #ece0c2 55%, #e2d4b0 100%);
 }
 
+/* Page-edge striations — the stacked leaves of a thick book, on the outer sides. */
+.book-page-left {
+  border-radius: 4px 0 0 4px;
+  box-shadow:
+    inset -22px 0 34px -20px rgba(60, 40, 15, 0.55),   /* toward the spine */
+    inset 10px 0 0 0 #d8c9a4;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(120, 90, 40, 0.16) 0 1px, transparent 1px 4px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.14 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f3e9d0 0%, #ece0c2 55%, #e2d4b0 100%);
+  background-size: 14px 100%, auto, auto;
+  background-repeat: no-repeat, repeat, no-repeat;
+}
+
+.book-page-right {
+  border-radius: 0 4px 4px 0;
+  box-shadow:
+    inset 22px 0 34px -20px rgba(60, 40, 15, 0.55),
+    inset -10px 0 0 0 #d8c9a4;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 3px, rgba(120, 90, 40, 0.16) 3px 4px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.42 0 0 0 0 0.32 0 0 0 0 0.14 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f3e9d0 0%, #ece0c2 55%, #e2d4b0 100%);
+  background-position: right 0 top 0, 0 0, 0 0;
+  background-size: 14px 100%, auto, auto;
+  background-repeat: no-repeat, repeat, no-repeat;
+}
+
+/* An illuminated manuscript entry */
 .codex-entry {
-  padding: 12px 16px;
-  border: 1px solid rgba(181, 131, 51, 0.2);
-  border-left: 3px solid var(--brass);
-  border-radius: 4px;
-  background: linear-gradient(180deg, rgba(28, 33, 43, 0.6), rgba(16, 19, 27, 0.6));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.codex-entry:hover {
-  border-left-color: var(--gold);
-  transform: translateX(2px);
+  position: relative;
+  padding: 4px 0 18px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(120, 90, 40, 0.28);
 }
 
 .codex-entry .term {
   font-family: "Cinzel", serif;
   font-weight: 700;
-  font-size: 1.02rem;
-  letter-spacing: 0.04em;
-  color: var(--gold-hi);
+  font-size: clamp(1.05rem, 1.15vw, 1.35rem);
+  letter-spacing: 0.05em;
+  color: #7a2e14; /* rubric red-brown */
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.5);
 }
 
 .codex-entry .definition {
-  color: #c3cad9;
-  font-size: 0.92rem;
-  line-height: 1.55;
-  margin-top: 5px;
+  color: #40331d;
+  font-size: clamp(0.92rem, 0.95vw, 1.08rem);
+  line-height: 1.62;
+  margin-top: 4px;
 }
 
-.codex-empty { color: var(--text-dim); font-size: 0.95rem; padding: 24px 4px; }
+/* Illuminated drop-cap on the first letter of every definition. */
+.codex-entry .definition::first-letter {
+  float: left;
+  font-family: "Cinzel Decorative", "Cinzel", serif;
+  font-weight: 700;
+  font-size: 3.1em;
+  line-height: 0.82;
+  padding: 4px 10px 2px 0;
+  color: #9a6b12;
+  text-shadow: 0 1px 0 rgba(255, 250, 235, 0.7);
+}
 
-/* Central statue gallery — flanked by the two term colonnades */
-.codex-gallery {
-  flex: 0 0 clamp(190px, 20vw, 300px);
+.term-seals { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+.term-seal {
+  font-family: "Cinzel", serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b4a1f;
+  padding: 2px 9px;
+  border: 1px solid rgba(120, 90, 40, 0.4);
+  border-radius: 10px;
+  background: rgba(154, 107, 18, 0.1);
+}
+
+.entry-flourish {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  color: rgba(154, 107, 18, 0.5);
+  font-size: 0.8rem;
+}
+
+.codex-empty { color: #6b4a1f; font-size: 1.05rem; padding: 30px 6px; font-style: italic; }
+
+/* The gilded spine between the pages, carrying statue medallions */
+.book-spine {
+  flex: 0 0 clamp(150px, 15vw, 250px);
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
   align-items: center;
-  gap: 40px;
-  border-left: 1px solid rgba(181, 131, 51, 0.18);
-  border-right: 1px solid rgba(181, 131, 51, 0.18);
+  padding: 24px 6px;
+  gap: 26px;
+  background:
+    linear-gradient(90deg, rgba(20, 12, 4, 0.9) 0%, rgba(58, 36, 18, 0.85) 12%, rgba(36, 20, 7, 0.9) 50%, rgba(58, 36, 18, 0.85) 88%, rgba(20, 12, 4, 0.9) 100%);
+  box-shadow:
+    inset 14px 0 26px -12px rgba(0, 0, 0, 0.85),
+    inset -14px 0 26px -12px rgba(0, 0, 0, 0.85);
+}
+
+.spine-rule {
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.7;
 }
 
 .statue-niche { display: flex; flex-direction: column; align-items: center; }
 
 .niche {
   position: relative;
-  width: clamp(150px, 15vw, 220px);
-  padding: 18px 0 8px;
-  border-radius: 120px 120px 8px 8px;
+  width: clamp(120px, 12vw, 200px);
+  padding: 16px 0 8px;
+  border-radius: 110px 110px 8px 8px;
   background:
-    radial-gradient(120% 80% at 50% 15%, rgba(245, 158, 11, 0.08), transparent 60%),
+    radial-gradient(120% 80% at 50% 15%, rgba(245, 158, 11, 0.1), transparent 60%),
     linear-gradient(180deg, #0a0d13, #070910);
   box-shadow:
-    inset 0 0 0 2px rgba(181, 131, 51, 0.35),
-    inset 0 12px 40px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 2px rgba(245, 158, 11, 0.4),
+    inset 0 12px 40px rgba(0, 0, 0, 0.85),
     0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
-.statue {
-  display: block;
-  width: 78%;
-  margin: 0 auto;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
-}
+.statue { display: block; width: 80%; margin: 0 auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)); }
 
-.statue-niche figcaption {
-  margin-top: 8px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-}
+.statue-niche figcaption { margin-top: 8px; text-align: center; display: flex; flex-direction: column; line-height: 1.3; }
+.niche-name { font-family: "Cinzel", serif; font-weight: 700; font-size: 0.86rem; letter-spacing: 0.1em; color: var(--gold-hi); }
+.niche-epithet { color: #b79a6a; font-style: italic; font-size: 0.74rem; }
 
-.niche-name {
-  font-family: "Cinzel", serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.1em;
-  color: var(--gold-hi);
+/* Parchment pages get their own quill-brown scrollbar */
+.book-page::-webkit-scrollbar { width: 12px; }
+.book-page::-webkit-scrollbar-track { background: #ddcba3; }
+.book-page::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a9812f, #6b4a1f);
+  border: 3px solid #ddcba3;
+  border-radius: 6px;
 }
-
-.niche-epithet { color: var(--text-dim); font-style: italic; font-size: 0.76rem; }
 
 @media (prefers-reduced-motion: reduce) {
-  .codex-panel, .codex-backdrop, .codex-entry, #codex-tab { transition: none !important; }
+  .codex-book, .codex-backdrop, #codex-tab { transition: none !important; }
 }
 
 /* Scrollbars: stone channel, brass thumb */

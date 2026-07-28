@@ -67,14 +67,15 @@
     <span class="codex-tab-label">C O D E X</span>
   </button>
 
-  <!-- Slide-out lexicon: two term colonnades flanking a statue gallery -->
+  <!-- The Codex: a great open book — two parchment pages, a gilded spine -->
   <div id="codex" hidden>
     <div class="codex-backdrop" data-action="close"></div>
-    <section class="codex-panel" role="dialog" aria-modal="true" aria-label="Codex of Jargon">
-      <header class="codex-header">
+    <section class="codex-book" role="dialog" aria-modal="true" aria-label="Codex of Jargon">
+      <button class="codex-close" data-action="close" aria-label="Close codex">&#10005;</button>
+      <header class="book-headband">
         <div class="codex-title">
           <h2>Codex of Jargon</h2>
-          <p class="codex-sub">The developer's lexicon, carved in marble.</p>
+          <p class="codex-sub">The developer's lexicon, illuminated.</p>
         </div>
         <input
           id="codex-search"
@@ -82,12 +83,11 @@
           placeholder="Search the lexicon (SSR, CORS, ORM&hellip;)"
           autocomplete="off"
         />
-        <button class="codex-close" data-action="close" aria-label="Close codex">&#10005;</button>
       </header>
-      <div class="codex-body">
-        <div class="codex-col" id="codex-left"></div>
-        <div class="codex-gallery" id="codex-statues" aria-hidden="true"></div>
-        <div class="codex-col" id="codex-right"></div>
+      <div class="book-spread">
+        <div class="book-page book-page-left" id="codex-left"></div>
+        <div class="book-spine" id="codex-statues" aria-hidden="true"></div>
+        <div class="book-page book-page-right" id="codex-right"></div>
       </div>
     </section>
   </div>
