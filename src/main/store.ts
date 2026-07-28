@@ -12,6 +12,9 @@ import type {
   ProgressData,
   SaveScoreResult,
 } from "../types/schema";
+import { recordResult } from "./review";
+
+export const PROGRESS_VERSION = 2;
 
 export const PASS_THRESHOLD = 0.85;
 
@@ -38,14 +41,36 @@ export function loadProgress(paths: StorePaths): ProgressData {
   }
   try {
     const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw) as ProgressData;
+    return migrateProgress(JSON.parse(raw) as ProgressData, paths);
   } catch {
     // Corrupt save: fall back to the template rather than crashing.
     const raw = fs.readFileSync(paths.templatePath, "utf-8");
-    const fresh = JSON.parse(raw) as ProgressData;
+    const fresh = migrateProgress(JSON.parse(raw) as ProgressData, paths);
     writeProgress(paths, fresh);
     return fresh;
   }
+}
+
+/**
+ * Idempotent save-file upgrade. v1 -> v2 adds the sectionStats map for the
+ * spaced-repetition review deck. Old fields are never removed or reshaped,
+ * so existing scores and unlock state always survive.
+ */
+export function migrateProgress(
+  data: ProgressData,
+  paths?: StorePaths
+): ProgressData {
+  let changed = false;
+  if (!data.version || data.version < 2) {
+    data.version = PROGRESS_VERSION;
+    changed = true;
+  }
+  if (!data.sectionStats) {
+    data.sectionStats = {};
+    changed = true;
+  }
+  if (changed && paths) writeProgress(paths, data);
+  return data;
 }
 
 /**
@@ -107,6 +132,24 @@ export function loadAttempt(paths: StorePaths): ActiveAttempt | null {
 export function clearAttempt(paths: StorePaths): void {
   const file = attemptFilePath(paths);
   if (fs.existsSync(file)) fs.rmSync(file, { force: true });
+}
+
+/**
+ * Record one answered check for the review scheduler. Fires on every graded
+ * and practice answer; the key is "<nodeId>/<sectionIndex>".
+ */
+export function recordSectionResult(
+  paths: StorePaths,
+  nodeId: string,
+  sectionIndex: number,
+  correct: boolean
+): void {
+  const data = loadProgress(paths);
+  if (!data.nodes[nodeId]) throw new Error(`Unknown module node: ${nodeId}`);
+  const key = `${nodeId}/${sectionIndex}`;
+  const stats = data.sectionStats ?? (data.sectionStats = {});
+  stats[key] = recordResult(stats[key], correct, new Date().toISOString());
+  writeProgress(paths, data);
 }
 
 function prerequisitesMet(node: ModuleNode, data: ProgressData): boolean {

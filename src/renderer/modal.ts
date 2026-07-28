@@ -27,11 +27,19 @@ import type {
   ProgressData,
   QuizModule,
   QuizQuestion,
+  ReviewDeckEntry,
 } from "../types/schema.js";
 import { pickVariant, sectionVariants } from "./variants.js";
 
 /** Maximum score (as a fraction) recoverable in a Redemption Round. */
 export const REDEMPTION_CAP = 0.15;
+
+/**
+ * "graded" is the real, unlock-affecting attempt. "practice" re-runs a
+ * completed module with random variants for drilling — it feeds the
+ * spaced-repetition scheduler but never touches score or unlock state.
+ */
+export type ModuleMode = "graded" | "practice";
 
 export function escapeHtml(s: string): string {
   return s
@@ -49,6 +57,7 @@ function rich(s: string): string {
 interface ModalState {
   node: ModuleNode;
   quiz: QuizModule;
+  mode: ModuleMode;
   sectionIndex: number;
   correct: number;
   /** Section indices answered wrong on the first pass. */
@@ -67,16 +76,26 @@ function root(): HTMLElement {
   return document.getElementById("modal-root")!;
 }
 
+/** Record one answered check for the spaced-repetition scheduler. */
+function recordResult(sectionIndex: number, correct: boolean): void {
+  if (!state) return;
+  void apiRef
+    .recordSectionResult(state.node.id, sectionIndex, correct)
+    .catch((err) => console.warn("section-stat record failed:", err));
+}
+
 export function openModule(
   node: ModuleNode,
   quiz: QuizModule,
   api: ParthenonApi,
   onDone: (updated: ProgressData) => void,
-  resumeFrom?: ActiveAttempt
+  resumeFrom?: ActiveAttempt,
+  mode: ModuleMode = "graded"
 ): void {
   state = {
     node,
     quiz,
+    mode,
     sectionIndex: resumeFrom?.sectionIndex ?? 0,
     correct: resumeFrom?.correct ?? 0,
     missed: resumeFrom?.missed ?? [],
@@ -94,9 +113,12 @@ export function openModule(
   }
 }
 
-/** Snapshot current progress-through-the-module to disk (fire-and-forget). */
+/**
+ * Snapshot graded progress to disk (fire-and-forget). Practice runs are not
+ * resumable — they carry no stakes — so they never write an attempt file.
+ */
 function persistAttempt(phase: ActiveAttempt["phase"]): void {
-  if (!state) return;
+  if (!state || state.mode !== "graded") return;
   void apiRef
     .saveAttempt({
       nodeId: state.node.id,
@@ -190,19 +212,25 @@ function wireAnswer(
 
 function renderLesson(): void {
   if (!state) return;
-  const { quiz, sectionIndex } = state;
+  const { quiz, sectionIndex, mode } = state;
   const section = quiz.sections[sectionIndex];
-  const q = pickVariant(section, { mode: "graded" });
+  // Practice rotates through the variant bank at random; graded pins the
+  // canonical Test A so the unlock bar is identical for everyone.
+  const q =
+    mode === "practice"
+      ? pickVariant(section, { mode: "practice" })
+      : pickVariant(section, { mode: "graded" });
 
   const paragraphs = section.paragraphs
     .slice(0, 3) // hard cap: the chunked-feeding law
     .map((p) => `<p class="lesson-paragraph">${rich(p)}</p>`)
     .join("");
 
+  const tag = mode === "practice" ? " &middot; <em>practice</em>" : "";
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
     <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
-      &middot; ${state.correct} correct so far</div>
+      &middot; ${state.correct} correct so far${tag}</div>
     <h3 class="lesson-heading">${rich(section.heading)}</h3>
     ${paragraphs}
     <div class="check-label">Interactive check</div>
@@ -219,6 +247,7 @@ function renderLesson(): void {
   const last = sectionIndex === quiz.sections.length - 1;
   wireAnswer(el, q, last ? "See results" : "Continue", (wasCorrect) => {
     if (!state) return;
+    recordResult(state.sectionIndex, wasCorrect);
     if (wasCorrect) state.correct++;
     else state.missed.push(state.sectionIndex);
     if (last) afterLessons();
@@ -241,6 +270,12 @@ function afterLessons(): void {
   const base = state.correct / total;
   const threshold = state.quiz.passThreshold;
 
+  // Practice carries no stakes: no redemption, no score write, no unlocks.
+  if (state.mode === "practice") {
+    finishPractice(base);
+    return;
+  }
+
   if (base >= threshold) {
     void finalize(base, { mode: "clean", base });
   } else if (base + REDEMPTION_CAP + 1e-9 >= threshold) {
@@ -249,6 +284,35 @@ function afterLessons(): void {
   } else {
     void finalize(base, { mode: "tooLow", base });
   }
+}
+
+/** Practice summary — feedback only; progress is deliberately untouched. */
+function finishPractice(score: number): void {
+  if (!state) return;
+  const { quiz, correct } = state;
+  const total = quiz.sections.length;
+  const pct = Math.round(score * 100);
+  const el = card(`
+    <h2>${escapeHtml(quiz.title)}</h2>
+    <div class="modal-progress">Practice run &middot; progress unchanged</div>
+    <div class="result-score ${pct >= 85 ? "pass" : "fail"}">${pct}%</div>
+    <div class="result-detail">
+      ${correct} of ${total} correct in practice. Nothing was recorded against
+      your temple &mdash; but the concepts you missed just moved up your
+      Review queue.
+    </div>
+    <div class="modal-actions">
+      <button class="primary-btn" data-action="done">Return to the temple</button>
+    </div>
+  `);
+  el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
+    const done = onDoneRef;
+    closeModal();
+    // Practice doesn't change progress, but refresh so any resume/UI re-reads.
+    void apiRef.getProgress().then((p) => done(p));
+  });
+  root().replaceChildren(el);
+  root().scrollTop = 0;
 }
 
 function renderRedemptionIntro(): void {
@@ -320,6 +384,7 @@ function renderRedeem(): void {
   const last = remaining === 1;
   wireAnswer(el, q, last ? "See results" : "Next question", (wasCorrect) => {
     if (!state) return;
+    recordResult(idx, wasCorrect);
     if (wasCorrect) state.redeemPoints += 1 / quiz.sections.length;
     state.redeemQueue.shift();
     if (state.redeemQueue.length > 0) persistAttempt("redeem");
@@ -398,6 +463,109 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
     onDoneRef(result.progress);
   });
 
+  root().replaceChildren(el);
+  root().scrollTop = 0;
+}
+
+/* ---------------- Cross-module Review drill (spaced repetition) ---------------- */
+
+interface ReviewState {
+  entries: ReviewDeckEntry[];
+  index: number;
+  correct: number;
+  quizCache: Map<string, QuizModule>;
+  onClose: () => void;
+}
+
+let review: ReviewState | null = null;
+
+/**
+ * Drill a queue of weak-spot concepts (possibly spanning several modules),
+ * one random variant each, recording every result so the scheduler pushes
+ * mastered concepts out and keeps missed ones near. No lessons, no scoring —
+ * pure retrieval practice.
+ */
+export function openReviewDrill(
+  entries: ReviewDeckEntry[],
+  api: ParthenonApi,
+  onClose: () => void
+): void {
+  apiRef = api;
+  review = { entries, index: 0, correct: 0, quizCache: new Map(), onClose };
+  root().hidden = false;
+  void renderReviewCard();
+}
+
+function closeReview(): void {
+  const cb = review?.onClose;
+  review = null;
+  const r = root();
+  r.hidden = true;
+  r.replaceChildren();
+  cb?.();
+}
+
+async function renderReviewCard(): Promise<void> {
+  if (!review) return;
+  const entry = review.entries[review.index];
+  let quiz = review.quizCache.get(entry.quizFile);
+  if (!quiz) {
+    quiz = await apiRef.getQuiz(entry.quizFile);
+    review.quizCache.set(entry.quizFile, quiz);
+  }
+  const section = quiz.sections[entry.sectionIndex];
+  const q = pickVariant(section, { mode: "practice" });
+  const pos = review.index + 1;
+
+  const el = card(`
+    <h2>Review &middot; Weak Spots</h2>
+    <div class="modal-progress">Concept ${pos} of ${review.entries.length}
+      &middot; ${escapeHtml(entry.nodeTitle)}${entry.due ? " &middot; <em>due</em>" : ""}</div>
+    <h3 class="lesson-heading">${rich(entry.heading)}</h3>
+    <div class="check-label">Recall check &middot; a fresh scenario</div>
+    <div class="question-text">${rich(q.question)}</div>
+    <div class="options">${optionsMarkup(q.options)}</div>
+    <div class="feedback-slot"></div>
+    <div class="modal-actions">
+      <button class="ghost-btn" data-action="leave">Leave review</button>
+    </div>
+  `);
+  el.querySelector('[data-action="leave"]')!.addEventListener("click", closeReview);
+
+  const last = review.index === review.entries.length - 1;
+  wireAnswer(el, q, last ? "See summary" : "Next concept", (wasCorrect) => {
+    if (!review) return;
+    if (wasCorrect) review.correct++;
+    void apiRef
+      .recordSectionResult(entry.nodeId, entry.sectionIndex, wasCorrect)
+      .catch(() => {});
+    if (last) renderReviewSummary();
+    else {
+      review.index++;
+      void renderReviewCard();
+    }
+  });
+
+  root().replaceChildren(el);
+  root().scrollTop = 0;
+}
+
+function renderReviewSummary(): void {
+  if (!review) return;
+  const total = review.entries.length;
+  const pct = Math.round((review.correct / total) * 100);
+  const el = card(`
+    <h2>Review Complete</h2>
+    <div class="result-score ${pct >= 85 ? "pass" : "fail"}">${pct}%</div>
+    <div class="result-detail">
+      ${review.correct} of ${total} recalled. Concepts you nailed drift further
+      down the queue; the ones you missed will resurface sooner.
+    </div>
+    <div class="modal-actions">
+      <button class="primary-btn" data-action="done">Return to the temple</button>
+    </div>
+  `);
+  el.querySelector('[data-action="done"]')!.addEventListener("click", closeReview);
   root().replaceChildren(el);
   root().scrollTop = 0;
 }

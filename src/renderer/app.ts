@@ -13,7 +13,7 @@ import type {
   ParthenonApi,
   ProgressData,
 } from "../types/schema.js";
-import { escapeHtml, openModule } from "./modal.js";
+import { escapeHtml, openModule, openReviewDrill } from "./modal.js";
 
 declare global {
   interface Window {
@@ -119,10 +119,16 @@ function nodeGroup(node: ModuleNode): SVGGElement {
   title.textContent =
     node.status === "locked"
       ? `${node.title} — locked. Complete: ${node.prerequisites.join(", ")}`
-      : node.title;
+      : node.status === "completed"
+        ? `${node.title} — mastered. Click to practice (no stakes).`
+        : node.title;
   g.appendChild(title);
   if (isClickable(node)) {
     g.addEventListener("click", () => launchModule(node));
+  } else if (node.status === "completed") {
+    // A mastered stone can be revisited for practice (no stakes).
+    g.style.cursor = "pointer";
+    g.addEventListener("click", () => launchModule(node, "practice"));
   } else if (node.status === "locked") {
     // Locked feedback: brief shake, no open.
     g.addEventListener("click", () => {
@@ -330,12 +336,22 @@ function renderStats(): void {
     (avg === null ? "" : `<span class="stat">Mastery <b>${avg}%</b></span>`);
 }
 
-async function launchModule(node: ModuleNode): Promise<void> {
+async function launchModule(
+  node: ModuleNode,
+  mode: "graded" | "practice" = "graded"
+): Promise<void> {
   const quiz = await api.getQuiz(node.quizFile);
-  openModule(node, quiz, api, (updated) => {
-    progress = updated;
-    renderTemple();
-  });
+  openModule(
+    node,
+    quiz,
+    api,
+    (updated) => {
+      progress = updated;
+      renderTemple();
+    },
+    undefined,
+    mode
+  );
 }
 
 /* ---------------- Glossary sidebar ---------------- */
@@ -386,6 +402,27 @@ function wireReset(): void {
   });
 }
 
+function wireReview(): void {
+  document.getElementById("btn-review")!.addEventListener("click", async () => {
+    const deck = await api.getReviewDeck(8);
+    if (deck.length === 0) {
+      alert(
+        "No concepts to review yet. Answer some checks first — every question " +
+          "you face starts tracking that concept for spaced review."
+      );
+      return;
+    }
+    openReviewDrill(deck, api, () => {
+      // Drilling changes only review scheduling, not scores — but re-read
+      // progress so nothing goes stale.
+      void api.getProgress().then((p) => {
+        progress = p;
+        renderTemple();
+      });
+    });
+  });
+}
+
 /* ---------------- Resume-in-progress attempts ---------------- */
 
 /**
@@ -425,6 +462,7 @@ async function offerResume(): Promise<void> {
 async function init(): Promise<void> {
   wireTitlebar();
   wireReset();
+  wireReview();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
   renderGlossary("");

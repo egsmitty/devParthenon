@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "foundationCompleted": false,
   "unlockedPillars": [],
   "nodes": {
@@ -20,7 +20,9 @@
       "description": "Components, props vs state, hooks, reconciliation, keys, and StrictMode behavior.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["foundation"],
+      "prerequisites": [
+        "foundation"
+      ],
       "quizFile": "react.json"
     },
     "pillar-nextjs": {
@@ -30,7 +32,9 @@
       "description": "App Router, Server vs Client Components, SSR/SSG/ISR, hydration, and data fetching.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["pillar-react"],
+      "prerequisites": [
+        "pillar-react"
+      ],
       "quizFile": "nextjs.json"
     },
     "pillar-node": {
@@ -40,7 +44,9 @@
       "description": "The event loop, promises and async/await, REST API design, middleware, and error handling.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["pillar-nextjs"],
+      "prerequisites": [
+        "pillar-nextjs"
+      ],
       "quizFile": "node.json"
     },
     "pillar-databases": {
@@ -50,7 +56,9 @@
       "description": "Relational modeling, joins, indexes, transactions, migrations, and Prisma/Drizzle.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["pillar-node"],
+      "prerequisites": [
+        "pillar-node"
+      ],
       "quizFile": "databases.json"
     },
     "pillar-tailwind": {
@@ -60,7 +68,9 @@
       "description": "Utility-first workflow, flexbox and grid, responsive design, z-index, and stacking contexts.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["pillar-databases"],
+      "prerequisites": [
+        "pillar-databases"
+      ],
       "quizFile": "tailwind.json"
     },
     "pillar-git": {
@@ -70,7 +80,9 @@
       "description": "Branching strategies, rebasing vs merging, Vitest, Playwright, and pipeline design.",
       "status": "locked",
       "score": null,
-      "prerequisites": ["pillar-tailwind"],
+      "prerequisites": [
+        "pillar-tailwind"
+      ],
       "quizFile": "git_testing.json"
     },
     "pediment": {
@@ -90,5 +102,6 @@
       ],
       "quizFile": "capstone.json"
     }
-  }
+  },
+  "sectionStats": {}
 }

@@ -5,15 +5,18 @@ import {
   clearAttempt,
   loadAttempt,
   loadProgress,
+  recordSectionResult,
   resetProgress,
   saveAttempt,
   saveQuizScore,
   StorePaths,
 } from "./store";
+import { isDue, orderDeck } from "./review";
 import type {
   ActiveAttempt,
   GlossaryEntry,
   QuizModule,
+  ReviewDeckEntry,
 } from "../types/schema";
 
 const isDev = process.argv.includes("--dev");
@@ -191,6 +194,64 @@ function registerIpc(): void {
   ipcMain.handle("get-attempt", () => loadAttempt(storePaths));
 
   ipcMain.handle("clear-attempt", () => clearAttempt(storePaths));
+
+  ipcMain.handle(
+    "record-section-result",
+    (_event, nodeId: string, sectionIndex: number, correct: boolean) => {
+      if (
+        typeof nodeId !== "string" ||
+        typeof sectionIndex !== "number" ||
+        typeof correct !== "boolean"
+      ) {
+        throw new Error(
+          "record-section-result expects (nodeId: string, sectionIndex: number, correct: boolean)"
+        );
+      }
+      recordSectionResult(storePaths, nodeId, sectionIndex, correct);
+    }
+  );
+
+  ipcMain.handle("get-review-deck", (_event, limit?: number) => {
+    const data = loadProgress(storePaths);
+    const stats = data.sectionStats ?? {};
+    const nowISO = new Date().toISOString();
+    const candidates = Object.entries(stats).map(([key, stat]) => ({ key, stat }));
+    const quizCache = new Map<string, QuizModule>();
+    const entries: ReviewDeckEntry[] = [];
+    for (const c of orderDeck(candidates)) {
+      const slash = c.key.lastIndexOf("/");
+      const nodeId = c.key.slice(0, slash);
+      const sectionIndex = Number(c.key.slice(slash + 1));
+      const node = data.nodes[nodeId];
+      if (!node || Number.isNaN(sectionIndex)) continue;
+      let quiz = quizCache.get(node.quizFile);
+      if (!quiz) {
+        try {
+          quiz = JSON.parse(
+            fs.readFileSync(safeQuizPath(node.quizFile), "utf-8")
+          ) as QuizModule;
+          quizCache.set(node.quizFile, quiz);
+        } catch {
+          continue;
+        }
+      }
+      const section = quiz.sections[sectionIndex];
+      if (!section) continue;
+      entries.push({
+        key: c.key,
+        nodeId,
+        sectionIndex,
+        nodeTitle: node.title,
+        heading: section.heading,
+        quizFile: node.quizFile,
+        due: isDue(c.stat, nowISO),
+        missed: c.stat.missed,
+        seen: c.stat.seen,
+      });
+      if (entries.length >= (limit ?? 8)) break;
+    }
+    return entries;
+  });
 
   ipcMain.handle("get-quiz", (_event, quizFile: string): QuizModule => {
     const raw = fs.readFileSync(safeQuizPath(quizFile), "utf-8");

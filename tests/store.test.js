@@ -11,6 +11,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const store = require("../dist/main/store.js");
+const review = require("../dist/main/review.js");
 
 const templatePath = path.join(__dirname, "..", "data", "progress.json");
 const quizzesDir = path.join(__dirname, "..", "data", "quizzes");
@@ -40,9 +41,9 @@ describe("loadProgress", () => {
     fs.writeFileSync(path.join(tmpDir, "progress.json"), "{not valid json!!", "utf-8");
     const data = store.loadProgress(paths);
     assert.equal(data.foundationCompleted, false);
-    // And the corrupt file was replaced with a valid one.
+    // And the corrupt file was replaced with a valid, migrated one.
     const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, "progress.json"), "utf-8"));
-    assert.equal(reread.version, 1);
+    assert.equal(reread.version, store.PROGRESS_VERSION);
   });
 });
 
@@ -253,6 +254,86 @@ describe("variant selection policy (pickVariant)", () => {
     const { sectionVariants } = await import(variantsUrl);
     const legacy = { heading: "h", paragraphs: ["p"], question: mkQ("l-a", 0), altQuestion: mkQ("l-b", 1) };
     assert.deepEqual(sectionVariants(legacy).map((q) => q.id), ["l-a", "l-b"]);
+  });
+});
+
+describe("v1 -> v2 migration (review scheduler)", () => {
+  test("a version:1 save upgrades to v2 and keeps scores", () => {
+    // Seed a v1-shaped save (no version field, no sectionStats).
+    const v1 = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+    delete v1.version;
+    delete v1.sectionStats;
+    v1.nodes["foundation"].status = "completed";
+    v1.nodes["foundation"].score = 0.9;
+    v1.foundationCompleted = true;
+    fs.writeFileSync(path.join(tmpDir, "progress.json"), JSON.stringify(v1), "utf-8");
+
+    const loaded = store.loadProgress(paths);
+    assert.equal(loaded.version, store.PROGRESS_VERSION);
+    assert.deepEqual(loaded.sectionStats, {});
+    // Scores/unlock state preserved through the upgrade.
+    assert.equal(loaded.nodes["foundation"].status, "completed");
+    assert.equal(loaded.nodes["foundation"].score, 0.9);
+
+    // Upgrade was persisted, not just in-memory.
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, "progress.json"), "utf-8"));
+    assert.equal(onDisk.version, store.PROGRESS_VERSION);
+    assert.ok(onDisk.sectionStats);
+  });
+
+  test("recordSectionResult accumulates per-concept stats", () => {
+    store.recordSectionResult(paths, "foundation", 2, false);
+    store.recordSectionResult(paths, "foundation", 2, true);
+    const data = store.loadProgress(paths);
+    const stat = data.sectionStats["foundation/2"];
+    assert.equal(stat.seen, 2);
+    assert.equal(stat.missed, 1);
+    assert.equal(stat.streak, 1); // reset by the miss, then +1 for the correct
+    assert.ok(stat.nextReviewISO);
+  });
+
+  test("recordSectionResult rejects unknown nodes", () => {
+    assert.throws(() => store.recordSectionResult(paths, "pillar-cobol", 0, true), /Unknown/);
+  });
+});
+
+describe("SM-2-lite scheduler (review.ts)", () => {
+  const t0 = "2026-01-01T00:00:00.000Z";
+  const days = (iso, n) =>
+    new Date(Date.parse(iso) + n * 86400000).toISOString();
+
+  test("a correct answer schedules the next review one interval out", () => {
+    const s = review.recordResult(undefined, true, t0);
+    assert.equal(s.seen, 1);
+    assert.equal(s.streak, 1);
+    // First interval is 1 day.
+    assert.equal(s.nextReviewISO, days(t0, review.INTERVALS_DAYS[0]));
+  });
+
+  test("streak lengthens the interval; a miss resets it to 1 day", () => {
+    let s = review.recordResult(undefined, true, t0); // streak 1, +1d
+    s = review.recordResult(s, true, t0); // streak 2, +3d
+    assert.equal(s.nextReviewISO, days(t0, review.INTERVALS_DAYS[1]));
+    s = review.recordResult(s, false, t0); // miss -> streak 0, +1d
+    assert.equal(s.streak, 0);
+    assert.equal(s.missed, 1);
+    assert.equal(s.nextReviewISO, days(t0, 1));
+  });
+
+  test("orderDeck puts the most-overdue concept first", () => {
+    const soon = { seen: 1, missed: 1, streak: 0, lastSeenISO: t0, nextReviewISO: days(t0, 1) };
+    const later = { seen: 3, missed: 0, streak: 3, lastSeenISO: t0, nextReviewISO: days(t0, 21) };
+    const ordered = review.orderDeck([
+      { key: "a/0", stat: later },
+      { key: "b/0", stat: soon },
+    ]);
+    assert.equal(ordered[0].key, "b/0");
+  });
+
+  test("isDue is true only once the review date has passed", () => {
+    const s = review.recordResult(undefined, true, t0); // due in 1 day
+    assert.equal(review.isDue(s, t0), false);
+    assert.equal(review.isDue(s, days(t0, 2)), true);
   });
 });
 

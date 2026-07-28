@@ -71,12 +71,37 @@ export interface GlossaryEntry {
   tags: string[];
 }
 
+/** Per-concept learning history driving the spaced-repetition Review deck. */
+export interface SectionStat {
+  seen: number;
+  missed: number;
+  /** Consecutive correct answers; indexes the review-interval ladder. */
+  streak: number;
+  lastSeenISO: string;
+  nextReviewISO: string;
+}
+
 export interface ProgressData {
   version: number;
   foundationCompleted: boolean;
   /** Ids of pillar nodes currently unlocked (or beyond). */
   unlockedPillars: string[];
   nodes: Record<string, ModuleNode>;
+  /** v2+: keyed by "<nodeId>/<sectionIndex>". */
+  sectionStats?: Record<string, SectionStat>;
+}
+
+/** One reviewable concept, resolved with display metadata. */
+export interface ReviewDeckEntry {
+  key: string;
+  nodeId: string;
+  sectionIndex: number;
+  nodeTitle: string;
+  heading: string;
+  quizFile: string;
+  due: boolean;
+  missed: number;
+  seen: number;
 }
 
 export interface SaveScoreResult {
@@ -115,6 +140,12 @@ export interface ParthenonApi {
   saveAttempt(attempt: ActiveAttempt): Promise<void>;
   getAttempt(): Promise<ActiveAttempt | null>;
   clearAttempt(): Promise<void>;
+  recordSectionResult(
+    nodeId: string,
+    sectionIndex: number,
+    correct: boolean
+  ): Promise<void>;
+  getReviewDeck(limit?: number): Promise<ReviewDeckEntry[]>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
