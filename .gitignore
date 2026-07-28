@@ -7,3 +7,7 @@ Thumbs.db
 # UX audit: generated screenshots + manifest (report is committed)
 audit/shots/
 audit/manifest.json
+
+# throwaway capture scripts
+_capshot.tmp.js
+_*.tmp.js
