@@ -144,35 +144,6 @@ function buildDefs(): SVGDefsElement {
   defs.appendChild(gradient("grad-marble", [[0, "#ffffff"], [0.45, "#efece2"], [0.8, "#d9d3c3"], [1, "#c3bba6"]]));
   defs.appendChild(gradient("grad-gold", [[0, "#fde68a"], [0.4, "#f59e0b"], [0.7, "#b45309"], [1, "#fcd34d"]]));
 
-  // Backdrop scene — sky, sun/moon, and distant hills, by theme.
-  defs.appendChild(
-    gradient(
-      "grad-sky",
-      parchment
-        ? [[0, "#7fb6e4"], [0.42, "#addaef"], [0.72, "#f0e0bf"], [1, "#f6e7c6"]]
-        : [[0, "#070b16"], [0.5, "#101a2d"], [0.78, "#1b2742"], [1, "#243152"]]
-    )
-  );
-  defs.appendChild(
-    radial(
-      "grad-orb",
-      parchment
-        ? [[0, "#fff7d8"], [0.35, "#ffd275"], [1, "#ffd275", 0]]
-        : [[0, "#eef2fb"], [0.5, "#c9d3e6"], [1, "#c9d3e6", 0]]
-    )
-  );
-  defs.appendChild(
-    gradient(
-      "grad-hill-far",
-      parchment ? [[0, "#cdd3a2"], [1, "#bcc48c"]] : [[0, "#152039"], [1, "#0d1626"]]
-    )
-  );
-  defs.appendChild(
-    gradient(
-      "grad-hill-near",
-      parchment ? [[0, "#b7bd80"], [1, "#9ba766"]] : [[0, "#0e1728"], [1, "#080f1c"]]
-    )
-  );
   // Coarse dark grain for weathered stone; long soft veins for marble.
   defs.appendChild(
     grainFilter("tex-stone", "0.55", "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.16 0")
@@ -350,34 +321,90 @@ function seal(cx: number, cy: number, score: number | null): SVGGElement {
 
 /* ---------------- Temple construction ---------------- */
 
-/** A layered scene behind the temple: sky, sun/moon, distant hills, ground. */
-function buildBackdrop(): SVGGElement {
+/**
+ * The landscape the temple stands in — a full-bleed scene behind the whole
+ * stage (sky, sun/moon, distant hills). Rendered into #temple-scene as two
+ * layers: a stretch-to-fill sky+hills SVG (aspect-free via
+ * preserveAspectRatio="none", so it always covers the stage with no
+ * letterboxing) and a fixed-aspect orb pinned upper-right so the sun/moon
+ * stays round at any window shape. Theme-aware (day/night).
+ */
+function buildScene(): DocumentFragment {
   const parchment = document.documentElement.dataset.theme === "parchment";
-  const g = el("g", { class: "backdrop", "aria-hidden": "true" });
-  g.appendChild(el("rect", { x: 0, y: 0, width: 1000, height: 720, fill: "url(#grad-sky)" }));
-  // Sun (day) or moon (night), upper right, with a soft halo.
-  g.appendChild(el("circle", { cx: 792, cy: 138, r: 92, fill: "url(#grad-orb)", class: "sky-orb" }));
-  g.appendChild(el("circle", {
-    cx: 792, cy: 138, r: 40,
-    fill: parchment ? "#fff2c8" : "#dfe6f2",
-    class: "sky-orb-core",
-  }));
-  // A few faint stars at night.
+  const frag = document.createDocumentFragment();
+
+  // Sky + hills stretch freely to fill the stage (no letterbox, no crop).
+  const sky = el("svg", {
+    class: "scene-sky",
+    viewBox: "0 0 1000 1000",
+    preserveAspectRatio: "none",
+    "aria-hidden": "true",
+  });
+  const defs = el("defs");
+  defs.appendChild(
+    gradient(
+      "scene-sky-grad",
+      parchment
+        ? [[0, "#7fb6e4"], [0.42, "#addaef"], [0.72, "#f0e0bf"], [1, "#f6e7c6"]]
+        : [[0, "#070b16"], [0.5, "#101a2d"], [0.78, "#1b2742"], [1, "#243152"]]
+    )
+  );
+  defs.appendChild(
+    gradient("scene-hill-far", parchment ? [[0, "#cdd3a2"], [1, "#bcc48c"]] : [[0, "#152039"], [1, "#0d1626"]])
+  );
+  defs.appendChild(
+    gradient("scene-hill-near", parchment ? [[0, "#b7bd80"], [1, "#9ba766"]] : [[0, "#0e1728"], [1, "#080f1c"]])
+  );
+  sky.appendChild(defs);
+  sky.appendChild(el("rect", { x: 0, y: 0, width: 1000, height: 1000, fill: "url(#scene-sky-grad)" }));
+  // A scatter of faint stars across the night sky's upper band.
   if (!parchment) {
-    for (const [sx, sy, sr] of [[120, 90, 1.6], [230, 150, 1.1], [360, 70, 1.4], [640, 110, 1.2], [880, 250, 1.5], [180, 220, 1], [500, 60, 1.3]] as const) {
-      g.appendChild(el("circle", { cx: sx, cy: sy, r: sr, fill: "#cdd6ec", class: "sky-star" }));
+    for (const [sx, sy, sr] of [
+      [120, 120, 1.6], [230, 200, 1.1], [360, 90, 1.4], [640, 150, 1.2],
+      [880, 340, 1.5], [180, 300, 1], [500, 80, 1.3], [720, 250, 1.2], [430, 260, 1.0],
+    ] as const) {
+      sky.appendChild(el("circle", { cx: sx, cy: sy, r: sr, fill: "#cdd6ec", class: "sky-star" }));
     }
   }
   // Distant hills rolling behind the temple; the near band is the ground.
-  g.appendChild(el("path", {
-    d: "M0 548 Q 220 500 470 540 Q 720 578 1000 528 V 720 H 0 Z",
-    fill: "url(#grad-hill-far)", opacity: 0.85,
+  sky.appendChild(el("path", {
+    d: "M0 720 Q 240 640 500 700 Q 760 758 1000 690 V 1000 H 0 Z",
+    fill: "url(#scene-hill-far)", opacity: 0.9,
   }));
-  g.appendChild(el("path", {
-    d: "M0 604 Q 300 560 600 594 Q 820 616 1000 586 V 720 H 0 Z",
-    fill: "url(#grad-hill-near)",
+  sky.appendChild(el("path", {
+    d: "M0 824 Q 320 748 640 806 Q 852 840 1000 802 V 1000 H 0 Z",
+    fill: "url(#scene-hill-near)",
   }));
-  return g;
+  frag.appendChild(sky);
+
+  // The sun (day) / moon (night): fixed-aspect, pinned upper-right so it never
+  // squashes into an ellipse when the stage is wide.
+  const orb = el("svg", { class: "scene-orb", viewBox: "0 0 200 200", "aria-hidden": "true" });
+  const odefs = el("defs");
+  odefs.appendChild(
+    radial(
+      "scene-orb-halo",
+      parchment
+        ? [[0, "#fff7d8"], [0.32, "#ffd275"], [1, "#ffd275", 0]]
+        : [[0, "#eef2fb"], [0.5, "#c9d3e6"], [1, "#c9d3e6", 0]]
+    )
+  );
+  orb.appendChild(odefs);
+  orb.appendChild(el("circle", { cx: 100, cy: 100, r: 100, fill: "url(#scene-orb-halo)", class: "sky-orb" }));
+  orb.appendChild(el("circle", {
+    cx: 100, cy: 100, r: 42,
+    fill: parchment ? "#fff2c8" : "#dfe6f2",
+    class: "sky-orb-core",
+  }));
+  frag.appendChild(orb);
+
+  return frag;
+}
+
+/** Paint the full-bleed scene layer behind the stage (rebuilt on theme change). */
+function renderScene(): void {
+  const host = document.getElementById("temple-scene");
+  if (host) host.replaceChildren(buildScene());
 }
 
 function buildTemple(data: ProgressData): SVGSVGElement {
@@ -385,7 +412,6 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Parthenon progress map");
   svg.appendChild(buildDefs());
-  svg.appendChild(buildBackdrop());
 
   /* --- Pediment (capstone) --- */
   const pediment = data.nodes["pediment"];
@@ -532,6 +558,7 @@ const lastStatuses = new Map<string, NodeStatus>();
 let firstRender = true;
 
 function renderTemple(): void {
+  renderScene();
   const host = document.getElementById("temple-svg-host")!;
   const svg = buildTemple(progress);
 
