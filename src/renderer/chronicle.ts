@@ -66,7 +66,7 @@ export function openChronicle(
       return (
         `<div class="chron-row chron-${n.status}">` +
         `<span class="chron-name">${escapeHtml(n.title)}</span>` +
-        `<div class="chron-bar"><div class="chron-fill" style="width:${pct}%"></div></div>` +
+        `<div class="chron-bar"><div class="chron-fill" data-pct="${pct}"></div></div>` +
         `<span class="chron-score">${n.score === null ? STATUS_LABEL[n.status] : pct + "%"}</span>` +
         `</div>`
       );
@@ -83,7 +83,7 @@ export function openChronicle(
       </button>
     </div>
     <div class="chron-summary">
-      <div class="ring" style="--pct:${avg}"><span>${avg}%</span></div>
+      <div class="ring"><span>${avg}%</span></div>
       <div class="chron-stats">
         ${summary("Stones set", `${done} / ${nodes.length}`)}
         ${summary("Concepts tracked", String(entries.length))}
@@ -98,6 +98,12 @@ export function openChronicle(
     </div>
   `;
   card.querySelector('[data-action="close"]')!.addEventListener("click", closeChronicle);
+
+  // Dynamic styles via CSSOM (inline style attributes violate the CSP).
+  card.querySelector<HTMLElement>(".ring")?.style.setProperty("--pct", String(avg));
+  card.querySelectorAll<HTMLElement>(".chron-fill").forEach((f) => {
+    f.style.width = `${f.dataset.pct}%`;
+  });
 
   card.querySelector("#chron-export")!.addEventListener("click", async () => {
     try {

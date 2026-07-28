@@ -611,7 +611,7 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
 
   const scoreBlock = result.passed
     ? `<div class="result-burst">${Array.from({ length: 12 })
-        .map((_, i) => `<span class="burst-spark" style="--a:${i * 30}deg"></span>`)
+        .map(() => `<span class="burst-spark"></span>`)
         .join("")}<div class="result-score pass">${pct}%</div></div>`
     : `<div class="result-score fail">${pct}%</div>`;
 
@@ -633,6 +633,11 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
   el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
     closeModal();
     onDoneRef(result.progress);
+  });
+
+  // Spark angles via CSSOM (inline style attributes violate the CSP).
+  el.querySelectorAll<HTMLElement>(".burst-spark").forEach((s, i) => {
+    s.style.setProperty("--a", `${i * 30}deg`);
   });
 
   mountCard(el);

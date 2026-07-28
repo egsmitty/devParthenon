@@ -404,16 +404,10 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     g.appendChild(label);
 
     // A topic gemstone set in the shaft — a quiet per-pillar identity.
-    g.appendChild(
-      el("circle", {
-        cx,
-        cy: 274,
-        r: 5.5,
-        fill: p.tint,
-        class: "pillar-gem",
-        style: `filter: drop-shadow(0 0 5px ${p.tint})`,
-      })
-    );
+    // Glow set via CSSOM (inline style attributes violate the self-only CSP).
+    const gem = el("circle", { cx, cy: 274, r: 5.5, fill: p.tint, class: "pillar-gem" });
+    gem.style.filter = `drop-shadow(0 0 5px ${p.tint})`;
+    g.appendChild(gem);
 
     if (node.status === "locked") g.appendChild(ironwork(cx, 368, colW - 4));
     else if (node.status === "completed") g.appendChild(seal(cx, 380, node.score));

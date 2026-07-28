@@ -380,6 +380,18 @@ describe("data integrity", () => {
     }
   });
 
+  test("built renderer has no inline style= attributes (CSP style-src self)", () => {
+    const dir = path.join(__dirname, "..", "dist", "renderer");
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith(".js")) continue;
+      const src = fs.readFileSync(path.join(dir, f), "utf-8");
+      assert.ok(
+        !/style="/.test(src),
+        `${f} emits an inline style= attribute — use CSSOM (element.style) instead`
+      );
+    }
+  });
+
   test("every prerequisite refers to a real node", () => {
     for (const node of Object.values(template.nodes)) {
       for (const pre of node.prerequisites) {
