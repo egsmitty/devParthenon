@@ -2083,3 +2083,17 @@ html[data-theme="parchment"] .sky-orb-core { filter: drop-shadow(0 0 22px rgba(2
 @keyframes star-tw { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sky-star, .sky-orb-core { animation: none; } }
 html[data-motion="reduce"] .sky-star { animation: none; }
+
+/* ---------------- Softening pass — rounder, less blocky ---------------- */
+.carved-panel { border-radius: 12px; }
+.modal-card { border-radius: 12px; }
+.option-btn { border-radius: 10px; }
+.opt-badge { border-radius: 9px; }
+.ghost-btn, .primary-btn, .codex-close, .tb-btn { border-radius: 8px; }
+.seg { border-radius: 9px; }
+.toggle { border-radius: 16px; }
+.welcome-step { border-radius: 12px; }
+.chron-bar, .chron-fill { border-radius: 8px; }
+.codex-entry { border-radius: 8px; }
+#temple-stats { border-radius: 10px; }
+.settings-card, .chronicle-card, .help-card { border-radius: 14px; }

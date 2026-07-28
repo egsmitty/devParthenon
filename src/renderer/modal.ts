@@ -392,7 +392,7 @@ function renderLesson(): void {
       : mode === "gauntlet"
         ? " &middot; <em>gauntlet</em>"
         : "";
-  const label = mode === "gauntlet" ? "Interview question" : "Interactive check";
+  const label = mode === "gauntlet" ? "Interview question" : "Your turn";
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
     <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
@@ -404,7 +404,7 @@ function renderLesson(): void {
     <div class="options">${optionsMarkup(q.options)}</div>
     <div class="feedback-slot"></div>
     <div class="modal-actions">
-      <button class="ghost-btn" data-action="abandon">Leave module</button>
+      <button class="ghost-btn" data-action="abandon">Step away</button>
     </div>
   `);
 
@@ -500,7 +500,7 @@ function renderRedemptionIntro(): void {
     </div>
     <div class="unlock-note">The lessons already showed you why. Prove it stuck.</div>
     <div class="modal-actions">
-      <button class="ghost-btn" data-action="abandon">Leave module</button>
+      <button class="ghost-btn" data-action="abandon">Step away</button>
       <button class="primary-btn" data-action="begin">Begin Redemption Round</button>
     </div>
   `);
@@ -542,7 +542,7 @@ function renderRedeem(): void {
     <div class="options">${optionsMarkup(q.options)}</div>
     <div class="feedback-slot"></div>
     <div class="modal-actions">
-      <button class="ghost-btn" data-action="abandon">Leave module</button>
+      <button class="ghost-btn" data-action="abandon">Step away</button>
     </div>
   `);
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
