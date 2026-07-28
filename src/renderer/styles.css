@@ -2097,3 +2097,23 @@ html[data-motion="reduce"] .sky-star { animation: none; }
 .codex-entry { border-radius: 8px; }
 #temple-stats { border-radius: 10px; }
 .settings-card, .chronicle-card, .help-card { border-radius: 14px; }
+
+/* ---------------- Chronicle recall heatmap ---------------- */
+.heatmap { display: flex; flex-direction: column; gap: 8px; }
+.chron-hint { color: var(--text-dim); font-size: 0.85rem; font-style: italic; padding: 4px 0; }
+.heat-row { display: flex; align-items: center; gap: 12px; }
+.heat-label { width: 230px; flex-shrink: 0; font-size: 0.85rem; color: var(--text); }
+.heat-cells { display: flex; flex-wrap: wrap; gap: 4px; }
+.heat-cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  display: inline-block;
+}
+.heat-strong { background: linear-gradient(180deg, #4fae6d, #2f8a55); }
+.heat-mid { background: linear-gradient(180deg, var(--gold), var(--gold-deep)); }
+.heat-weak { background: linear-gradient(180deg, #d0563e, #a83a26); }
+.heat-legend { display: flex; gap: 18px; margin-top: 6px; color: var(--text-dim); font-size: 0.78rem; }
+.heat-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.heat-legend i { width: 12px; height: 12px; }

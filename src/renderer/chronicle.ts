@@ -92,12 +92,54 @@ export function openChronicle(
     </div>
     <h3 class="chron-heading">Standing of the temple</h3>
     <div class="chron-rows">${bars}</div>
+    <h3 class="chron-heading">Recall heatmap</h3>
+    <div class="heatmap" id="chron-heatmap"><p class="chron-hint">Answer a few checks to start tracking concepts here.</p></div>
     <div class="chron-actions">
       <button class="ghost-btn" id="chron-export">Export progress</button>
       <button class="ghost-btn" id="chron-import">Import progress</button>
     </div>
   `;
   card.querySelector('[data-action="close"]')!.addEventListener("click", closeChronicle);
+
+  // Recall heatmap — one cell per tracked concept, grouped by module and
+  // coloured by how reliably it's recalled. Fetched from the review deck
+  // (which resolves concept headings). Filled in after the card mounts.
+  void api.getReviewDeck(200).then((deck) => {
+    if (deck.length === 0) return;
+    const byNode = new Map<string, typeof deck>();
+    for (const e of deck) {
+      const arr = byNode.get(e.nodeTitle) ?? [];
+      arr.push(e);
+      byNode.set(e.nodeTitle, arr);
+    }
+    const level = (e: { seen: number; missed: number }) => {
+      const r = e.seen ? (e.seen - e.missed) / e.seen : 0;
+      return r >= 0.8 ? "strong" : r >= 0.5 ? "mid" : "weak";
+    };
+    const rows = [...byNode.entries()]
+      .map(([title, list]) => {
+        const cells = list
+          .map(
+            (e) =>
+              `<span class="heat-cell heat-${level(e)}" title="${escapeHtml(
+                e.heading
+              )} — seen ${e.seen}, missed ${e.missed}"></span>`
+          )
+          .join("");
+        return `<div class="heat-row"><span class="heat-label">${escapeHtml(
+          title
+        )}</span><div class="heat-cells">${cells}</div></div>`;
+      })
+      .join("");
+    const legend =
+      `<div class="heat-legend">` +
+      `<span><i class="heat-cell heat-strong"></i>Strong</span>` +
+      `<span><i class="heat-cell heat-mid"></i>Shaky</span>` +
+      `<span><i class="heat-cell heat-weak"></i>Weak</span>` +
+      `</div>`;
+    const host = card.querySelector("#chron-heatmap");
+    if (host) host.innerHTML = rows + legend;
+  });
 
   // Dynamic styles via CSSOM (inline style attributes violate the CSP).
   card.querySelector<HTMLElement>(".ring")?.style.setProperty("--pct", String(avg));
