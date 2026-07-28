@@ -254,7 +254,7 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     d: "M 380 150 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18 v -10 h 12 v 10 h 18",
     class: "relief",
   }));
-  const pLabel = el("text", { x: 500, y: 128, class: "node-label" });
+  const pLabel = el("text", { x: 500, y: 128, class: "node-label pediment-label" });
   pLabel.textContent = "Capstone · Mock Interviews";
   pg.appendChild(pLabel);
   if (pediment.status === "locked") pg.appendChild(ironwork(500, 88, 120));
@@ -336,9 +336,16 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   /* --- Foundation: stylobate + weathered steps --- */
   const foundation = data.nodes["foundation"];
   const fg = nodeGroup(foundation);
-  fg.appendChild(el("rect", { x: 150, y: 534, width: 700, height: 40, class: "shape" }));
-  fg.appendChild(el("rect", { x: 113, y: 574, width: 774, height: 40, class: "shape" }));
-  fg.appendChild(el("rect", { x: 76, y: 614, width: 848, height: 42, class: "shape" }));
+  // Steps carry the stone/marble fill but opt OUT of the traveling rune dashes.
+  fg.appendChild(el("rect", { x: 150, y: 534, width: 700, height: 40, class: "shape foundation-step" }));
+  fg.appendChild(el("rect", { x: 113, y: 574, width: 774, height: 40, class: "shape foundation-step" }));
+  fg.appendChild(el("rect", { x: 76, y: 614, width: 848, height: 42, class: "shape foundation-step" }));
+  // A single glow traces the outer stepped silhouette — around the outside,
+  // never horizontally across the individual steps.
+  fg.appendChild(el("path", {
+    d: "M 150 534 H 850 V 574 H 887 V 614 H 924 V 656 H 76 V 614 H 113 V 574 H 150 Z",
+    class: "rune-outline",
+  }));
   // Masonry joints on the steps.
   for (const [sy, sx, sw, seg] of [[554, 150, 700, 7], [594, 113, 774, 8], [634, 76, 848, 9]] as const) {
     for (let j = 1; j < seg; j++) {
@@ -348,7 +355,7 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   }
   fg.appendChild(el("line", { x1: 150, y1: 538, x2: 850, y2: 538, class: "accent-line" }));
   fg.appendChild(el("line", { x1: 76, y1: 618, x2: 924, y2: 618, class: "accent-line" }));
-  const fLabel = el("text", { x: 500, y: 600, class: "node-label" });
+  const fLabel = el("text", { x: 500, y: 600, class: "node-label foundation-label" });
   fLabel.textContent = "Web Foundations — HTTP · DNS · Client/Server · DOM";
   fg.appendChild(fLabel);
   if (foundation.status === "locked") fg.appendChild(ironwork(500, 640, 160));
