@@ -442,11 +442,11 @@ smoke clean, `audit:ux` produces all states):
 4. ~~Replayability — v2 migration, `review.ts`, practice mode, review deck (§3).~~ **Done.**
 5. ~~Playwright audit harness + high-severity fix (§4).~~ **Done.**
 
-**Phase 6 is next and is yours:**
-6. **The Maximum Design Pass** (§5) — ship it in themed slices (atmosphere →
-   node states → completion moments → modal → keyboard/a11y → capstone gauntlet
-   → window state), one commit each, gating green every time. Add the
-   `prefers-reduced-motion` guard as you write each animation.
+6. ~~**The Maximum Design Pass** (§5) — shipped in six slices: (A) reduced
+   motion + legibility, (B) keyboard/a11y + focus trap, (C) one-shot stone-set
+   + grand pediment unlock, (D) living temple (torches/sheen/toast/parallax),
+   (E) window-state persistence, (F) the timed cross-pillar Capstone
+   Gauntlet.~~ **Done — all §5.6 acceptance criteria verified.**
 
 Deliver each slice working and verified. Report what you changed, what the
 audit found, and anything in §1.2 that a requested change would have forced —

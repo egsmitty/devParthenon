@@ -38,13 +38,22 @@ the full graded→redemption→pass flow renders correctly end-to-end
 - **[Low] Glossary scrollbar hint.** Bottom fade mask on the list signals
   more entries below the fold.
 
-### Recommended — remaining
-- **[Med] No keyboard navigation.** Options aren't reachable/answerable by
-  keyboard (1–4 to pick, Enter to continue, Esc to close), and the modal
-  doesn't trap focus. (Phase 6 slice B.)
-- **[Low] Locked-node click affordance.** The shake on a locked node is a nice
-  touch, but there's no textual "why locked" surfaced on click beyond the
-  native tooltip — consider a brief inline toast naming the prerequisite.
+### Fixed in Phase 6 slices B & D
+- **[Med] No keyboard navigation.** Slice B: temple stones are focusable
+  buttons (Enter/Space), 1–4 answer, Enter advances, Esc leaves, Tab is
+  trapped, ARIA dialog/group/live regions added. Machine-verified by audit
+  scenario 5 (15-keyboard-only-result.png — a full module with zero mouse).
+- **[Low] Locked-node click affordance.** Slice D: clicking a sealed stone
+  now shows a carved toast naming the prerequisites still missing.
+
+### Phase 6 outcome
+All findings closed. Shipped beyond fixes: one-shot stone-set + grand
+pediment-unlock moments (scenario-verified), torch sconces + marble sheen +
+hover lift + pointer parallax, window-state persistence, and the timed
+17-question cross-pillar Capstone Gauntlet (scenario-verified). Acceptance
+checks: reduced-motion audit clicks without force, keyboard-only path,
+transform/opacity/filter-only animation, zero external URLs in the built
+renderer, `dist:win` packages.
 
 ## Ideas for the "max it out" pass (beyond fixes)
 - Node hover: torch-flicker glow, tooltip cartouche, subtle parallax on the
