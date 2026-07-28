@@ -11,6 +11,7 @@
     "generate-icon": "node scripts/generate-icon.js",
     "dev": "node scripts/dev.js",
     "start": "electron .",
+    "launch": "npm run build && electron .",
     "test": "npm run build && node --test tests/",
     "audit:ux": "npm run build && node scripts/audit-ux.js",
     "dist:win": "npm run build && npm run generate-icon && electron-builder --win"
