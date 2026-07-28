@@ -9,6 +9,7 @@ const SHORTCUTS: Array<{ keys: string; what: string }> = [
   { keys: "Click a glowing stone", what: "Begin that module" },
   { keys: "Click a marble stone", what: "Practice a mastered module (no stakes)" },
   { keys: "Click the book", what: "Open the Codex of Jargon" },
+  { keys: "<kbd>Space</kbd> / <kbd>&larr;</kbd> <kbd>&rarr;</kbd>", what: "In Flashcards: flip the card / browse the deck" },
   { keys: "<kbd>?</kbd>", what: "Show this reference" },
 ];
 

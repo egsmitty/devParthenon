@@ -34,6 +34,7 @@ import {
 import { initWelcome, openWelcome } from "./welcome.js";
 import { closeChronicle, isChronicleOpen, openChronicle } from "./chronicle.js";
 import { closeHelp, isHelpOpen, openHelp } from "./help.js";
+import { isFlashcardsOpen, openFlashcards } from "./flashcards.js";
 import { playCue } from "./sound.js";
 
 declare global {
@@ -821,10 +822,15 @@ function wireCodex(): void {
   );
   const search = document.getElementById("codex-search") as HTMLInputElement;
   search.addEventListener("input", () => renderCodex(search.value));
+  // Flashcards drill launches over the open book; closing it returns here.
+  document
+    .getElementById("codex-flashcards")!
+    .addEventListener("click", () => openFlashcards(glossary));
   document.addEventListener("keydown", (e) => {
     const codex = document.getElementById("codex")!;
-    // Codex Esc only when it's the topmost overlay (modal takes precedence).
-    if (e.key === "Escape" && !codex.hidden && root_modal_hidden()) {
+    // Codex Esc only when it's the topmost overlay (the modal and the
+    // flashcards drill both sit above it and claim Esc first).
+    if (e.key === "Escape" && !codex.hidden && root_modal_hidden() && !isFlashcardsOpen()) {
       e.preventDefault();
       closeCodex();
     }
@@ -904,7 +910,7 @@ function wireSettings(): void {
 }
 
 function anyOverlayOpen(): boolean {
-  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "codex"].some(
+  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "flashcards-root", "codex"].some(
     (id) => {
       const el = document.getElementById(id);
       return el && !el.hasAttribute("hidden");
