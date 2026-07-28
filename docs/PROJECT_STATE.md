@@ -48,14 +48,25 @@ UI/UX refinement on the temple and the Codex.
   medallions. Opens/closes as a right-hinged fold; "Return" button.
 
 **Personalization & extra screens**
-- **Settings panel**: Temple Night / Parchment Day themes, answer labels
-  (A B C D / 1 2 3 4 / none), a text-size slider, and reduce-motion + sound
-  toggles — persisted to `settings.json` (atomic), applied live.
+- **Settings panel**: Temple Night / **Parchment Day** (warm sunny) themes,
+  answer labels (A B C D / 1 2 3 4 / none), text-size slider, reduce-motion +
+  sound toggles — persisted to `settings.json` (atomic), applied live.
 - **First-run welcome rite** (crest, title, three steps); replayable from
   Settings.
-- **The Chronicle** dashboard: mastery ring, recall accuracy, per-module bars.
+- **The Chronicle** dashboard: mastery ring, recall accuracy, **day streak**,
+  per-module bars, a **recall heatmap** (concepts by module, coloured by how
+  reliably recalled), and progress **export/import**.
 - **Keys & Controls** help (`?` key or titlebar button).
 - **Synthesized sound** cues (Web Audio, no assets): answer/pass/seal/whoosh.
+
+**Learning experience & scene**
+- A layered **backdrop** behind the temple: sky, sun (day) / moon + stars
+  (night), rolling hills — the temple stands in a landscape.
+- Every lesson section has a plain-language **"In short"** takeaway; a graded
+  pass recaps them ("What you carry forward").
+- **"In the Codex"** chips under lessons jump to glossary definitions.
+- A header **"Continue/Begin: <module>"** guide points to the next stone.
+- Per-pillar topic **gems**; hover **cartouche tooltips**; softer, rounder UI.
 
 ## Architecture at a glance
 
