@@ -467,10 +467,77 @@ async function launchModule(
   );
 }
 
-/* ---------------- Glossary sidebar ---------------- */
+/* ---------------- Codex of Jargon (slide-out lexicon) ---------------- */
 
-function renderGlossary(filter: string): void {
-  const list = document.getElementById("glossary-list")!;
+const MARBLE_DEFS = `<defs><linearGradient id="mb" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#fbfcfe"/><stop offset="0.55" stop-color="#e2ddce"/>
+  <stop offset="1" stop-color="#b3ab95"/></linearGradient></defs>`;
+
+/** Athena — helmet crest, spear, round shield. */
+const STATUE_ATHENA = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <rect x="32" y="226" width="76" height="9" rx="2" fill="url(#mb)" stroke="#8a5a13" stroke-width="0.7"/>
+  <line x1="103" y1="26" x2="103" y2="228" stroke="#cfc7b0" stroke-width="2.6"/>
+  <path d="M103 18 l -4 9 h 8 z" fill="#e6c063"/>
+  <path d="M70 70 C 55 72 50 92 49 110 L 43 226 L 97 226 L 91 110 C 90 92 85 72 70 70 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 100 L 55 222"/><path d="M70 102 L 70 224"/><path d="M80 100 L 85 222"/></g>
+  <path d="M52 90 C 42 96 40 122 44 142 C 46 150 52 150 54 142 C 52 122 55 104 60 96 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <circle cx="40" cy="150" r="17" fill="url(#mb)" stroke="#8a5a13" stroke-width="1.4"/>
+  <circle cx="40" cy="150" r="8" fill="none" stroke="#8a5a13"/>
+  <path d="M88 90 C 98 96 100 120 96 138 C 94 146 89 145 88 138 C 90 120 86 104 80 96 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="14" fill="url(#mb)"/>
+  <circle cx="70" cy="48" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M58 41 C 60 27 80 27 82 41 C 78 35 62 35 58 41 Z" fill="#e6c063" stroke="#8a5a13" stroke-width="0.5"/>
+  <path d="M70 25 C 74 21 84 23 88 31" fill="none" stroke="#e6c063" stroke-width="3"/>
+</svg>`;
+
+/** A scholar's bust on a fluted column. */
+const STATUE_BUST = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="44" y="236" width="52" height="16" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <rect x="52" y="120" width="36" height="116" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.45"><line x1="60" y1="126" x2="60" y2="232"/><line x1="70" y1="126" x2="70" y2="232"/><line x1="80" y1="126" x2="80" y2="232"/></g>
+  <rect x="46" y="110" width="48" height="11" rx="1.5" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M48 110 C 50 88 90 88 92 110 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <rect x="63" y="74" width="14" height="16" fill="url(#mb)"/>
+  <circle cx="70" cy="62" r="15" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M55 60 C 58 48 64 46 70 50 C 76 46 82 48 85 60" fill="none" stroke="#e6c063" stroke-width="2.4"/>
+  <path d="M57 56 l -4 -3 M63 51 l -3 -4 M83 56 l 4 -3 M77 51 l 3 -4" stroke="#e6c063" stroke-width="1.6"/>
+</svg>`;
+
+/** A draped muse, contrapposto, holding a lyre. */
+const STATUE_MUSE = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="236" width="64" height="18" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <path d="M68 72 C 54 74 52 94 54 112 L 44 236 L 92 236 L 86 150 C 88 120 84 92 78 78 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 108 L 52 232"/><path d="M70 110 L 68 234"/><path d="M80 120 L 84 232"/></g>
+  <path d="M78 82 C 90 88 96 110 92 128 C 90 136 85 135 84 128 C 86 112 80 96 74 90 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <path d="M40 116 a 16 20 0 1 0 0.1 0 Z" fill="none" stroke="#e6c063" stroke-width="2"/>
+  <g stroke="#e6c063" stroke-width="1.3"><line x1="33" y1="104" x2="33" y2="132"/><line x1="40" y1="101" x2="40" y2="135"/><line x1="47" y1="104" x2="47" y2="132"/></g>
+  <rect x="63" y="60" width="12" height="14" fill="url(#mb)"/>
+  <circle cx="69" cy="50" r="13" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M56 46 C 60 36 78 36 82 46" fill="none" stroke="#e6c063" stroke-width="2.2"/>
+</svg>`;
+
+const GALLERY = [
+  { art: STATUE_ATHENA, name: "Athena", epithet: "Wisdom & Craft" },
+  { art: STATUE_MUSE, name: "Mnemosyne", epithet: "Memory" },
+  { art: STATUE_BUST, name: "Sophos", epithet: "The Scholar" },
+  { art: STATUE_ATHENA, name: "Nike", epithet: "Victory" },
+];
+
+function renderStatues(): void {
+  const gallery = document.getElementById("codex-statues")!;
+  gallery.innerHTML = GALLERY.map(
+    (s) => `
+    <figure class="statue-niche">
+      <div class="niche">${s.art}</div>
+      <figcaption><span class="niche-name">${s.name}</span><span class="niche-epithet">${s.epithet}</span></figcaption>
+    </figure>`
+  ).join("");
+}
+
+function renderCodex(filter: string): void {
+  const left = document.getElementById("codex-left")!;
+  const right = document.getElementById("codex-right")!;
   const q = filter.trim().toLowerCase();
   const matches = glossary.filter(
     (e) =>
@@ -479,17 +546,61 @@ function renderGlossary(filter: string): void {
       e.definition.toLowerCase().includes(q) ||
       e.tags.some((t) => t.toLowerCase().includes(q))
   );
+
+  const cardFor = (e: GlossaryEntry) =>
+    `<article class="codex-entry"><h3 class="term">${escapeHtml(e.term)}</h3>` +
+    `<p class="definition">${escapeHtml(e.definition)}</p></article>`;
+
   if (matches.length === 0) {
-    list.innerHTML = `<div class="glossary-empty">No terms match &ldquo;${escapeHtml(filter)}&rdquo;.</div>`;
+    left.innerHTML = `<div class="codex-empty">No entry in the lexicon matches &ldquo;${escapeHtml(filter)}&rdquo;.</div>`;
+    right.innerHTML = "";
     return;
   }
-  list.innerHTML = matches
-    .map(
-      (e) =>
-        `<div class="glossary-entry"><div class="term">${escapeHtml(e.term)}</div>` +
-        `<div class="definition">${escapeHtml(e.definition)}</div></div>`
-    )
-    .join("");
+  // Alternate terms into the two flanking colonnades.
+  left.innerHTML = matches.filter((_, i) => i % 2 === 0).map(cardFor).join("");
+  right.innerHTML = matches.filter((_, i) => i % 2 === 1).map(cardFor).join("");
+}
+
+function openCodex(): void {
+  const codex = document.getElementById("codex")!;
+  const tab = document.getElementById("codex-tab")!;
+  codex.hidden = false;
+  tab.setAttribute("aria-expanded", "true");
+  requestAnimationFrame(() => codex.classList.add("open"));
+  (document.getElementById("codex-search") as HTMLInputElement).focus();
+}
+
+function closeCodex(): void {
+  const codex = document.getElementById("codex")!;
+  const tab = document.getElementById("codex-tab")!;
+  codex.classList.remove("open");
+  tab.setAttribute("aria-expanded", "false");
+  // Wait out the slide-out transition before hiding.
+  window.setTimeout(() => (codex.hidden = true), 320);
+  tab.focus();
+}
+
+function wireCodex(): void {
+  renderStatues();
+  renderCodex("");
+  document.getElementById("codex-tab")!.addEventListener("click", openCodex);
+  document.querySelectorAll('#codex [data-action="close"]').forEach((el) =>
+    el.addEventListener("click", closeCodex)
+  );
+  const search = document.getElementById("codex-search") as HTMLInputElement;
+  search.addEventListener("input", () => renderCodex(search.value));
+  document.addEventListener("keydown", (e) => {
+    const codex = document.getElementById("codex")!;
+    // Codex Esc only when it's the topmost overlay (modal takes precedence).
+    if (e.key === "Escape" && !codex.hidden && root_modal_hidden()) {
+      e.preventDefault();
+      closeCodex();
+    }
+  });
+}
+
+function root_modal_hidden(): boolean {
+  return document.getElementById("modal-root")?.hasAttribute("hidden") ?? true;
 }
 
 /* ---------------- Toast & parallax ---------------- */
@@ -607,9 +718,7 @@ async function init(): Promise<void> {
   wireParallax();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
-  renderGlossary("");
-  const search = document.getElementById("glossary-search") as HTMLInputElement;
-  search.addEventListener("input", () => renderGlossary(search.value));
+  wireCodex();
   if (!api.isSmoke) await offerResume();
 }
 

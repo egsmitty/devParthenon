@@ -56,17 +56,40 @@
         <button id="btn-reset" class="ghost-btn">Reset progress</button>
       </footer>
     </main>
+  </div>
 
-    <aside id="glossary-pane" class="carved-panel">
-      <h2>Jargon Glossary</h2>
-      <input
-        id="glossary-search"
-        type="search"
-        placeholder="Search terms (SSR, CORS, ORM&hellip;)"
-        autocomplete="off"
-      />
-      <div id="glossary-list"></div>
-    </aside>
+  <!-- Book-spine tab: opens the Codex of Jargon -->
+  <button id="codex-tab" aria-label="Open the Codex of Jargon" aria-expanded="false">
+    <svg class="codex-tab-book" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 3h6a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H4z" />
+      <path d="M20 3h-6a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h6z" />
+    </svg>
+    <span class="codex-tab-label">C O D E X</span>
+  </button>
+
+  <!-- Slide-out lexicon: two term colonnades flanking a statue gallery -->
+  <div id="codex" hidden>
+    <div class="codex-backdrop" data-action="close"></div>
+    <section class="codex-panel" role="dialog" aria-modal="true" aria-label="Codex of Jargon">
+      <header class="codex-header">
+        <div class="codex-title">
+          <h2>Codex of Jargon</h2>
+          <p class="codex-sub">The developer's lexicon, carved in marble.</p>
+        </div>
+        <input
+          id="codex-search"
+          type="search"
+          placeholder="Search the lexicon (SSR, CORS, ORM&hellip;)"
+          autocomplete="off"
+        />
+        <button class="codex-close" data-action="close" aria-label="Close codex">&#10005;</button>
+      </header>
+      <div class="codex-body">
+        <div class="codex-col" id="codex-left"></div>
+        <div class="codex-gallery" id="codex-statues" aria-hidden="true"></div>
+        <div class="codex-col" id="codex-right"></div>
+      </div>
+    </section>
   </div>
 
   <div id="modal-root" role="dialog" aria-modal="true" aria-label="Learning module" hidden></div>

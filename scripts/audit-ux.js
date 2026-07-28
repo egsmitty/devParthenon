@@ -97,11 +97,15 @@ async function main() {
     await shot(page, "02-temple-fresh-min", "Fresh temple at minimum window size (980x680)");
     await resize(app, SIZES.wide);
 
-    // Glossary search
-    await page.fill("#glossary-search", "hydration");
-    await new Promise((r) => setTimeout(r, 200));
-    await shot(page, "03-glossary-search", "Glossary filtered to 'hydration'");
-    await page.fill("#glossary-search", "");
+    // Codex of Jargon: open the slide-out, filter, capture the statue gallery.
+    await page.click("#codex-tab");
+    await page.waitForSelector("#codex.open .statue");
+    await page.fill("#codex-search", "render");
+    await new Promise((r) => setTimeout(r, 250));
+    await shot(page, "03-codex-open", "Codex slide-out: term colonnades flanking the statue gallery, filtered to 'render'");
+    await page.fill("#codex-search", "");
+    await page.click(".codex-close");
+    await new Promise((r) => setTimeout(r, 350));
 
     // Open the foundation module.
     await clickNode(page, "foundation");
@@ -232,11 +236,6 @@ async function main() {
       throw new Error(`stone-set transition mis-fired: ${justCompleted}`);
     }
     await shot(page, "16-stone-set-transition", "One-shot stone-set moment fired on the newly completed foundation");
-    // A plain re-render must NOT re-fire it (one-shot guarantee).
-    await page.fill("#glossary-search", "x");
-    await page.evaluate(() => {
-      document.getElementById("btn-review")?.blur();
-    });
     await app.close();
   }
 
