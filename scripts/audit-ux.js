@@ -309,10 +309,18 @@ async function main() {
       set("pillar-nextjs", "in_progress", 0.6);
       d.foundationCompleted = true;
       d.unlockedPillars = ["pillar-react", "pillar-nextjs"];
+      d.sectionStats = {
+        "foundation/0": { seen: 3, missed: 1, streak: 1, lastSeenISO: "2026-07-28T00:00:00Z", nextReviewISO: "2026-07-29T00:00:00Z" },
+        "foundation/2": { seen: 2, missed: 0, streak: 2, lastSeenISO: "2026-07-28T00:00:00Z", nextReviewISO: "2026-07-31T00:00:00Z" },
+        "pillar-react/1": { seen: 4, missed: 2, streak: 0, lastSeenISO: "2026-07-28T00:00:00Z", nextReviewISO: "2026-07-29T00:00:00Z" },
+      };
     }, { theme: "parchment" });
     const { app, page } = await launch(dir);
     await resize(app, SIZES.wide);
     await shot(page, "20-parchment-theme", "Parchment (day) theme — sunlit limestone temple");
+    await page.click("#btn-chronicle");
+    await page.waitForSelector(".chronicle-card");
+    await shot(page, "21-chronicle", "The Chronicle: mastery ring, recall accuracy, per-module standing");
     await app.close();
   }
 

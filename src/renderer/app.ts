@@ -31,6 +31,7 @@ import {
   settings,
 } from "./settings.js";
 import { initWelcome, openWelcome } from "./welcome.js";
+import { closeChronicle, isChronicleOpen, openChronicle } from "./chronicle.js";
 
 declare global {
   interface Window {
@@ -727,6 +728,22 @@ function wireSettings(): void {
   });
 }
 
+function wireChronicle(): void {
+  document.getElementById("btn-chronicle")!.addEventListener("click", () =>
+    openChronicle(progress)
+  );
+  const root = document.getElementById("chronicle-root")!;
+  root.addEventListener("click", (e) => {
+    if (e.target === root) closeChronicle();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && isChronicleOpen()) {
+      e.preventDefault();
+      closeChronicle();
+    }
+  });
+}
+
 function wireReview(): void {
   document.getElementById("btn-review")!.addEventListener("click", async () => {
     const deck = await api.getReviewDeck(8);
@@ -792,6 +809,7 @@ async function init(): Promise<void> {
   wireReset();
   wireReview();
   wireSettings();
+  wireChronicle();
   wireParallax();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
