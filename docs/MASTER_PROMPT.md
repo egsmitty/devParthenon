@@ -274,17 +274,131 @@ power-hungry — gate it behind its own npm script, never the default test run.
 
 ---
 
-## 5. Feature D — supporting polish (stretch, do after A–C)
+## 5. Feature D — THE MAXIMUM DESIGN PASS (Phase 6)
 
-Pick up as budget allows; each is independently shippable:
-- **Resume mid-module**: *promoted to a foundational requirement — see §3.6.*
-- **Keyboard support**: `1–4` to answer, `Enter` to continue, `Esc` to close;
-  proper focus trap and ARIA roles on the modal.
-- **Capstone as a real gauntlet**: make the pediment a timed, shuffled quiz that
-  pulls variants across all six pillars, not a standalone 5-question module.
-- **Completion payoff**: a carve/marble animation when a pillar completes and a
-  distinct one when the pediment finally unlocks.
-- **Window state**: remember size/position/maximized between launches.
+> Role for this phase: **World-class game UI/UX lead & creative technologist.**
+> Phases 1–5 shipped a working, tested app with a solid mid-2000s strategy-RPG
+> temple skin. Your job now is to take that baseline and go *full-port* — the
+> richest, most alive, most tactile version of this interface that a
+> self-contained Electron app can be, without breaking a single invariant.
+> Think Age of Mythology / Titan Quest / Diablo skill-tree: carved, glowing,
+> reactive, dense, unforgettable. This is a licensed maximalist pass — spend
+> the effort, but stay inside the guardrails in §5.2.
+
+### 5.1 Ground truth — build on what exists, don't tear it out
+The skin already lives in:
+- `src/renderer/styles.css` — granite atmosphere, carved marble/brass panels,
+  gold-foil headers, node-state styling, the stone-tablet modal.
+- `src/renderer/app.ts` — the temple SVG builder (`buildDefs` gradients +
+  `feTurbulence` grain filters, Doric capitals, triglyph frieze, pediment
+  relief, seals, sparks, chains) and node click/shake wiring.
+- `src/renderer/index.html` — the `#atmosphere` layer (light beams, motes,
+  vignette) and Cinzel / Cinzel Decorative fonts (bundled locally in
+  `src/renderer/fonts/`, wired via `fonts.css`).
+
+**Start by looking at the baseline you're improving:** run `npm run audit:ux`,
+then read `audit/FINDINGS.md` and open `audit/shots/`. FINDINGS already lists
+the concrete defects to fix *and* a "max it out" idea list — treat it as your
+opening brief and keep it updated as you go.
+
+### 5.2 Non-negotiable guardrails (breaking any of these fails the pass)
+1. **Self-contained / CSP.** The renderer runs under
+   `default-src 'self'; font-src 'self'; img-src 'self' data:`. **No** CDNs,
+   external fonts, remote images, or network calls. Every asset is bundled,
+   inlined, or a `data:` URI. New fonts/textures ship in `src/renderer/` and
+   copy via `scripts/copy-assets.js`.
+2. **Security unchanged.** `sandbox: true`, `contextIsolation: true`,
+   `nodeIntegration: false` stay; all privileged work goes through existing IPC.
+3. **Zero renderer console errors.** The two-pass smoke check fails on *any*
+   renderer error, and it reloads once — so your effects must survive a reload
+   and re-init without throwing or double-binding listeners.
+4. **60 fps on integrated graphics.** Animate **only** `transform`, `opacity`,
+   and `filter` (compositor-friendly). Never animate `width/height/top/left` or
+   anything that triggers layout. Cap the number of simultaneous heavy
+   `filter`/`drop-shadow` layers; prefer pre-baked gradients/textures over
+   per-frame recomputation. The temple re-renders by rebuilding the SVG on
+   state change — keep that path cheap and don't attach unthrottled listeners.
+5. **`prefers-reduced-motion` from the first commit.** Wrap every ambient and
+   keyframe animation in `@media (prefers-reduced-motion: no-preference)`; under
+   `reduce`, snap to the static end-state and keep everything usable. This is
+   both an accessibility requirement *and* what keeps the audit deterministic
+   (the harness emulates reduced motion; today the breathing animation forces
+   Playwright to `force`-click).
+6. **No new runtime dependencies.** Dev-only deps are fine.
+7. **Green gate every commit** (§7): `npm test` + smoke, and `npm run audit:ux`
+   for anything visual.
+
+### 5.3 Visual surfaces to push (the maximalist wishlist)
+Ship these as small, independently-reviewable slices. Not every idea is
+mandatory — chase the ones with the highest wow-per-risk.
+
+- **Atmosphere & depth.** Volumetric god-rays behind the temple; animated dust
+  drifting inside the light beams; a subtle pointer-parallax on the beams and
+  background granite (translate a few px on `mousemove`, rAF-throttled); a
+  slow-breathing vignette. Layer for real depth, not a flat backdrop.
+- **The temple as a living scene.** Torch sconces flanking the pediment with
+  flickering flame + warm cast light; a slow specular highlight sweeping across
+  the marble of completed nodes; locked nodes cold-desaturated with faintly
+  swaying chains; richer capitals/relief that read at both window sizes
+  (FINDINGS notes the pediment meander is too faint at minimum size).
+- **Per-node hover.** Lift + glow bloom, a carved-cartouche tooltip naming the
+  module and score, a torch-flicker intensify. Locked hover = a colder shudder
+  hinting "sealed."
+- **State-transition moments — the headliner.** These must fire **once, on the
+  status transition** (track previous status; don't replay every render):
+  - *Stone set* (node → completed): dark-to-marble wipe, gold filigree drawing
+    itself on (`stroke-dashoffset`), a spark burst, the seal stamping down.
+  - *Pediment unlock* (all six pillars done): a grander sequence — beams surge,
+    the tympanum meander draws itself, a temple-wide gold shimmer, the capstone
+    settling in. This is the emotional payoff of the whole app; make it land.
+- **The modal as an artifact.** The tablet zoom-in exists; add a matching exit,
+  an ink/chisel ripple on option select, a green laurel flourish on correct and
+  a brief stone-crack shudder on wrong, a drop-cap or engraved rule on the
+  lesson heading. Keep text AA-legible (FINDINGS flags the `.why-wrong` dim).
+- **Micro-interactions.** Gold-plate button press depth + hover bloom + an
+  engraved-looking focus ring; option-hover ripple; a bottom fade on the
+  glossary list signalling more entries; reveal-on-scroll for glossary rows.
+- **"Sound visualizer" feedback.** Per the original brief, a CSS ripple/pulse
+  on click that reads as an audible tap — no actual audio required (and none
+  may be fetched remotely).
+
+### 5.4 Functional polish to ship alongside the visuals
+- **Keyboard & a11y.** `1–4` select an option, `Enter` confirm/advance, `Esc`
+  close the modal; roving focus; a real focus trap while the modal is open;
+  ARIA (`role="dialog"`, options as a `radiogroup`, `aria-live` for feedback).
+  Build on the existing `scrollIntoView` + auto-focus of the Continue button.
+- **Capstone as a gauntlet.** Turn the pediment into a timed, shuffled quiz that
+  draws variants across *all six pillars* (reuse `pickVariant` in practice mode
+  over pillar sections) instead of a standalone 5-question module. Keep the main
+  process authoritative for the pass/unlock decision.
+- **Window state.** Remember size / position / maximized across launches (a
+  small `window-state.json` in `userData`, restored on `createWindow`, guarded
+  against off-screen bounds). Never let it collide with the save files.
+- Clear the remaining **FINDINGS** items (reduced-motion, contrast, keyboard).
+
+### 5.5 How to work
+Iterate visually: after each slice run `npm run audit:ux`, eyeball
+`audit/shots/`, and update `audit/FINDINGS.md`. Commit in small themed slices
+(atmosphere → node states → completion moments → modal → keyboard → capstone →
+window state), gating green each time. Add the `prefers-reduced-motion` guard
+*as you write each animation*, not as a cleanup afterthought.
+
+### 5.6 Acceptance
+- Every ambient/keyframe animation is guarded by `prefers-reduced-motion`;
+  under `reduce` the app is fully usable and the audit clicks nodes **without**
+  `force`.
+- The *stone-set* and *pediment-unlock* moments fire exactly once on transition
+  (not per render), demonstrably captured by the audit or a described capture.
+- A full **keyboard-only** path works: open a module, answer with `1–4`+`Enter`,
+  finish, `Esc` — no mouse, focus never escapes the modal.
+- Only `transform`/`opacity`/`filter` are animated; no layout-triggering
+  properties animate; interaction stays smooth on integrated graphics.
+- CSP is unchanged and **no external request is made** (grep the built renderer
+  for `http`/CDN/font URLs — must be none).
+- `npm test` + two-pass smoke green; `npm run audit:ux` still produces every
+  state; `npm run dist:win` still packages.
+
+*(Resume-mid-module, once a §5 item, shipped in Phase 1 — see §3.6.)*
 
 ---
 
@@ -318,20 +432,22 @@ even answer-index distribution.
 
 ---
 
-## 8. Suggested execution order
-1. **Dev-loop reload safety & live persistence** (§3.6) — foundational; makes
-   the dev/build loop honest and stops mid-module work from vanishing on
-   refresh. Gate green, commit.
-2. **Schema + selection refactor** (Feature A §2.1–2.2) with the normalizer, so
-   nothing breaks while the pool is still size 2. Gate green, commit.
-3. **Author variants C/D** via parallel agents, run the distribution + alignment
-   script, extend the integrity test. Gate, commit.
-4. **Replayability** (Feature B): `version: 2` migration, `sectionStats`,
-   `review.ts` + tests, Practice affordance, Review deck. Gate, commit.
-5. **Playwright audit** (Feature C): harness, fixtures, screenshots, judging,
-   then implement the high-severity UX fixes. Gate, commit.
-6. **Polish** (Feature D) as budget allows, one commit each.
+## 8. Execution order & status
 
-Deliver each phase working and verified. Report what you changed, what the
+**Phases 1–5 are complete and on `main`** (verified: 31 tests green, two-pass
+smoke clean, `audit:ux` produces all states):
+1. ~~Dev-loop reload safety & live persistence (§3.6).~~ **Done.**
+2. ~~Schema + selection refactor — `variants[]` + `pickVariant` (§2).~~ **Done.**
+3. ~~Author variants C/D — 4-question bank per concept, 164 total (§2.3).~~ **Done.**
+4. ~~Replayability — v2 migration, `review.ts`, practice mode, review deck (§3).~~ **Done.**
+5. ~~Playwright audit harness + high-severity fix (§4).~~ **Done.**
+
+**Phase 6 is next and is yours:**
+6. **The Maximum Design Pass** (§5) — ship it in themed slices (atmosphere →
+   node states → completion moments → modal → keyboard/a11y → capstone gauntlet
+   → window state), one commit each, gating green every time. Add the
+   `prefers-reduced-motion` guard as you write each animation.
+
+Deliver each slice working and verified. Report what you changed, what the
 audit found, and anything in §1.2 that a requested change would have forced —
 before forcing it.
