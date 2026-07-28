@@ -49,6 +49,8 @@ export interface QuizQuestion {
 export interface LessonSection {
   heading: string;
   paragraphs: string[];
+  /** Optional plain-language one-line takeaway shown before the check. */
+  summary?: string;
   /** Ordered variant pool; index 0 is the canonical "Test A". */
   variants?: QuizQuestion[];
   /** @deprecated legacy shape — superseded by variants[0]. */

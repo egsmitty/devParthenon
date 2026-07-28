@@ -10,6 +10,7 @@
         "This matters because HTTP is stateless: the server does not inherently remember your previous request. Anything that feels like memory — being logged in, a shopping cart — is rebuilt on every request from data the client sends along (cookies, tokens) or data the server looks up (a database).",
         "When an interviewer asks 'what happens when you type a URL and press Enter', this request/response boundary is the backbone of the answer."
       ],
+      "summary": "The web forgets between requests, so anything that feels like memory is rebuilt each time from what the client sends along.",
       "variants": [
         {
           "id": "f1",
@@ -96,6 +97,7 @@
         "The method declares intent. `GET` reads and should never change anything. `POST` creates or triggers. `PUT` replaces a resource entirely, `PATCH` updates part of it, and `DELETE` removes it.",
         "A useful lens is idempotency: `GET`, `PUT`, and `DELETE` can be safely retried — doing them twice leaves the world in the same state. `POST` is not idempotent, which is why your bank warns you not to click 'Pay' twice."
       ],
+      "summary": "Each request states its intent through its method, and picking the right one decides whether a retry is safe or repeats the action.",
       "variants": [
         {
           "id": "f2",
@@ -182,6 +184,7 @@
         "The 4xx family is the one interviewers probe. `400` malformed request, `401` not authenticated (who are you?), `403` authenticated but not allowed (I know who you are — no), `404` resource doesn't exist, `409` conflict, `429` too many requests.",
         "The 401 vs 403 distinction trips people up constantly: 401 means 'log in first'; 403 means 'logging in won't help'."
       ],
+      "summary": "The status code is the server's short verdict, and the number's first digit alone tells you who to blame and what to do next.",
       "variants": [
         {
           "id": "f3",
@@ -268,6 +271,7 @@
         "Records have types: `A` maps a name to an IPv4 address, `AAAA` to IPv6, `CNAME` aliases one name to another, `MX` routes mail, `TXT` holds arbitrary text (often domain-ownership proofs).",
         "Every record carries a TTL — how long resolvers may cache it. Low TTLs mean fast propagation of changes but more lookup traffic; high TTLs the reverse. 'DNS propagation delay' is mostly just caches waiting for TTLs to expire."
       ],
+      "summary": "DNS turns a name into an address, and the delay you feel after a change is just old cached answers waiting for their TTL to expire.",
       "variants": [
         {
           "id": "f4",
@@ -354,6 +358,7 @@
         "Every DOM mutation can trigger style recalculation, layout (geometry), and paint. Touching the DOM is orders of magnitude more expensive than touching JavaScript objects — which is the entire reason virtual-DOM libraries like React exist: batch the changes, compute the minimal diff, touch the real DOM as little as possible.",
         "The DOM is also live: `document.querySelector` hands you a reference into the tree itself, not a copy. Change it, and the page changes."
       ],
+      "summary": "The DOM is a live tree the browser draws from, and touching it is slow, so change it as little as possible and batch your updates.",
       "variants": [
         {
           "id": "f5",
@@ -440,6 +445,7 @@
         "The browser parses HTML into the DOM, discovers linked CSS and JS, fetches those (more HTTP requests), builds render information, and paints. JavaScript then hooks into the DOM to make the page interactive.",
         "Every pillar above this foundation is a deepening of one step: React and CSS live in the render/DOM phase, Next.js decides where HTML gets generated, Node is the server answering, databases are where the server gets its facts."
       ],
+      "summary": "Loading a page is one clear chain — resolve, connect, request, parse, paint — and everything you'll learn later just deepens one of those steps.",
       "variants": [
         {
           "id": "f6",

@@ -10,6 +10,7 @@
         "Cardinality drives the shape: one-to-many is a foreign key on the 'many' side. Many-to-many needs a join table — `post_tags(post_id, tag_id)` — because neither side can hold a list of the other's keys in a single column cleanly.",
         "Normalization means each fact lives in exactly one place. Storing the user's email on every order row means an email change must update thousands of rows — or, more realistically, quietly won't."
       ],
+      "summary": "Link tables with keys, and when two things each have many of the other, connect them through a small `join table`.",
       "variants": [
         {
           "id": "db1",
@@ -96,6 +97,7 @@
         "The choice changes the question being asked. Users INNER JOIN orders: 'users who have ordered'. Users LEFT JOIN orders: 'all users, with their orders if any' — which is what a report like 'order count per user, including zero' needs.",
         "Aggregation composes on top: `GROUP BY` collapses row groups, `COUNT`/`SUM` summarize them, and `HAVING` filters the groups after aggregation (where `WHERE` filters rows before it)."
       ],
+      "summary": "Use `LEFT JOIN` when you want to keep every row from one table even if the other side has no match.",
       "variants": [
         {
           "id": "db2",
@@ -182,6 +184,7 @@
         "Indexes aren't free: every INSERT/UPDATE/DELETE must also maintain each index, and they consume storage. You index the columns your queries actually filter, join, and sort on — driven by evidence like `EXPLAIN` output and slow-query logs, not by decoration.",
         "Composite indexes follow the leftmost-prefix rule: an index on `(user_id, created_at)` accelerates filters on `user_id` and on `user_id + created_at`, but does nothing for a filter on `created_at` alone."
       ],
+      "summary": "Indexes make reads fast but slow writes a little, so add them for the columns you actually search on.",
       "variants": [
         {
           "id": "db3",
@@ -268,6 +271,7 @@
         "ACID names the guarantees: Atomicity (all or nothing), Consistency (constraints hold), Isolation (concurrent transactions don't see each other's half-done work), Durability (committed means persisted).",
         "In Prisma this is `prisma.$transaction([...])` or the interactive `prisma.$transaction(async (tx) => {...})`; in Drizzle, `db.transaction(async (tx) => {...})`. Same contract: throw inside, and everything rolls back."
       ],
+      "summary": "Wrap related writes in a transaction so they all succeed together or all undo, never leaving things half-finished.",
       "variants": [
         {
           "id": "db4",
@@ -354,6 +358,7 @@
         "Migrations version your schema the way git versions code: each change (add column, create table) is a replayable script, so dev, staging, and prod evolve identically. Editing production schemas by hand is how environments drift apart irreversibly.",
         "The signature ORM performance bug is N+1: fetch 100 posts (1 query), then lazily fetch each post's author inside a loop (100 more). ORMs make the loop invisible — the fix is telling the ORM up front to include the relation (`include`/`with`), collapsing it into a join or two queries."
       ],
+      "summary": "When loading a list plus related data, ask for the related data up front (`include`/`with`) so you avoid hundreds of extra queries.",
       "variants": [
         {
           "id": "db5",

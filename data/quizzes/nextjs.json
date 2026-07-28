@@ -10,6 +10,7 @@
         "Next.js lets you choose per route. A marketing page wants SSG (fast, cacheable, content rarely changes). A personalized dashboard wants SSR or client fetching (data differs per user, per request). A product catalog updated hourly is the ISR sweet spot.",
         "The trade axis is freshness versus latency versus server cost. Memorize the axis, not a table — interviewers reward reasoning from constraints."
       ],
+      "summary": "Pick a rendering strategy by asking how fresh the content must be, whether it differs per user, and how much traffic it gets.",
       "variants": [
         {
           "id": "n1",
@@ -96,6 +97,7 @@
         "The contract: the client's first render must produce the same output as the server's. Anything that differs between the two environments breaks it — `Date.now()`, `Math.random()`, locale-dependent formatting, or reading `window` at render time.",
         "That last one has an extra sting: `window` doesn't exist in Node at all, so a top-scope or render-time `window` reference doesn't just mismatch — it throws `window is not defined` during the server render and can take the whole route down."
       ],
+      "summary": "The server and browser must first render the same thing, so keep time, randomness, and `window` out of that first render.",
       "variants": [
         {
           "id": "n2",
@@ -182,6 +184,7 @@
         "Adding `'use client'` marks a component (and everything it imports) as a Client Component — it still gets server-rendered to HTML, but its code ships to the browser and hydrates. You need it for state, effects, event handlers, and browser APIs.",
         "The composition rule: server can render client, but a Client Component cannot import a Server Component. It can, however, receive one as `children` — which is how you keep an interactive shell from dragging the whole subtree into the client bundle."
       ],
+      "summary": "Components run on the server by default; add `'use client'` only where you truly need clicks, state, or browser features.",
       "variants": [
         {
           "id": "n3",
@@ -268,6 +271,7 @@
         "Next.js layers caching on top: fetch results can be cached and tagged, routes can be static or dynamic, and `revalidatePath`/`revalidateTag` let a mutation surgically invalidate exactly the cached data it changed.",
         "Server Actions close the write loop: a function marked `'use server'` can be passed to a form's `action`, runs on the server when submitted, mutates data, and revalidates — often with zero hand-written API endpoints."
       ],
+      "summary": "Fetch data right inside server components, and after a change, tell Next.js exactly what to refresh instead of guessing on a timer.",
       "variants": [
         {
           "id": "n4",
@@ -354,6 +358,7 @@
         "Layouts nest and — critically — persist: navigating between two blog posts re-renders the page, but the surrounding layout (nav bar, sidebar) keeps its DOM and state. State that must survive navigation belongs in a layout.",
         "Special files fill out the contract: `loading.tsx` renders instantly (via Suspense) while the page's data streams in, `error.tsx` is a route-scoped error boundary, and `not-found.tsx` handles missing resources."
       ],
+      "summary": "Folders become URLs, and anything wrapped in a `layout` keeps its state as you move between pages inside it.",
       "variants": [
         {
           "id": "n5",

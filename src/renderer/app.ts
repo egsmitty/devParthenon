@@ -558,6 +558,25 @@ function renderTemple(): void {
 
   host.replaceChildren(svg);
   renderStats();
+  renderGuide();
+}
+
+/** A clear "what next" call to action in the header. */
+function renderGuide(): void {
+  const host = document.getElementById("temple-next")!;
+  const order = ["foundation", ...PILLAR_ORDER.map((p) => p.id), "pediment"];
+  const nodes = order.map((id) => progress.nodes[id]).filter(Boolean);
+  const next =
+    nodes.find((n) => n.status === "in_progress") ??
+    nodes.find((n) => n.status === "unlocked");
+  if (!next) {
+    // Everything mastered — celebrate rather than nag.
+    host.innerHTML = `<span class="guide-done">The temple stands complete. Practice any stone to keep it sharp.</span>`;
+    return;
+  }
+  const verb = next.status === "in_progress" ? "Continue" : "Begin";
+  host.innerHTML = `<button id="guide-btn" class="guide-btn">${verb}: ${escapeHtml(next.title)} &rarr;</button>`;
+  host.querySelector("#guide-btn")!.addEventListener("click", () => launchModule(next));
 }
 
 function renderStats(): void {

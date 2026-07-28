@@ -10,6 +10,7 @@
         "Pick a project with genuine CRUD + auth + one hard feature (real-time updates, payments, file uploads, search). The hard feature is what generates interview conversation; the CRUD proves baseline competence.",
         "Write the README like a case study: problem, stack with *reasons*, architecture sketch, tradeoffs you made, what you'd do next. That document is an interview script you wrote for yourself."
       ],
+      "summary": "Build one deployed, well-documented project you know inside out, rather than many shallow clones nobody can check.",
       "variants": [
         {
           "id": "c1",
@@ -96,6 +97,7 @@
         "A complete answer crosses: the React event handler and controlled state → the HTTP request (method, JSON payload, auth header) → server validation and business logic → the database write (transaction?) → the response code → client state update and re-render.",
         "Practice narrating it in 60–90 seconds with one concrete decision named at each hop — 'POST because it creates', '201 with the new id', 'optimistic update with rollback on failure'. Depth on request is the follow-up game."
       ],
+      "summary": "Practice tracing a form submission from click to database and back, naming one clear decision at each step.",
       "variants": [
         {
           "id": "c2",
@@ -182,6 +184,7 @@
         "Binary search is the master move — cut the search space in half repeatedly. Does the bug appear with the API mocked? Then it's client-side. In the request payload in DevTools? Then the server received bad input. Each check eliminates half the system.",
         "The anti-patterns interviewers screen out: changing several things at once, re-running unchanged code hoping for different results, and blaming the framework before checking your own code."
       ],
+      "summary": "Debug calmly out loud: reproduce it, split the system in half to find the layer, then change one thing at a time.",
       "variants": [
         {
           "id": "c3",
@@ -268,6 +271,7 @@
         "Clarifying first is heavily scored: how many users? read-heavy or write-heavy? does it need auth? Diving into tech choices before scoping requirements is the most common failure mode.",
         "Every choice states a tradeoff: 'Postgres because the data is relational and consistency matters; if the read load explodes, I'd add a cache in front rather than switch databases.' Naming what you're giving up is what separates decisions from preferences."
       ],
+      "summary": "Ask clarifying questions before designing anything, and for each choice say plainly what it costs you.",
       "variants": [
         {
           "id": "c4",
@@ -354,6 +358,7 @@
         "Tie stories to the temple you just built: a hydration bug you diagnosed, an N+1 you found in review, a flaky time-dependent test you made deterministic. Specific technical stories are memorable; generic teamwork platitudes are not.",
         "And close the loop after every real interview: write down every question you stumbled on, and turn each into a drill. The candidates who improve fastest treat interviews as instrumented test runs of themselves."
       ],
+      "summary": "Tell real, specific stories using STAR, and after each interview write down what tripped you up and practice it.",
       "variants": [
         {
           "id": "c5",

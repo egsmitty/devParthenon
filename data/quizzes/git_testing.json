@@ -10,6 +10,7 @@
         "The working cycle: edit files (working directory), `git add` selects changes into the staging area, `git commit` seals the staged snapshot. The staging area exists so you can commit a *coherent subset* of your current mess.",
         "Good commits are atomic — one logical change with a message explaining *why*. 'Fix login redirect for expired sessions' can be reviewed, reverted, and bisected; 'wip stuff' cannot."
       ],
+      "summary": "A branch is just a lightweight pointer to a commit, so making one is instant and copies nothing.",
       "variants": [
         {
           "id": "g1",
@@ -96,6 +97,7 @@
         "That rewrite is why the golden rule exists: never rebase commits that others may have based work on (i.e., anything pushed to a shared branch). Rebase your local feature branch freely; rebase shared history and every collaborator's tree diverges from yours.",
         "A very common team workflow: rebase your feature branch onto main to stay current while developing, then merge (often squash-merge) into main via pull request."
       ],
+      "summary": "Rebase your own private branches for a tidy history, but never rebase shared history that others build on.",
       "variants": [
         {
           "id": "g2",
@@ -182,6 +184,7 @@
         "Good tests assert observable behavior ('given an expired token, isValid returns false'), not implementation details ('it calls parseToken once'). Behavior-based tests survive refactors; implementation-based tests break when the code improves.",
         "Determinism is what keeps a suite trusted: tests touching real time, randomness, or network are flaky by construction. Inject or mock those boundaries (`vi.useFakeTimers()`, `vi.mock(...)`) so the same input always yields the same result."
       ],
+      "summary": "Test what your code does, not how it does it, and pin down time, randomness, and network so results stay reliable.",
       "variants": [
         {
           "id": "g3",
@@ -268,6 +271,7 @@
         "Prefer user-facing selectors — `getByRole('button', { name: 'Save' })`, `getByLabel('Email')` — over CSS/XPath tied to DOM structure. They survive refactors and double as accessibility checks: if getByRole can't find your button, neither can a screen reader.",
         "Playwright's assertions auto-wait and retry (`await expect(locator).toBeVisible()`), which eliminates the sleep-based flakiness older tools suffered. The testing pyramid still applies: many fast unit tests, fewer integration tests, a thin crust of E2E on the critical paths."
       ],
+      "summary": "Find elements the way a user would (by role and label) and wait on real conditions instead of guessing with sleeps.",
       "variants": [
         {
           "id": "g4",
@@ -354,6 +358,7 @@
         "A typical GitHub Actions flow: on pull request, run the checks; merging is blocked until they're green plus a human review. Continuous Delivery/Deployment extends the green path: merged main auto-deploys to staging, then production — with prod gated manually (Delivery) or fully automatic (Deployment).",
         "Pipelines fail-fast in order of cheapness: lint before tests, unit before E2E. And a red main is a stop-the-line event — the fix or the revert outranks new work, because everyone is building on top of it."
       ],
+      "summary": "Run the cheapest checks first for fast feedback, and drop everything to fix a broken `main` since the whole team builds on it.",
       "variants": [
         {
           "id": "g5",

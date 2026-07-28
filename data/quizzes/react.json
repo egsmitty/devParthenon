@@ -10,6 +10,7 @@
         "The golden rule: never mutate state directly. `items.push(x)` changes the array in place — React compares references, sees the same array, and skips the re-render. `setItems([...items, x])` creates a new reference React can detect.",
         "Think of every render as a photograph: the component function runs top to bottom with that moment's props and state, producing a fresh snapshot of the UI."
       ],
+      "summary": "To update state, make a fresh copy instead of changing it in place, or React won't notice and won't re-render.",
       "variants": [
         {
           "id": "r1",
@@ -96,6 +97,7 @@
         "`useEffect(fn, deps)` runs `fn` after render, and again whenever a value in `deps` changes. Return a cleanup function and React runs it before the next effect and on unmount — that's where you clear intervals, abort fetches, and unsubscribe.",
         "In development, `<StrictMode>` deliberately mounts, unmounts, and remounts each component, so effects run twice. That's not a bug to suppress — it's a stress test that exposes effects missing proper cleanup."
       ],
+      "summary": "Always call hooks at the top level, and give every effect a cleanup function to undo whatever it started.",
       "variants": [
         {
           "id": "r2",
@@ -182,6 +184,7 @@
         "Using the array index as a key works only for lists that never reorder, insert, or delete. If you delete item 0 from an index-keyed list, every remaining item shifts to a new key — React matches old item 1 to new key 0, and any DOM state (checkbox checks, input text, focus) attaches to the wrong rows.",
         "A key should be a stable identity from the data itself — a database id — so a reordered item keeps its component instance and its state."
       ],
+      "summary": "Give each list item a stable `key` from your data, like an id, so its state follows it when the list changes.",
       "variants": [
         {
           "id": "r3",
@@ -268,6 +271,7 @@
         "The same principle covers derived data: if it can be computed from existing state (`filteredItems` from `items` + `query`), compute it during render. Storing derived data in its own `useState` means remembering to update two things forever.",
         "Reach for context only when props would have to tunnel through many indifferent layers (prop drilling), and for effects only to synchronize with systems *outside* React — never to 'react' to your own state."
       ],
+      "summary": "Keep shared data in one place and pass it down, and if a value can be calculated from what you have, just calculate it.",
       "variants": [
         {
           "id": "r4",
@@ -354,6 +358,7 @@
         "`React.memo(Child)` skips re-rendering Child if its props are shallowly equal to last time. But props created inline — `onClick={() => ...}`, `style={{...}}` — are new objects every render, so they defeat memo. `useCallback` and `useMemo` stabilize those references.",
         "This trio is a package deal: memo on the child does nothing useful if the parent passes a fresh callback each render, and useCallback without a memoized child mostly adds overhead."
       ],
+      "summary": "Don't optimize until profiling shows you need to, and when you do, keep prop references stable so `memo` can actually skip renders.",
       "variants": [
         {
           "id": "r5",

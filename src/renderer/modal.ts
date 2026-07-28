@@ -432,6 +432,7 @@ function renderLesson(): void {
       &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
     <h3 class="lesson-heading">${rich(section.heading)}</h3>
     ${paragraphs}
+    ${section.summary && mode !== "gauntlet" ? `<div class="lesson-summary"><span class="ls-label">In short</span><span>${rich(section.summary)}</span></div>` : ""}
     ${relatedHtml}
     <div class="check-label">${label}</div>
     <div class="question-text">${rich(q.question)}</div>

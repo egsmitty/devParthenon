@@ -10,6 +10,7 @@
         "The event loop is the dispatcher: when the call stack is empty, it pulls completed callbacks from the queues and runs them. Microtasks (resolved promises) run before macrotasks (timers, I/O callbacks) — which is why `Promise.resolve().then(...)` beats `setTimeout(..., 0)`.",
         "The corollary: CPU-heavy synchronous code is poison. While your JavaScript runs, nothing else runs — every pending request waits behind your loop."
       ],
+      "summary": "Node juggles many requests on one thread, so any slow number-crunching code freezes everything until it finishes.",
       "variants": [
         {
           "id": "d1",
@@ -96,6 +97,7 @@
         "The classic performance mistake is sequential awaiting of independent work: `const a = await getA(); const b = await getB();` takes the sum of both latencies. Independent operations should start together: `const [a, b] = await Promise.all([getA(), getB()]);` — now you pay only the slower one.",
         "Know the combinators: `Promise.all` fails fast on the first rejection; `Promise.allSettled` waits for every result, success or failure; `Promise.race` settles with whichever finishes first."
       ],
+      "summary": "When tasks don't depend on each other, start them together with `Promise.all` so you wait once, not one after another.",
       "variants": [
         {
           "id": "d2",
@@ -182,6 +184,7 @@
         "Respond with codes that match what happened: `201 Created` (with a `Location` header) for creation, `204 No Content` for a successful delete, `400` for malformed input, `422` for well-formed input that fails validation, `404` for a missing resource.",
         "Version your API (`/v1/...`) from day one, and never break the contract of a shipped version — clients you don't control are relying on the shape of your responses."
       ],
+      "summary": "Name things (nouns) in the URL, let the HTTP method be the action, and send back the status code that fits what happened.",
       "variants": [
         {
           "id": "d3",
@@ -268,6 +271,7 @@
         "This is where cross-cutting concerns live: body parsing, logging, rate limiting, authentication, authorization. An auth middleware that finds no valid token responds 401 and simply never calls next() — short-circuiting the pipeline.",
         "Error handling gets its own shape: a four-argument middleware `(err, req, res, next)` registered last. Async route errors must reach it — in Express 4 that means catching and calling `next(err)` (Express 5 forwards rejected promises automatically)."
       ],
+      "summary": "Requests pass through your middleware in the order you register them, so put things like auth and body parsing before the routes they support.",
       "variants": [
         {
           "id": "d4",
@@ -354,6 +358,7 @@
         "Never trust an external call to return promptly — attach timeouts (AbortController) so a hung upstream doesn't pin your requests forever. Retry transient failures with exponential backoff, and only retry operations that are idempotent or de-duplicated.",
         "Separate expected failures (validation, not-found — clean 4xx responses) from unexpected ones (bugs, upstream outages — 5xx, logged loudly with a correlation id, message kept vague to the client)."
       ],
+      "summary": "Assume outside calls can hang or fail: set timeouts, retry gently (with backoff), and only retry when doing it twice is safe.",
       "variants": [
         {
           "id": "d5",

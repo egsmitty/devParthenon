@@ -10,6 +10,7 @@
         "It's still just CSS: `p-4` is `padding: 1rem` on a spacing scale, colors come from a palette, breakpoints from a scale. The constraint is the point — a design system's worth of consistent values, enforced by what classes exist.",
         "At build time, Tailwind scans your source for class names and generates only the CSS you actually used. Which is why dynamically assembled class strings like `text-${color}-500` silently fail: the scanner never sees the complete name, so it never generates the rule."
       ],
+      "summary": "Tailwind is just tiny CSS shortcuts you write right in your markup, and it only builds classes it can spot written out in full.",
       "variants": [
         {
           "id": "t1",
@@ -96,6 +97,7 @@
         "The mental model that prevents confusion: justify = main axis, items = cross axis, and both rotate when direction changes. In `flex-col`, `justify-center` centers *vertically*.",
         "Children flex too: `flex-1` lets an element grow and shrink to fill remaining space. The everyday patterns: `flex items-center justify-between` for a navbar; a `flex-col` with a `flex-1` middle region for full-height app shells — exactly how this app's own layout works."
       ],
+      "summary": "Flexbox arranges things in a line: `justify` spaces them along that line and `items` lines them up across it, and both flip when the direction does.",
       "variants": [
         {
           "id": "t2",
@@ -182,6 +184,7 @@
         "Tailwind is mobile-first: unprefixed utilities apply everywhere; prefixed ones override upward. `grid-cols-1 md:grid-cols-2 lg:grid-cols-4` means one column by default, two from 768px, four from 1024px.",
         "The common inversion bug: thinking `md:` means 'on medium screens and below'. It means 'at the md breakpoint and up'. Write the phone layout with bare utilities, then layer wider layouts on top."
       ],
+      "summary": "Grid handles rows and columns together, and prefixes like `md:` mean \"this size and bigger,\" so style phones first and add wider layouts on top.",
       "variants": [
         {
           "id": "t3",
@@ -268,6 +271,7 @@
         "z-index looks global but isn't: it only applies to positioned elements (or flex/grid children), and it competes only *within its stacking context*.",
         "A new stacking context is created by more properties than people expect: position+z-index, `transform`, `opacity` below 1, `filter`, `will-change`, and others. Once a parent creates one, its children's z-indexes are trapped inside — they compare against each other, never against the outside world."
       ],
+      "summary": "A big z-index can't save you if a parent's `transform`, `opacity`, or `filter` traps your element in its own little stacking bubble.",
       "variants": [
         {
           "id": "t4",
@@ -354,6 +358,7 @@
         "For variants (primary/secondary, sm/lg), keep a small map of complete class strings and select by prop — libraries like cva formalize this. This also stays inside the static-extraction rules from earlier: every class name exists verbatim in source.",
         "Conditional styling composes with template logic: a shared base string plus a selected variant string. Resist string-building fragments of class names; always assemble from whole ones."
       ],
+      "summary": "When class strings repeat, wrap them in a reusable component and pick variants from a map of whole class strings rather than gluing names together.",
       "variants": [
         {
           "id": "t5",
