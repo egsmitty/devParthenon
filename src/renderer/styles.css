@@ -1485,10 +1485,12 @@ html[data-theme="parchment"] .fc-term { color: #5a3f14; text-shadow: none; }
 /* Actions pin to the bottom-right corner of the panel. */
 .your-turn .modal-actions { margin-top: auto; }
 
-/* Stack to a single centered column on narrow windows. */
-@media (max-width: 860px) {
+/* Stack to a single centered column when there isn't comfortable room for
+   two (the window's own minWidth is 980, so this band is reachable). */
+@media (max-width: 1080px) {
   .lesson-columns { flex-direction: column; gap: 18px; }
-  .modal-card.lesson-wide { width: 94vw; }
+  .lesson-col-right.your-turn { flex-basis: auto; }
+  .modal-card.lesson-wide { width: min(760px, 94vw); }
 }
 
 html[data-theme="parchment"] .lesson-col-right.your-turn {
