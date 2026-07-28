@@ -426,14 +426,9 @@ function renderLesson(): void {
         .join("") +
       `</div>`
     : "";
-  const el = card(`
-    <h2>${escapeHtml(quiz.title)}</h2>
-    <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
-      &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
-    <h3 class="lesson-heading">${rich(section.heading)}</h3>
-    ${paragraphs}
-    ${section.summary && mode !== "gauntlet" ? `<div class="lesson-summary"><span class="ls-label">In short</span><span>${rich(section.summary)}</span></div>` : ""}
-    ${relatedHtml}
+  // The "Your turn" check: question + options + actions. In a lesson this is
+  // the right-hand panel; in the gauntlet (no teaching text) it stands alone.
+  const turnHtml = `
     <div class="check-label">${label}</div>
     <div class="question-text">${rich(q.question)}</div>
     <div class="options">${optionsMarkup(q.options)}</div>
@@ -441,7 +436,33 @@ function renderLesson(): void {
     <div class="modal-actions">
       <button class="ghost-btn" data-action="abandon">Step away</button>
     </div>
+  `;
+
+  // Lesson text (left column): heading, paragraphs, "In short", Codex chips.
+  const lessonHtml = `
+    <h3 class="lesson-heading">${rich(section.heading)}</h3>
+    ${paragraphs}
+    ${section.summary ? `<div class="lesson-summary"><span class="ls-label">In short</span><span>${rich(section.summary)}</span></div>` : ""}
+    ${relatedHtml}
+  `;
+
+  // Gauntlet is a bare exam question; a taught section is two columns
+  // (lesson | your turn) that stack on narrow windows.
+  const body =
+    mode === "gauntlet"
+      ? turnHtml
+      : `<div class="lesson-columns">
+          <div class="lesson-col-left">${lessonHtml}</div>
+          <div class="lesson-col-right your-turn">${turnHtml}</div>
+        </div>`;
+
+  const el = card(`
+    <h2>${escapeHtml(quiz.title)}</h2>
+    <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
+      &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
+    ${body}
   `);
+  if (mode !== "gauntlet") el.classList.add("lesson-wide");
 
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
   el.querySelectorAll<HTMLButtonElement>(".jargon-chip").forEach((chip) =>
