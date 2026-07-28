@@ -16,6 +16,8 @@ const api: ParthenonApi = {
   getReviewDeck: (limit) => ipcRenderer.invoke("get-review-deck", limit),
   getSettings: () => ipcRenderer.invoke("get-settings"),
   saveSettings: (patch) => ipcRenderer.invoke("save-settings", patch),
+  exportProgress: () => ipcRenderer.invoke("export-progress"),
+  importProgress: () => ipcRenderer.invoke("import-progress"),
   windowControl: (action) => ipcRenderer.send("window-control", action),
   isSmoke: process.argv.includes("--parthenon-smoke"),
   onMaximizeChange: (cb) =>

@@ -766,7 +766,10 @@ function wireHelp(): void {
 
 function wireChronicle(): void {
   document.getElementById("btn-chronicle")!.addEventListener("click", () =>
-    openChronicle(progress)
+    openChronicle(progress, api, (updated) => {
+      progress = updated;
+      renderTemple();
+    })
   );
   const root = document.getElementById("chronicle-root")!;
   root.addEventListener("click", (e) => {

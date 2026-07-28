@@ -2,7 +2,7 @@
  * The Chronicle — a progress dashboard: overall mastery, per-module standing,
  * and spaced-repetition recall stats. Read-only; computed from progress data.
  */
-import type { ProgressData } from "../types/schema.js";
+import type { ParthenonApi, ProgressData } from "../types/schema.js";
 import { escapeHtml } from "./modal.js";
 
 const NODE_ORDER = [
@@ -38,7 +38,11 @@ export function closeChronicle(): void {
   document.getElementById("btn-chronicle")?.focus();
 }
 
-export function openChronicle(progress: ProgressData): void {
+export function openChronicle(
+  progress: ProgressData,
+  api: ParthenonApi,
+  onImported: (updated: ProgressData) => void
+): void {
   const nodes = NODE_ORDER.map((id) => progress.nodes[id]).filter(Boolean);
   const done = nodes.filter((n) => n.status === "completed").length;
   const scored = nodes.filter((n) => n.score !== null);
@@ -88,8 +92,31 @@ export function openChronicle(progress: ProgressData): void {
     </div>
     <h3 class="chron-heading">Standing of the temple</h3>
     <div class="chron-rows">${bars}</div>
+    <div class="chron-actions">
+      <button class="ghost-btn" id="chron-export">Export progress</button>
+      <button class="ghost-btn" id="chron-import">Import progress</button>
+    </div>
   `;
   card.querySelector('[data-action="close"]')!.addEventListener("click", closeChronicle);
+
+  card.querySelector("#chron-export")!.addEventListener("click", async () => {
+    try {
+      await api.exportProgress();
+    } catch (err) {
+      console.error("export failed:", err);
+    }
+  });
+  card.querySelector("#chron-import")!.addEventListener("click", async () => {
+    try {
+      const imported = await api.importProgress();
+      if (imported) {
+        onImported(imported);
+        closeChronicle();
+      }
+    } catch (err) {
+      alert("Import failed: " + (err instanceof Error ? err.message : String(err)));
+    }
+  });
   chronicleRoot().replaceChildren(card);
   chronicleRoot().hidden = false;
   card.querySelector<HTMLButtonElement>('[data-action="close"]')?.focus();

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, screen } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -6,12 +6,15 @@ import {
   loadAttempt,
   loadProgress,
   loadSettings,
+  migrateProgress,
+  progressFilePath,
   recordSectionResult,
   resetProgress,
   saveAttempt,
   saveQuizScore,
   saveSettings,
   StorePaths,
+  writeProgress,
 } from "./store";
 import { isDue, orderDeck } from "./review";
 import type {
@@ -297,6 +300,38 @@ function registerIpc(): void {
       recordSectionResult(storePaths, nodeId, sectionIndex, correct);
     }
   );
+
+  ipcMain.handle("export-progress", async () => {
+    if (!mainWindow) return false;
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: "Export progress",
+      defaultPath: "dev-parthenon-progress.json",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+    });
+    if (canceled || !filePath) return false;
+    // Ensure the live save exists, then copy it.
+    loadProgress(storePaths);
+    fs.copyFileSync(progressFilePath(storePaths), filePath);
+    return true;
+  });
+
+  ipcMain.handle("import-progress", async () => {
+    if (!mainWindow) return null;
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: "Import progress",
+      properties: ["openFile"],
+      filters: [{ name: "JSON", extensions: ["json"] }],
+    });
+    if (canceled || !filePaths[0]) return null;
+    const data = JSON.parse(fs.readFileSync(filePaths[0], "utf-8"));
+    if (!data || typeof data !== "object" || typeof data.nodes !== "object") {
+      throw new Error("That file is not a Dev Parthenon progress file.");
+    }
+    const migrated = migrateProgress(data);
+    writeProgress(storePaths, migrated);
+    clearAttempt(storePaths);
+    return migrated;
+  });
 
   ipcMain.handle("get-settings", () => loadSettings(storePaths));
 

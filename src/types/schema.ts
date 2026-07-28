@@ -165,6 +165,10 @@ export interface ParthenonApi {
   getReviewDeck(limit?: number): Promise<ReviewDeckEntry[]>;
   getSettings(): Promise<Settings>;
   saveSettings(patch: Partial<Settings>): Promise<Settings>;
+  /** Save a copy of progress via a file dialog. Resolves true if written. */
+  exportProgress(): Promise<boolean>;
+  /** Load progress from a chosen file; null if cancelled. Throws if invalid. */
+  importProgress(): Promise<ProgressData | null>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
