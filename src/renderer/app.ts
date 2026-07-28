@@ -100,9 +100,20 @@ function grainFilter(id: string, freq: string, rgba: string): SVGFilterElement {
 
 function buildDefs(): SVGDefsElement {
   const defs = el("defs");
-  defs.appendChild(gradient("grad-stone", [[0, "#2b313e"], [0.5, "#1d222d"], [1, "#141821"]]));
-  defs.appendChild(gradient("grad-stone-dark", [[0, "#1d212b"], [1, "#0d1017"]]));
-  defs.appendChild(gradient("grad-stone-warm", [[0, "#2e2a1c"], [0.55, "#211d13"], [1, "#17140c"]]));
+  const parchment = document.documentElement.dataset.theme === "parchment";
+  // Sun-bleached limestone in daylight vs weathered granite at night.
+  const stone: Array<[number, string]> = parchment
+    ? [[0, "#eaddbc"], [0.5, "#dccaa1"], [1, "#ccb988"]]
+    : [[0, "#2b313e"], [0.5, "#1d222d"], [1, "#141821"]];
+  const stoneDark: Array<[number, string]> = parchment
+    ? [[0, "#dbc79d"], [1, "#c3ad7a"]]
+    : [[0, "#1d212b"], [1, "#0d1017"]];
+  const stoneWarm: Array<[number, string]> = parchment
+    ? [[0, "#f2e6c2"], [0.55, "#e8d8ae"], [1, "#dbc692"]]
+    : [[0, "#2e2a1c"], [0.55, "#211d13"], [1, "#17140c"]];
+  defs.appendChild(gradient("grad-stone", stone));
+  defs.appendChild(gradient("grad-stone-dark", stoneDark));
+  defs.appendChild(gradient("grad-stone-warm", stoneWarm));
   defs.appendChild(gradient("grad-marble", [[0, "#ffffff"], [0.45, "#efece2"], [0.8, "#d9d3c3"], [1, "#c3bba6"]]));
   defs.appendChild(gradient("grad-gold", [[0, "#fde68a"], [0.4, "#f59e0b"], [0.7, "#b45309"], [1, "#fcd34d"]]));
   // Coarse dark grain for weathered stone; long soft veins for marble.

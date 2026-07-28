@@ -1373,3 +1373,133 @@ svg.grand-unlock {
     filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.7));
   }
 }
+
+/* ============================================================
+   PARCHMENT THEME — a sunlit temple of ivory & bronze.
+   html[data-theme="parchment"] overrides the palette and the
+   surfaces that hardcode granite/gold.
+   ============================================================ */
+
+html[data-theme="parchment"] {
+  --gold-hi: #9a6a12;
+  --gold: #b07d16;
+  --gold-deep: #7a5210;
+  --brass: #8a5a13;
+  --brass-dark: #6b4a1f;
+  --granite-0: #efe6cf;
+  --granite-1: #e7dbbd;
+  --granite-2: #ddceaa;
+  --granite-3: #d2c096;
+  --stone-edge: #bda067;
+  --text: #382a15;
+  --text-dim: #7c663d;
+  --marble: #fbf7ec;
+  --marble-warm: #f1e7cf;
+  --marble-shadow: #c9b48a;
+  --ember: #a83a26;
+  --laurel: #3f7d4a;
+}
+
+html[data-theme="parchment"] body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.45 0 0 0 0 0.34 0 0 0 0 0.15 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(1100px 520px at 50% -8%, rgba(212, 160, 60, 0.18), transparent 62%),
+    linear-gradient(180deg, #f4ebd4 0%, #ece0c0 45%, #e2d3ac 100%);
+  background-color: #ece0c0;
+}
+
+/* Warm the ambient beams so they read as sunlight, not gold haze. */
+html[data-theme="parchment"] .beam {
+  background: linear-gradient(105deg, transparent 0%, rgba(233, 196, 110, 0.14) 48%, rgba(255, 244, 214, 0.22) 50%, rgba(233, 196, 110, 0.14) 52%, transparent 100%);
+}
+html[data-theme="parchment"] .vignette {
+  background: radial-gradient(120% 90% at 50% 42%, transparent 58%, rgba(120, 92, 40, 0.22) 100%);
+}
+
+/* Carved panels become aged vellum with a bronze frame. */
+html[data-theme="parchment"] .carved-panel {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.38 0 0 0 0 0.18 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f5ecd5 0%, #ece0c1 60%, #e4d5b2 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 235, 0.6),
+    inset 0 0 0 2px rgba(138, 90, 19, 0.3),
+    inset 0 0 30px rgba(150, 116, 55, 0.15),
+    0 6px 24px rgba(90, 66, 24, 0.28);
+}
+
+html[data-theme="parchment"] #titlebar {
+  background: linear-gradient(180deg, #e9dcbb 0%, #ddcaa0 100%);
+  border-bottom-color: var(--brass-dark);
+  box-shadow: 0 1px 0 rgba(255, 250, 235, 0.4), 0 3px 10px rgba(90, 66, 24, 0.25);
+}
+html[data-theme="parchment"] .titlebar-title { color: #6b4a1f; text-shadow: 0 1px 0 rgba(255,250,235,0.5); }
+html[data-theme="parchment"] .tb-btn:hover { background: rgba(138, 90, 19, 0.16); color: #4a3210; }
+
+/* The temple: gradients are already limestone in parchment mode (buildDefs),
+   so only the drop-shadow needs warming. */
+html[data-theme="parchment"] #temple-svg-host svg {
+  filter: drop-shadow(0 14px 20px rgba(90, 66, 24, 0.3));
+}
+html[data-theme="parchment"] .node.locked { opacity: 0.82; }
+html[data-theme="parchment"] .node .shape { stroke: #a98f5e; }
+html[data-theme="parchment"] .node text.node-label { fill: #6b5626; }
+html[data-theme="parchment"] .node.locked .ironwork { stroke: #8a7038; fill: #c3ad7a; }
+
+/* The stats band + footer buttons on vellum. */
+html[data-theme="parchment"] #temple-stats {
+  background: linear-gradient(180deg, rgba(138, 90, 19, 0.08), transparent 70%);
+  border-color: rgba(138, 90, 19, 0.4);
+}
+html[data-theme="parchment"] .ghost-btn {
+  background: linear-gradient(180deg, #ece0c0, #e0d0a8);
+  color: #6b4a1f;
+}
+
+/* The quiz tablet becomes a sheet of parchment. */
+html[data-theme="parchment"] #modal-root {
+  background: radial-gradient(90% 90% at 50% 45%, rgba(120, 92, 40, 0.35), rgba(70, 52, 20, 0.55));
+}
+html[data-theme="parchment"] .modal-card {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.38 0 0 0 0 0.18 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #f6eed9 0%, #ece0c1 60%, #e5d6b3 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 235, 0.6),
+    inset 0 0 0 2px rgba(138, 90, 19, 0.3),
+    0 24px 70px rgba(60, 44, 18, 0.5);
+}
+html[data-theme="parchment"] .lesson-paragraph,
+html[data-theme="parchment"] .question-text,
+html[data-theme="parchment"] .result-detail { color: #40331d; }
+html[data-theme="parchment"] .lesson-paragraph code,
+html[data-theme="parchment"] .option-btn code,
+html[data-theme="parchment"] .feedback code,
+html[data-theme="parchment"] .question-text code {
+  background: #e4d5ad;
+  border-color: #b99f6a;
+  color: #6b4a1f;
+}
+html[data-theme="parchment"] .option-btn {
+  background: linear-gradient(180deg, #efe4c7, #e5d6b3);
+  color: #40331d;
+}
+html[data-theme="parchment"] .option-btn.correct { background: linear-gradient(180deg, #d6e6c1, #c7dcac); }
+html[data-theme="parchment"] .option-btn.wrong { background: linear-gradient(180deg, #eecdc0, #e3bcac); }
+html[data-theme="parchment"] .feedback.good { background: rgba(180, 210, 150, 0.4); border-color: #6f9a52; }
+html[data-theme="parchment"] .feedback.bad { background: rgba(210, 150, 130, 0.35); border-color: #b06a55; }
+html[data-theme="parchment"] .feedback .why-wrong { color: #5a4620; }
+html[data-theme="parchment"] .interview-tip {
+  background: linear-gradient(180deg, rgba(200, 160, 70, 0.28), rgba(180, 140, 55, 0.2));
+  color: #5a3f10;
+}
+
+/* Scrollbars on vellum. */
+html[data-theme="parchment"] ::-webkit-scrollbar-track { background: #ddcba3; border-left-color: var(--stone-edge); }
+
+/* Codex tab: lift the leather a touch so it reads on the light hall. */
+html[data-theme="parchment"] #codex-tab {
+  background:
+    radial-gradient(140% 60% at 100% 50%, rgba(60, 40, 12, 0.5), transparent 55%),
+    linear-gradient(90deg, #5a3f14 0%, #48310f 60%, #38260b 100%);
+}
