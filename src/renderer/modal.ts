@@ -204,6 +204,10 @@ function wireAnswer(
       next.textContent = continueLabel;
       next.addEventListener("click", () => onContinue(isCorrect));
       el.querySelector(".modal-actions")!.appendChild(next);
+      // Reveal the feedback + Continue button — on a long lesson they render
+      // below the fold, so bring them into view without the user scrolling.
+      next.scrollIntoView({ block: "nearest" });
+      next.focus();
     })
   );
 }

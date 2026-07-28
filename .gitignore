@@ -3,3 +3,7 @@ dist/
 release/
 *.tsbuildinfo
 Thumbs.db
+
+# UX audit: generated screenshots + manifest (report is committed)
+audit/shots/
+audit/manifest.json
