@@ -609,9 +609,15 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
     verdict = `Still short of ${threshold}% after redemption. Re-enter the module to try again &mdash; your best score is kept.`;
   }
 
+  const scoreBlock = result.passed
+    ? `<div class="result-burst">${Array.from({ length: 12 })
+        .map((_, i) => `<span class="burst-spark" style="--a:${i * 30}deg"></span>`)
+        .join("")}<div class="result-score pass">${pct}%</div></div>`
+    : `<div class="result-score fail">${pct}%</div>`;
+
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
-    <div class="result-score ${result.passed ? "pass" : "fail"}">${pct}%</div>
+    ${scoreBlock}
     ${breakdown}
     <div class="result-detail">${verdict}</div>
     ${

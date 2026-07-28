@@ -1970,3 +1970,31 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .lesson-heading::after { animation: none; width: 44px; opacity: 1; }
 }
+
+/* ---------------- Pass celebration burst ---------------- */
+
+.result-burst { position: relative; display: grid; place-items: center; }
+.burst-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-hi) 0%, rgba(245, 158, 11, 0.6) 55%, transparent 75%);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0) scale(0.4);
+  animation: pass-burst 1s ease-out forwards;
+}
+.burst-spark:nth-child(even) { width: 6px; height: 6px; animation-duration: 1.2s; }
+@keyframes pass-burst {
+  0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(0.4); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-96px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .burst-spark { display: none; }
+}
+html[data-motion="reduce"] .burst-spark { display: none; }
