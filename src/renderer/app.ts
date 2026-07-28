@@ -123,12 +123,25 @@ function nodeGroup(node: ModuleNode): SVGGElement {
         ? `${node.title} — mastered. Click to practice (no stakes).`
         : node.title;
   g.appendChild(title);
+  const activate = (fn: () => void) => {
+    // Keyboard-first: temple stones are real buttons, not just click targets.
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("role", "button");
+    g.addEventListener("click", fn);
+    g.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fn();
+      }
+    });
+  };
+
   if (isClickable(node)) {
-    g.addEventListener("click", () => launchModule(node));
+    activate(() => launchModule(node));
   } else if (node.status === "completed") {
     // A mastered stone can be revisited for practice (no stakes).
     g.style.cursor = "pointer";
-    g.addEventListener("click", () => launchModule(node, "practice"));
+    activate(() => launchModule(node, "practice"));
   } else if (node.status === "locked") {
     // Locked feedback: brief shake, no open.
     g.addEventListener("click", () => {

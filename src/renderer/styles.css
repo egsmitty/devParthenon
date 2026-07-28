@@ -432,6 +432,13 @@ body {
   stroke-dasharray: none;
 }
 
+.node:focus-visible { outline: none; }
+.node:focus-visible .shape {
+  stroke: var(--gold-hi);
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.85));
+}
+
 /* — completed: radiant polished marble, filigree & seal — */
 .node.completed .shape {
   fill: url(#grad-marble);
@@ -725,6 +732,14 @@ text.score-badge {
 }
 
 .option-btn:disabled { cursor: default; opacity: 0.7; }
+
+/* Engraved gold focus ring — keyboard flow is first-class. */
+.option-btn:focus-visible, .primary-btn:focus-visible, .ghost-btn:focus-visible,
+.tb-btn:focus-visible, #glossary-search:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
+}
 
 .option-btn.correct {
   border-color: var(--laurel);

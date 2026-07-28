@@ -149,8 +149,83 @@ function card(inner: string): HTMLDivElement {
   const div = document.createElement("div");
   div.className = "modal-card";
   div.innerHTML = inner;
+  // Screen-reader affordances on every card shape.
+  div.querySelector(".options")?.setAttribute("role", "group");
+  div.querySelector(".options")?.setAttribute("aria-label", "Answer choices (press 1-4)");
+  div.querySelector(".feedback-slot")?.setAttribute("aria-live", "polite");
   return div;
 }
+
+/** Show a card and put keyboard focus where the flow continues. */
+function mountCard(el: HTMLElement): void {
+  root().replaceChildren(el);
+  root().scrollTop = 0;
+  const target = el.querySelector<HTMLButtonElement>(
+    ".option-btn:not([disabled]), .modal-actions .primary-btn"
+  );
+  target?.focus();
+}
+
+/* ---------------- Keyboard: 1-4 answer, Enter advance, Esc leave, Tab trap ---------------- */
+
+function onModalKeydown(e: KeyboardEvent): void {
+  const r = root();
+  if (r.hidden) return;
+
+  if (e.key === "Escape") {
+    e.preventDefault();
+    // Trigger whatever "leave" action the current card exposes, so Esc
+    // matches the visible button's semantics on every screen.
+    r.querySelector<HTMLButtonElement>(
+      '[data-action="abandon"], [data-action="leave"], [data-action="done"]'
+    )?.click();
+    return;
+  }
+
+  if (e.key >= "1" && e.key <= "4") {
+    const btn = r.querySelectorAll<HTMLButtonElement>(".option-btn")[
+      Number(e.key) - 1
+    ];
+    if (btn && !btn.disabled) {
+      e.preventDefault();
+      btn.click();
+    }
+    return;
+  }
+
+  if (e.key === "Enter") {
+    // A focused button handles Enter natively; otherwise press the primary.
+    if (e.target instanceof HTMLButtonElement) return;
+    const primary = r.querySelector<HTMLButtonElement>(".modal-actions .primary-btn");
+    if (primary) {
+      e.preventDefault();
+      primary.click();
+    }
+    return;
+  }
+
+  if (e.key === "Tab") {
+    // Focus trap: cycle within the open card.
+    const focusables = Array.from(
+      r.querySelectorAll<HTMLElement>("button:not([disabled]), input, [tabindex]")
+    ).filter((el) => el.offsetParent !== null);
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    const inside = active !== null && r.contains(active);
+    if (e.shiftKey && (!inside || active === first)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (!inside || active === last)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+// Bound once per page load; a no-op while the modal is hidden.
+document.addEventListener("keydown", onModalKeydown);
 
 function optionsMarkup(options: string[]): string {
   return options
@@ -262,8 +337,7 @@ function renderLesson(): void {
     }
   });
 
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 /* ---------------- Branch: pass / redeem / retake ---------------- */
@@ -315,8 +389,7 @@ function finishPractice(score: number): void {
     // Practice doesn't change progress, but refresh so any resume/UI re-reads.
     void apiRef.getProgress().then((p) => done(p));
   });
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 function renderRedemptionIntro(): void {
@@ -351,8 +424,7 @@ function renderRedemptionIntro(): void {
     persistAttempt("redeem");
     renderRedeem();
   });
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 function renderRedeem(): void {
@@ -402,8 +474,7 @@ function renderRedeem(): void {
     }
   });
 
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 /* ---------------- Result screen ---------------- */
@@ -467,8 +538,7 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
     onDoneRef(result.progress);
   });
 
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 /* ---------------- Cross-module Review drill (spaced repetition) ---------------- */
@@ -550,8 +620,7 @@ async function renderReviewCard(): Promise<void> {
     }
   });
 
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }
 
 function renderReviewSummary(): void {
@@ -570,6 +639,5 @@ function renderReviewSummary(): void {
     </div>
   `);
   el.querySelector('[data-action="done"]')!.addEventListener("click", closeReview);
-  root().replaceChildren(el);
-  root().scrollTop = 0;
+  mountCard(el);
 }

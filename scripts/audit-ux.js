@@ -199,6 +199,33 @@ async function main() {
     await app.close();
   }
 
+  /* ---- Scenario 5: keyboard-only path (acceptance criterion §5.6) ---- */
+  {
+    const dir = path.join(tmpRoot, "keyboard");
+    seed(dir);
+    const { app, page } = await launch(dir);
+    // Open the foundation module with the keyboard alone.
+    await page.evaluate(() => {
+      document.querySelector('g.node[data-node-id="foundation"]').focus();
+    });
+    await page.keyboard.press("Enter");
+    await page.waitForSelector(".modal-card");
+    // Answer every section via number keys; Enter advances (Continue button
+    // is auto-focused after each answer).
+    for (let i = 0; i < foundation.sections.length; i++) {
+      await page.waitForSelector(".option-btn:not([disabled])");
+      await page.keyboard.press(String(correctA[i] + 1));
+      await page.waitForSelector(".feedback");
+      await page.keyboard.press("Enter");
+    }
+    await page.waitForSelector(".result-score");
+    await shot(page, "15-keyboard-only-result", "Full module completed via keyboard only (Enter to open, 1-4 to answer, Enter to advance)");
+    // Esc returns to the temple.
+    await page.keyboard.press("Escape");
+    await page.waitForSelector(".modal-card", { state: "detached" });
+    await app.close();
+  }
+
   fs.writeFileSync(
     path.join(outDir, "manifest.json"),
     JSON.stringify({ generatedFrom: "scripts/audit-ux.js", shots: manifest }, null, 2)
