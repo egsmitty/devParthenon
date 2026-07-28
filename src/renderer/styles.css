@@ -920,6 +920,7 @@ text.score-badge {
   flex-direction: column;
   justify-content: space-evenly;
   align-items: center;
+  overflow: hidden; /* the two goddesses are fixed, never scrolling */
   padding: 24px 6px;
   gap: 26px;
   background:
@@ -1403,31 +1404,33 @@ svg.grand-unlock {
    ============================================================ */
 
 html[data-theme="parchment"] {
-  --gold-hi: #9a6a12;
-  --gold: #b07d16;
+  --gold-hi: #a86e10;
+  --gold: #c07f12;
   --gold-deep: #7a5210;
-  --brass: #8a5a13;
+  --brass: #9a6512;
   --brass-dark: #6b4a1f;
-  --granite-0: #efe6cf;
-  --granite-1: #e7dbbd;
-  --granite-2: #ddceaa;
-  --granite-3: #d2c096;
-  --stone-edge: #bda067;
-  --text: #382a15;
-  --text-dim: #7c663d;
-  --marble: #fbf7ec;
-  --marble-warm: #f1e7cf;
-  --marble-shadow: #c9b48a;
-  --ember: #a83a26;
-  --laurel: #3f7d4a;
+  /* Warm, sunny ivory — peachier and lighter than the old flat tan. */
+  --granite-0: #fbf0d8;
+  --granite-1: #f6e8c6;
+  --granite-2: #f0ddb2;
+  --granite-3: #e8d0a0;
+  --stone-edge: #d0ac6a;
+  --text: #3d2c14;
+  --text-dim: #866a3a;
+  --marble: #fffaf0;
+  --marble-warm: #f7eed6;
+  --marble-shadow: #d3bd8f;
+  --ember: #bf4327;
+  --laurel: #4c8a4a;
 }
 
 html[data-theme="parchment"] body {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.45 0 0 0 0 0.34 0 0 0 0 0.15 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E"),
-    radial-gradient(1100px 520px at 50% -8%, rgba(212, 160, 60, 0.18), transparent 62%),
-    linear-gradient(180deg, #f4ebd4 0%, #ece0c0 45%, #e2d3ac 100%);
-  background-color: #ece0c0;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.38 0 0 0 0 0.18 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(1200px 620px at 50% -10%, rgba(255, 206, 120, 0.5), transparent 60%),
+    radial-gradient(800px 500px at 82% 8%, rgba(255, 176, 92, 0.22), transparent 55%),
+    linear-gradient(180deg, #fdf4dd 0%, #f7ead0 42%, #f0dfbc 100%);
+  background-color: #f6ecd4;
 }
 
 /* Warm the ambient beams so they read as sunlight, not gold haze. */
@@ -2071,3 +2074,12 @@ html[data-theme="parchment"] #temple-tip::after { background: #e9dcbd; }
 @keyframes gem-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .pillar-gem { animation: none !important; } }
 html[data-motion="reduce"] .pillar-gem { animation: none !important; }
+
+/* ---------------- Temple backdrop scene ---------------- */
+.sky-orb-core { filter: drop-shadow(0 0 16px rgba(255, 224, 150, 0.75)); }
+html[data-theme="parchment"] .sky-orb-core { filter: drop-shadow(0 0 22px rgba(255, 208, 120, 0.9)); }
+.sky-star { animation: star-tw 3.2s ease-in-out infinite; }
+.sky-star:nth-child(odd) { animation-duration: 4.1s; animation-delay: -1.5s; }
+@keyframes star-tw { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sky-star, .sky-orb-core { animation: none; } }
+html[data-motion="reduce"] .sky-star { animation: none; }

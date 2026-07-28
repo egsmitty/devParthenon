@@ -87,6 +87,19 @@ function gradient(
   return g;
 }
 
+function radial(
+  id: string,
+  stops: Array<[number, string, number?]>
+): SVGRadialGradientElement {
+  const g = el("radialGradient", { id });
+  for (const [offset, color, opacity] of stops) {
+    const stop = el("stop", { offset, "stop-color": color });
+    if (opacity !== undefined) stop.setAttribute("stop-opacity", String(opacity));
+    g.appendChild(stop);
+  }
+  return g;
+}
+
 /** feTurbulence grain overlaid on the shape — stone or marble character. */
 function grainFilter(id: string, freq: string, rgba: string): SVGFilterElement {
   const f = el("filter", { id, x: "-5%", y: "-5%", width: "110%", height: "110%" });
@@ -115,19 +128,49 @@ function buildDefs(): SVGDefsElement {
   const parchment = document.documentElement.dataset.theme === "parchment";
   // Sun-bleached limestone in daylight vs weathered granite at night.
   const stone: Array<[number, string]> = parchment
-    ? [[0, "#eaddbc"], [0.5, "#dccaa1"], [1, "#ccb988"]]
+    ? [[0, "#f4e6c4"], [0.5, "#e8d4aa"], [1, "#d8c194"]]
     : [[0, "#2b313e"], [0.5, "#1d222d"], [1, "#141821"]];
   const stoneDark: Array<[number, string]> = parchment
-    ? [[0, "#dbc79d"], [1, "#c3ad7a"]]
+    ? [[0, "#e6d1a6"], [1, "#d0b985"]]
     : [[0, "#1d212b"], [1, "#0d1017"]];
   const stoneWarm: Array<[number, string]> = parchment
-    ? [[0, "#f2e6c2"], [0.55, "#e8d8ae"], [1, "#dbc692"]]
+    ? [[0, "#faeecc"], [0.55, "#f0e0b8"], [1, "#e2cd9c"]]
     : [[0, "#2e2a1c"], [0.55, "#211d13"], [1, "#17140c"]];
   defs.appendChild(gradient("grad-stone", stone));
   defs.appendChild(gradient("grad-stone-dark", stoneDark));
   defs.appendChild(gradient("grad-stone-warm", stoneWarm));
   defs.appendChild(gradient("grad-marble", [[0, "#ffffff"], [0.45, "#efece2"], [0.8, "#d9d3c3"], [1, "#c3bba6"]]));
   defs.appendChild(gradient("grad-gold", [[0, "#fde68a"], [0.4, "#f59e0b"], [0.7, "#b45309"], [1, "#fcd34d"]]));
+
+  // Backdrop scene — sky, sun/moon, and distant hills, by theme.
+  defs.appendChild(
+    gradient(
+      "grad-sky",
+      parchment
+        ? [[0, "#7fb6e4"], [0.42, "#addaef"], [0.72, "#f0e0bf"], [1, "#f6e7c6"]]
+        : [[0, "#070b16"], [0.5, "#101a2d"], [0.78, "#1b2742"], [1, "#243152"]]
+    )
+  );
+  defs.appendChild(
+    radial(
+      "grad-orb",
+      parchment
+        ? [[0, "#fff7d8"], [0.35, "#ffd275"], [1, "#ffd275", 0]]
+        : [[0, "#eef2fb"], [0.5, "#c9d3e6"], [1, "#c9d3e6", 0]]
+    )
+  );
+  defs.appendChild(
+    gradient(
+      "grad-hill-far",
+      parchment ? [[0, "#cdd3a2"], [1, "#bcc48c"]] : [[0, "#152039"], [1, "#0d1626"]]
+    )
+  );
+  defs.appendChild(
+    gradient(
+      "grad-hill-near",
+      parchment ? [[0, "#b7bd80"], [1, "#9ba766"]] : [[0, "#0e1728"], [1, "#080f1c"]]
+    )
+  );
   // Coarse dark grain for weathered stone; long soft veins for marble.
   defs.appendChild(
     grainFilter("tex-stone", "0.55", "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.16 0")
@@ -305,11 +348,42 @@ function seal(cx: number, cy: number, score: number | null): SVGGElement {
 
 /* ---------------- Temple construction ---------------- */
 
+/** A layered scene behind the temple: sky, sun/moon, distant hills, ground. */
+function buildBackdrop(): SVGGElement {
+  const parchment = document.documentElement.dataset.theme === "parchment";
+  const g = el("g", { class: "backdrop", "aria-hidden": "true" });
+  g.appendChild(el("rect", { x: 0, y: 0, width: 1000, height: 720, fill: "url(#grad-sky)" }));
+  // Sun (day) or moon (night), upper right, with a soft halo.
+  g.appendChild(el("circle", { cx: 792, cy: 138, r: 92, fill: "url(#grad-orb)", class: "sky-orb" }));
+  g.appendChild(el("circle", {
+    cx: 792, cy: 138, r: 40,
+    fill: parchment ? "#fff2c8" : "#dfe6f2",
+    class: "sky-orb-core",
+  }));
+  // A few faint stars at night.
+  if (!parchment) {
+    for (const [sx, sy, sr] of [[120, 90, 1.6], [230, 150, 1.1], [360, 70, 1.4], [640, 110, 1.2], [880, 250, 1.5], [180, 220, 1], [500, 60, 1.3]] as const) {
+      g.appendChild(el("circle", { cx: sx, cy: sy, r: sr, fill: "#cdd6ec", class: "sky-star" }));
+    }
+  }
+  // Distant hills rolling behind the temple; the near band is the ground.
+  g.appendChild(el("path", {
+    d: "M0 548 Q 220 500 470 540 Q 720 578 1000 528 V 720 H 0 Z",
+    fill: "url(#grad-hill-far)", opacity: 0.85,
+  }));
+  g.appendChild(el("path", {
+    d: "M0 604 Q 300 560 600 594 Q 820 616 1000 586 V 720 H 0 Z",
+    fill: "url(#grad-hill-near)",
+  }));
+  return g;
+}
+
 function buildTemple(data: ProgressData): SVGSVGElement {
   const svg = el("svg", { viewBox: "0 0 1000 720" });
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Parthenon progress map");
   svg.appendChild(buildDefs());
+  svg.appendChild(buildBackdrop());
 
   /* --- Pediment (capstone) --- */
   const pediment = data.nodes["pediment"];
@@ -616,17 +690,15 @@ const STATUE_POSEIDON = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS
   <path d="M56 40 C 60 30 80 30 84 40" fill="none" stroke="#b3ab95" stroke-width="2"/>
 </svg>`;
 
+// The spine holds exactly two goddesses stacked, fixed in place (the pages
+// scroll beside them, the spine does not).
 const GALLERY = [
   { art: STATUE_ATHENA, name: "Athena", epithet: "Wisdom & Craft" },
   { art: STATUE_MUSE, name: "Mnemosyne", epithet: "Memory" },
-  { art: STATUE_BUST, name: "Sophos", epithet: "The Scholar" },
-  { art: STATUE_POSEIDON, name: "Poseidon", epithet: "Depths & Flow" },
 ];
 
 function renderStatues(): void {
   const spine = document.getElementById("codex-statues")!;
-  // The gilded spine carries statue medallions spaced down its length; they
-  // stay in view while the two pages scroll independently beside them.
   spine.innerHTML =
     `<div class="spine-rule"></div>` +
     GALLERY.map(
