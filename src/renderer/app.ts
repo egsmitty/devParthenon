@@ -413,10 +413,13 @@ function renderStats(): void {
       )
     : null;
   const stats = document.getElementById("temple-stats")!;
+  const cell = (label: string, value: string) =>
+    `<div class="stat"><span class="stat-label">${label}</span>` +
+    `<span class="stat-value">${value}</span></div>`;
   stats.innerHTML =
-    `<span class="stat"><b>${done.length}</b>/${nodes.length} stones set</span>` +
-    `<span class="stat">Foundation <b>${progress.foundationCompleted ? "laid" : "unlaid"}</b></span>` +
-    (avg === null ? "" : `<span class="stat">Mastery <b>${avg}%</b></span>`);
+    cell("Stones Set", `${done.length} / ${nodes.length}`) +
+    cell("Foundation", progress.foundationCompleted ? "Laid" : "Unlaid") +
+    (avg === null ? "" : cell("Mastery", `${avg}%`));
 }
 
 /**
@@ -583,7 +586,23 @@ function openCodex(): void {
   codex.hidden = false;
   tab.setAttribute("aria-expanded", "true");
   requestAnimationFrame(() => codex.classList.add("open"));
+  playBookFlip();
   (document.getElementById("codex-search") as HTMLInputElement).focus();
+}
+
+/** The book-opening page-flip flourish (skipped when motion is reduced). */
+function playBookFlip(): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const book = document.querySelector(".codex-book");
+  if (!book) return;
+  book.querySelector(".flip-layer")?.remove();
+  const layer = document.createElement("div");
+  layer.className = "flip-layer";
+  layer.setAttribute("aria-hidden", "true");
+  layer.innerHTML =
+    '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
+  book.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 1300);
 }
 
 function closeCodex(): void {
@@ -591,8 +610,8 @@ function closeCodex(): void {
   const tab = document.getElementById("codex-tab")!;
   codex.classList.remove("open");
   tab.setAttribute("aria-expanded", "false");
-  // Wait out the slide-out transition before hiding.
-  window.setTimeout(() => (codex.hidden = true), 320);
+  // Wait out the book-close swing before hiding.
+  window.setTimeout(() => (codex.hidden = true), 560);
   tab.focus();
 }
 
