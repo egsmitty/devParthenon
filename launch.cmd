@@ -8,6 +8,7 @@ rem
 rem  This is what the Desktop shortcut points at, so a single
 rem  double-click is always up to date — no manual build needed.
 rem ============================================================
+setlocal
 cd /d "%~dp0"
 
 echo Building Dev Parthenon (latest source)...
@@ -19,6 +20,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem %~dp0 ends with a backslash; strip it so the path passed to
+rem Electron is not "...\devParthenon\" (the trailing \" mangles the arg).
+set "APPDIR=%~dp0"
+set "APPDIR=%APPDIR:~0,-1%"
+
 echo Launching...
-start "" "%~dp0node_modules\electron\dist\electron.exe" "%~dp0"
+start "Dev Parthenon" "%APPDIR%\node_modules\electron\dist\electron.exe" "%APPDIR%"
 exit /b 0
