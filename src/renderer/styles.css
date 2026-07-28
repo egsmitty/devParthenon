@@ -2059,3 +2059,11 @@ html[data-theme="parchment"] #temple-tip { background: linear-gradient(180deg, #
 html[data-theme="parchment"] #temple-tip::after { background: #e9dcbd; }
 @keyframes tip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)); } }
 @media (prefers-reduced-motion: reduce) { #temple-tip { animation: none; } }
+
+/* Per-pillar topic gemstone */
+.pillar-gem { opacity: 0.4; stroke: rgba(255, 255, 255, 0.5); stroke-width: 0.6; transition: opacity 0.3s ease; }
+.node.unlocked .pillar-gem, .node.in_progress .pillar-gem { opacity: 0.85; animation: gem-pulse 2.4s ease-in-out infinite; }
+.node.completed .pillar-gem { opacity: 1; }
+@keyframes gem-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pillar-gem { animation: none !important; } }
+html[data-motion="reduce"] .pillar-gem { animation: none !important; }

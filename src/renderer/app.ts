@@ -47,12 +47,12 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** Short labels shown on the temple; full titles live in progress.json. */
 const PILLAR_ORDER = [
-  { id: "pillar-react", label: "React" },
-  { id: "pillar-nextjs", label: "Next.js" },
-  { id: "pillar-node", label: "Node" },
-  { id: "pillar-databases", label: "Data" },
-  { id: "pillar-tailwind", label: "CSS" },
-  { id: "pillar-git", label: "Git·CI" },
+  { id: "pillar-react", label: "React", tint: "#61dafb" },
+  { id: "pillar-nextjs", label: "Next.js", tint: "#d8dde6" },
+  { id: "pillar-node", label: "Node", tint: "#6cc24a" },
+  { id: "pillar-databases", label: "Data", tint: "#c77dff" },
+  { id: "pillar-tailwind", label: "CSS", tint: "#38bdf8" },
+  { id: "pillar-git", label: "Git·CI", tint: "#f0552f" },
 ];
 
 let progress: ProgressData;
@@ -402,6 +402,18 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     const label = el("text", { x: cx, y: 258, class: "node-label" });
     label.textContent = p.label;
     g.appendChild(label);
+
+    // A topic gemstone set in the shaft — a quiet per-pillar identity.
+    g.appendChild(
+      el("circle", {
+        cx,
+        cy: 274,
+        r: 5.5,
+        fill: p.tint,
+        class: "pillar-gem",
+        style: `filter: drop-shadow(0 0 5px ${p.tint})`,
+      })
+    );
 
     if (node.status === "locked") g.appendChild(ironwork(cx, 368, colW - 4));
     else if (node.status === "completed") g.appendChild(seal(cx, 380, node.score));
