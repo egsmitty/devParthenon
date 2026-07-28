@@ -16,6 +16,7 @@ import type {
   QuizModule,
 } from "../types/schema.js";
 import {
+  configureLessonLinks,
   escapeHtml,
   ModuleMode,
   openModule,
@@ -774,6 +775,14 @@ function playBookFlip(): void {
   window.setTimeout(() => layer.remove(), 1300);
 }
 
+/** Open the Codex focused on a specific term (from a lesson chip). */
+function openCodexWithTerm(term: string): void {
+  openCodex();
+  const search = document.getElementById("codex-search") as HTMLInputElement;
+  search.value = term;
+  renderCodex(term);
+}
+
 function closeCodex(): void {
   const codex = document.getElementById("codex")!;
   const tab = document.getElementById("codex-tab")!;
@@ -997,6 +1006,7 @@ async function init(): Promise<void> {
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
   wireCodex();
+  configureLessonLinks(glossary.map((g) => g.term), openCodexWithTerm);
   if (!api.isSmoke) {
     if (!settings().introSeen) openWelcome();
     else await offerResume();

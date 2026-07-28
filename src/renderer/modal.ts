@@ -60,6 +60,28 @@ function rich(s: string): string {
   return escapeHtml(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
+/* Glossary linking: chips under a lesson that jump to the Codex. */
+let lessonTerms: string[] = [];
+let openCodexTerm: (term: string) => void = () => {};
+export function configureLessonLinks(
+  terms: string[],
+  opener: (term: string) => void
+): void {
+  lessonTerms = terms;
+  openCodexTerm = opener;
+}
+
+/** Glossary terms mentioned (whole-word) in a section's paragraphs. */
+function relatedTerms(paragraphs: string[]): string[] {
+  const text = " " + paragraphs.join("  ").toLowerCase() + " ";
+  return lessonTerms
+    .filter((t) => {
+      const esc = t.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`).test(text);
+    })
+    .slice(0, 6);
+}
+
 interface ModalState {
   node: ModuleNode;
   quiz: QuizModule;
@@ -393,12 +415,24 @@ function renderLesson(): void {
         ? " &middot; <em>gauntlet</em>"
         : "";
   const label = mode === "gauntlet" ? "Interview question" : "Your turn";
+  const related = mode === "gauntlet" ? [] : relatedTerms(section.paragraphs);
+  const relatedHtml = related.length
+    ? `<div class="related-terms"><span class="rt-label">In the Codex</span>` +
+      related
+        .map(
+          (t) =>
+            `<button class="jargon-chip" data-term="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+        )
+        .join("") +
+      `</div>`
+    : "";
   const el = card(`
     <h2>${escapeHtml(quiz.title)}</h2>
     <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
       &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
     <h3 class="lesson-heading">${rich(section.heading)}</h3>
     ${paragraphs}
+    ${relatedHtml}
     <div class="check-label">${label}</div>
     <div class="question-text">${rich(q.question)}</div>
     <div class="options">${optionsMarkup(q.options)}</div>
@@ -409,6 +443,9 @@ function renderLesson(): void {
   `);
 
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
+  el.querySelectorAll<HTMLButtonElement>(".jargon-chip").forEach((chip) =>
+    chip.addEventListener("click", () => openCodexTerm(chip.dataset.term ?? ""))
+  );
 
   const last = sectionIndex === quiz.sections.length - 1;
   wireAnswer(el, q, last ? "See results" : "Continue", (wasCorrect) => {

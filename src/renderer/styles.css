@@ -2117,3 +2117,39 @@ html[data-motion="reduce"] .sky-star { animation: none; }
 .heat-legend { display: flex; gap: 18px; margin-top: 6px; color: var(--text-dim); font-size: 0.78rem; }
 .heat-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .heat-legend i { width: 12px; height: 12px; }
+
+/* ---------------- Lesson → Codex term chips ---------------- */
+.related-terms {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 6px 0 4px;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(181, 131, 51, 0.3);
+}
+.rt-label {
+  font-family: "Cinzel", serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-right: 4px;
+}
+.jargon-chip {
+  font-family: "Cinzel", serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  color: var(--gold-hi);
+  padding: 3px 11px;
+  border: 1px solid var(--brass-dark);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+.jargon-chip:hover { background: rgba(245, 158, 11, 0.2); border-color: var(--gold); transform: translateY(-1px); }
+
+/* Fix: lesson heading was marble-light (invisible) on parchment. */
+html[data-theme="parchment"] .lesson-heading { color: #4a3512; }
+html[data-theme="parchment"] .rt-label { color: #7a6234; }
