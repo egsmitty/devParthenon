@@ -46,6 +46,10 @@ UI/UX refinement on the temple and the Codex.
   near-fullscreen **open illuminated book**: two aged-vellum pages (rubric
   headings, drop-caps, tag seals) flanking a gilded spine of Greek statue
   medallions. Opens/closes as a right-hinged fold; "Return" button.
+- **Flashcards** button (headband) opens a flip-card drill over the glossary:
+  term on the front, flip (click / Space) to reveal the definition + tag
+  seals; Prev/Next walk the deck, Shuffle re-orders, arrows browse, Esc
+  closes. Transform-only 3D flip, reduced-motion-aware. (`flashcards.ts`)
 
 **Personalization & extra screens**
 - **Settings panel**: Temple Night / **Parchment Day** (warm sunny) themes,
@@ -60,8 +64,16 @@ UI/UX refinement on the temple and the Codex.
 - **Synthesized sound** cues (Web Audio, no assets): answer/pass/seal/whoosh.
 
 **Learning experience & scene**
-- A layered **backdrop** behind the temple: sky, sun (day) / moon + stars
-  (night), rolling hills — the temple stands in a landscape.
+- A full-bleed **landscape stage** (`#temple-stage`): sky, sun (day) / moon +
+  stars (night), rolling hills fill the whole framed panel behind the temple
+  and footer — the temple stands transparent in the scene, not a letterboxed
+  box. Sky+hills stretch to fill; the orb is a fixed-aspect layer so it stays
+  round. Torch light-pools + a breathing halo add ambient life; hovering a
+  pillar washes it in its topic colour. (`buildScene()` in `app.ts`)
+- Graded/practice lessons use a **two-column layout** — lesson text (heading,
+  paragraphs, "In short", Codex chips) beside a squarish "Your turn" panel
+  (question + options + Step away); it stacks to one centered column ≤1080px.
+  Redemption + gauntlet stay single-column (no lesson text).
 - Every lesson section has a plain-language **"In short"** takeaway; a graded
   pass recaps them ("What you carry forward").
 - **"In the Codex"** chips under lessons jump to glossary definitions.

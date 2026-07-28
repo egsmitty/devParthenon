@@ -6,53 +6,42 @@ committed and pushed to `main`; the tree is clean. Gate = `npm run verify`
 and eyeball `audit/shots/`. Commit in small slices, gate green each time.
 **Gotcha reminder:** no inline `style=` attributes (CSP — use `element.style`
 via CSSOM; a test enforces this). Capture transient UI with a throwaway
-Playwright script that does NOT emulate reduced motion.
+Playwright script that does NOT emulate reduced motion. The window enforces
+`minWidth: 980` (main.ts) — modal breakpoints below that are dead code.
 
-## In progress / next up (from the user's latest requests)
+## Recently shipped (this session)
 
-### 1. Two-column lesson layout  ← was mid-build when we handed off
-Restructure the **lesson** modal (graded/practice `renderLesson` in
-`src/renderer/modal.ts`) into two columns:
-- **Left:** lesson text — heading, paragraphs, the "In short" summary, and the
-  "In the Codex" chips.
-- **Right:** a squarish "Your Turn" panel with the question and the answer
-  options listed, and the **Step away** button tucked in the right corner.
-- Make the lesson card wider to fit two columns; **stack to one column on
-  narrow windows** (media query / flex-wrap). Redemption + gauntlet screens
-  have no lesson text — leave them single-column/centered.
-- Keep answer badges, feedback, keyboard (1–4/A–D, Enter, Esc), and focus
-  behaviour working. (Task #20)
+All four items that were "in progress / next up" are done and verified:
+1. **Two-column lesson layout** — graded/practice `renderLesson` is now lesson
+   text (left) beside a squarish "Your turn" panel (right); stacks to one
+   centered column ≤1080px. Redemption + gauntlet stay single-column.
+2. **Codex Flashcards** — a flip-card drill over the glossary (term ⇄
+   definition, Prev/Next/Shuffle, Space/arrows/Esc). New `flashcards.ts`,
+   launched from a button in the Codex headband.
+3. **Full-bleed temple scene** — the sky/sun/hills now fill a framed
+   `#temple-stage` behind the temple and footer (see `buildScene()` +
+   `#temple-scene`), instead of being letterboxed inside the temple SVG.
+4. **Fancify** — torch light-pools, a breathing sun/moon halo, and per-pillar
+   topic-tint hover glow (`--pillar-tint`).
 
-### 2. Codex flashcards mode
-Add a **Flashcards** button in the Codex (`app.ts` codex wiring) that opens a
-flip-card drill over the glossary: term on the front, flip to reveal the
-definition, next/prev, shuffle. Self-contained overlay following the existing
-`#x-root` + open/close + Esc/backdrop pattern. (Task #21)
+## Next up (menu — pick by value; nothing committed to)
 
-### 3. Extend the temple scene full-bleed
-The sky/sun/hills backdrop is currently drawn inside the temple SVG, so it's
-letterboxed in a box. Make it **fill the whole temple stage** — from just below
-the stats bar down to the bottom, out to the panel's inner border, **behind the
-footer buttons** — and give it an outline/frame. Suggested approach: wrap
-`#temple-svg-host` + `#temple-footer` in a `#temple-stage` div; render the scene
-(`buildScene()` / a positioned background SVG, `preserveAspectRatio` slice) as
-its background layer; remove `buildBackdrop()` from the temple SVG so the temple
-stands transparent over the stage scene. Theme-aware (day/night). (Task #22)
+- **A Playwright *test* (not just the audit)** asserting a full graded pass +
+  a gauntlet run, wired into `verify`. The audit already exercises these with
+  assertions; the gap is having it block the gate.
+- **Data-authoring lint** as a standalone `npm run lint:data` (the integrity
+  checks currently live only inside the test suite).
+- **Progress-based badges / achievements**; a guided first-play tour beyond
+  the welcome rite.
+- **Flashcards, deeper:** filter the deck by Codex tag, or a "known / review
+  again" self-grade that reorders the queue.
+- **Expand question banks** (Test E/F) or add sections so 85% is a smoother
+  threshold on the 5-question pillars.
+- **Codex art:** more statues / animated illumination in the spine.
 
-### 4. "Fancify" — open-ended polish the user invited
-Anything that raises production value: richer animated illumination, per-pillar
-theming, hover/press micro-interactions, etc. Keep it reduced-motion-aware and
-CSP-clean.
-
-## Backlog (see docs/PROJECT_STATE.md for the full list)
-- Progress-based badges / achievements; guided first-play tour.
-- Expand question banks further (Test E/F) or more sections per module.
-- A Playwright *test* (not just the audit) asserting a full graded pass +
-  gauntlet, wired into `verify`.
-
-## Current state (what already shipped)
-See `docs/PROJECT_STATE.md`. Highlights this session: Parchment Day theme,
-Settings panel, A/B/C/D lettering, Welcome rite, Chronicle (mastery ring, day
-streak, recall heatmap, export/import), Keys help, synthesized sound, temple
-backdrop scene, per-section "In short" summaries + pass recap, Codex term
-chips, next-step guide button, and a Chronicle width/frame fix.
+## Backlog (full list in docs/PROJECT_STATE.md)
+- Progress export/import already ships; a "share my temple" snapshot image is
+  still open.
+- Streaks / daily goal / XP.
+- Per-pillar theming beyond the hover tint (tint each whole column).
+- Code-sign the Windows build; auto-update channel if it ships beyond local.
