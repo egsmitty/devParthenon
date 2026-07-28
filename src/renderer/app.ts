@@ -21,7 +21,13 @@ import {
   openModule,
   openReviewDrill,
 } from "./modal.js";
-import { initSettings, motionReduced } from "./settings.js";
+import {
+  closeSettings,
+  initSettings,
+  isSettingsOpen,
+  motionReduced,
+  openSettings,
+} from "./settings.js";
 
 declare global {
   interface Window {
@@ -701,6 +707,23 @@ function wireReset(): void {
   });
 }
 
+function wireSettings(): void {
+  document.getElementById("btn-settings")!.addEventListener("click", () =>
+    openSettings(() => renderTemple())
+  );
+  const root = document.getElementById("settings-root")!;
+  // Click the backdrop (outside the card) to close.
+  root.addEventListener("click", (e) => {
+    if (e.target === root) closeSettings();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && isSettingsOpen()) {
+      e.preventDefault();
+      closeSettings();
+    }
+  });
+}
+
 function wireReview(): void {
   document.getElementById("btn-review")!.addEventListener("click", async () => {
     const deck = await api.getReviewDeck(8);
@@ -763,6 +786,7 @@ async function init(): Promise<void> {
   wireTitlebar();
   wireReset();
   wireReview();
+  wireSettings();
   wireParallax();
   [progress, glossary] = await Promise.all([api.getProgress(), api.getGlossary()]);
   renderTemple();
