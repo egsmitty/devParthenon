@@ -617,6 +617,34 @@ text.score-badge {
   50% { opacity: 1; transform: scale(1.25); }
 }
 
+/* Mastery-pending cue: a passed stone whose Mastery Test (trophy) awaits. */
+.mastery-halo {
+  stroke: var(--gold-hi);
+  stroke-width: 1.6;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mastery-pulse 2.2s ease-in-out infinite;
+}
+text.mastery-crown {
+  fill: var(--gold-hi);
+  font-size: 15px;
+  text-anchor: middle;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.7));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mastery-pulse 2.2s ease-in-out infinite;
+}
+@keyframes mastery-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mastery-halo, text.mastery-crown { animation: none; opacity: 0.9; }
+}
+html[data-motion="reduce"] .mastery-halo,
+html[data-motion="reduce"] text.mastery-crown { animation: none; opacity: 0.9; }
+
 /* ---------- Glossary: carved index ---------- */
 
 /* ---------- Codex: book-spine tab ---------- */

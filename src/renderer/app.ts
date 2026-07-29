@@ -169,6 +169,20 @@ function isClickable(node: ModuleNode): boolean {
   return node.status === "unlocked" || node.status === "in_progress";
 }
 
+/**
+ * A stone whose lessons are passed (marble) but whose Mastery Test isn't yet —
+ * the trophy is still to be earned. Clicking it launches the Mastery Test
+ * rather than practice, and it wears a "prove it" cue. The pediment has no
+ * Mastery Test (its graded attempt is the gauntlet), so it's never pending.
+ */
+function masteryPending(node: ModuleNode): boolean {
+  return (
+    node.status === "completed" &&
+    node.category !== "pediment" &&
+    !(progress.mastery?.[node.id]?.passed ?? false)
+  );
+}
+
 /* ---------------- Node hover cartouche ---------------- */
 
 function tooltipFor(node: ModuleNode): string {
@@ -181,7 +195,9 @@ function tooltipFor(node: ModuleNode): string {
       return `Sealed — first complete ${need || "its prerequisites"}.`;
     }
     case "completed":
-      return `Mastered at ${pct}%. Click to practice (no stakes).`;
+      return masteryPending(node)
+        ? `Passed at ${pct}%. Click to take the Mastery Test and earn its trophy.`
+        : `Mastered at ${pct}%. Click to practice (no stakes).`;
     case "in_progress":
       return `In progress${pct === null ? "" : ` — best ${pct}%`}. Click to continue.`;
     default:
@@ -248,9 +264,12 @@ function nodeGroup(node: ModuleNode): SVGGElement {
   if (isClickable(node)) {
     activate(() => launchModule(node));
   } else if (node.status === "completed") {
-    // A mastered stone can be revisited for practice (no stakes).
+    // Passed-but-not-mastered stones launch their Mastery Test; fully mastered
+    // stones re-open for stakes-free practice.
+    const pending = masteryPending(node);
     g.style.cursor = "pointer";
-    activate(() => launchModule(node, "practice"));
+    if (pending) g.classList.add("mastery-pending");
+    activate(() => launchModule(node, pending ? "mastery" : "practice"));
   } else if (node.status === "locked") {
     // Locked feedback: brief shake + a toast naming what's still needed.
     g.addEventListener("click", () => {
@@ -317,8 +336,9 @@ function torch(cx: number, cy: number): SVGGElement {
   return g;
 }
 
-/** Gold completion seal with the score engraved. */
-function seal(cx: number, cy: number, score: number | null): SVGGElement {
+/** Gold completion seal with the score engraved; `pending` adds the "Mastery
+ * Test awaits" crown cue for a passed-but-not-yet-mastered stone. */
+function seal(cx: number, cy: number, score: number | null, pending = false): SVGGElement {
   const g = el("g");
   g.appendChild(el("circle", { cx, cy, r: 15, class: "seal-disc" }));
   g.appendChild(el("circle", { cx, cy, r: 11.5, class: "seal-ring" }));
@@ -329,6 +349,13 @@ function seal(cx: number, cy: number, score: number | null): SVGGElement {
   g.appendChild(el("circle", { cx: cx - 20, cy: cy - 14, r: 1.8, class: "spark" }));
   g.appendChild(el("circle", { cx: cx + 19, cy: cy - 6, r: 1.4, class: "spark s2" }));
   g.appendChild(el("circle", { cx: cx + 8, cy: cy + 19, r: 1.6, class: "spark s3" }));
+  if (pending) {
+    // A pulsing gold ring + crown glyph: "the trophy is still to be won here."
+    g.appendChild(el("circle", { cx, cy, r: 20, class: "mastery-halo", fill: "none" }));
+    const crown = el("text", { x: cx, y: cy - 23, class: "mastery-crown" });
+    crown.textContent = "♛"; // ♛ — the trophy to earn
+    g.appendChild(crown);
+  }
   return g;
 }
 
@@ -528,7 +555,7 @@ function buildTemple(data: ProgressData): SVGSVGElement {
     g.appendChild(gem);
 
     if (node.status === "locked") g.appendChild(ironwork(cx, 368, colW - 4));
-    else if (node.status === "completed") g.appendChild(seal(cx, 380, node.score));
+    else if (node.status === "completed") g.appendChild(seal(cx, 380, node.score, masteryPending(node)));
     svg.appendChild(g);
   });
 
@@ -558,7 +585,7 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   fLabel.textContent = "Web Foundations — HTTP · DNS · Client/Server · DOM";
   fg.appendChild(fLabel);
   if (foundation.status === "locked") fg.appendChild(ironwork(500, 640, 160));
-  else if (foundation.status === "completed") fg.appendChild(seal(500, 638, foundation.score));
+  else if (foundation.status === "completed") fg.appendChild(seal(500, 638, foundation.score, masteryPending(foundation)));
   svg.appendChild(fg);
 
   return svg;
