@@ -82,8 +82,14 @@ function flashLearnMoreError(btn: HTMLButtonElement): void {
  * spaced-repetition scheduler but never touches score or unlock state.
  * "gauntlet" is the pediment's mock interview: graded stakes, shuffled
  * random variants, a countdown, no lesson paragraphs, not resumable.
+ * "mastery" is a module's Mastery Test: 10 random questions from its bank, no
+ * lessons, ≥80% to earn the trophy, infinite retries, not resumable.
  */
-export type ModuleMode = "graded" | "practice" | "gauntlet";
+export type ModuleMode = "graded" | "practice" | "gauntlet" | "mastery";
+
+/** Questions drawn for a Mastery Test, and the fraction needed to pass it. */
+export const MASTERY_QUESTION_COUNT = 10;
+export const MASTERY_PASS = 0.8;
 
 /** Mock-interview pacing: seconds allotted per gauntlet question. */
 export const GAUNTLET_SECONDS_PER_QUESTION = 40;
@@ -110,6 +116,13 @@ export function configureLessonLinks(
 ): void {
   lessonTerms = terms;
   openCodexTerm = opener;
+}
+
+/* Mastery launch: app.ts wires how to start a module's Mastery Test (it builds
+   the random 10-question draw), so a result screen can offer/retry it. */
+let launchMastery: (node: ModuleNode) => void = () => {};
+export function configureMastery(fn: (node: ModuleNode) => void): void {
+  launchMastery = fn;
 }
 
 /** Glossary terms mentioned (whole-word) in a section's paragraphs. */
@@ -140,6 +153,8 @@ interface ModalState {
   /** Gauntlet countdown state. */
   deadline?: number;
   timerId?: number;
+  /** Mastery Test: relaunch a fresh 10-question draw for "Try again". */
+  retry?: () => void;
 }
 
 let state: ModalState | null = null;
@@ -153,9 +168,9 @@ function root(): HTMLElement {
 /** Record one answered check for the spaced-repetition scheduler. */
 function recordResult(sectionIndex: number, correct: boolean): void {
   if (!state) return;
-  // Gauntlet sections are sampled across modules, so indices don't map to
-  // the pediment's own sections — an exam, not tracked drilling. Skip.
-  if (state.mode === "gauntlet") return;
+  // The gauntlet and the Mastery Test draw questions across a bank, so their
+  // indices don't map to real sections — an exam, not tracked drilling. Skip.
+  if (state.mode === "gauntlet" || state.mode === "mastery") return;
   void apiRef
     .recordSectionResult(state.node.id, sectionIndex, correct)
     .catch((err) => console.warn("section-stat record failed:", err));
@@ -167,7 +182,8 @@ export function openModule(
   api: ParthenonApi,
   onDone: (updated: ProgressData) => void,
   resumeFrom?: ActiveAttempt,
-  mode: ModuleMode = "graded"
+  mode: ModuleMode = "graded",
+  retry?: () => void
 ): void {
   state = {
     node,
@@ -179,6 +195,7 @@ export function openModule(
     redeemQueue: resumeFrom?.redeemQueue ?? [],
     redeemPoints: resumeFrom?.redeemPoints ?? 0,
     shownIds: {},
+    retry,
   };
   apiRef = api;
   onDoneRef = onDone;
@@ -440,23 +457,30 @@ function renderLesson(): void {
       : pickVariant(section, { mode: "practice" });
   state.shownIds[sectionIndex] = q.id;
 
-  // The gauntlet is an exam: no teaching text, just concept + question.
-  const paragraphs =
-    mode === "gauntlet"
-      ? ""
-      : section.paragraphs
-          .slice(0, 3) // hard cap: the chunked-feeding law
-          .map((p) => `<p class="lesson-paragraph">${rich(p)}</p>`)
-          .join("");
+  // The gauntlet and Mastery Test are exams: no teaching text, just the check.
+  const noLessons = mode === "gauntlet" || mode === "mastery";
+  const paragraphs = noLessons
+    ? ""
+    : section.paragraphs
+        .slice(0, 3) // hard cap: the chunked-feeding law
+        .map((p) => `<p class="lesson-paragraph">${rich(p)}</p>`)
+        .join("");
 
   const tag =
     mode === "practice"
       ? " &middot; <em>practice</em>"
       : mode === "gauntlet"
         ? " &middot; <em>gauntlet</em>"
-        : "";
-  const label = mode === "gauntlet" ? "Interview question" : "Your turn";
-  const related = mode === "gauntlet" ? [] : relatedTerms(section.paragraphs);
+        : mode === "mastery"
+          ? " &middot; <em>mastery test</em>"
+          : "";
+  const label =
+    mode === "gauntlet"
+      ? "Interview question"
+      : mode === "mastery"
+        ? "Mastery question"
+        : "Your turn";
+  const related = noLessons ? [] : relatedTerms(section.paragraphs);
   const relatedHtml = related.length
     ? `<div class="related-terms"><span class="rt-label">In the Codex</span>` +
       related
@@ -487,20 +511,18 @@ function renderLesson(): void {
     ${relatedHtml}
   `;
 
-  // Gauntlet is a bare exam question; a taught section is two columns
+  // An exam is a bare question; a taught section is two columns
   // (lesson | your turn) that stack on narrow windows.
-  const body =
-    mode === "gauntlet"
-      ? turnHtml
-      : `<div class="lesson-columns">
+  const body = noLessons
+    ? turnHtml
+    : `<div class="lesson-columns">
           <div class="lesson-col-left">${lessonHtml}</div>
           <div class="lesson-col-right your-turn">${turnHtml}</div>
         </div>`;
 
   // A per-topic "Learn more" — hands off to a web search that goes deeper than
-  // the lesson. Only on taught sections (the gauntlet is a closed exam).
-  const learn =
-    mode === "gauntlet" ? null : learnMoreUrl(state.node.id, section.heading);
+  // the lesson. Only on taught sections (an exam is a closed check).
+  const learn = noLessons ? null : learnMoreUrl(state.node.id, section.heading);
   const learnMoreHtml = learn
     ? `<div class="lesson-topbar"><button class="learn-more-btn" data-action="learn-more"
         title="Search the web for &ldquo;${escapeHtml(learn.topic)}&rdquo;">
@@ -511,11 +533,11 @@ function renderLesson(): void {
   const el = card(`
     ${learnMoreHtml}
     <h2>${escapeHtml(quiz.title)}</h2>
-    <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
+    <div class="modal-progress">${noLessons ? "Question" : "Section"} ${sectionIndex + 1} of ${quiz.sections.length}
       &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
     ${body}
   `);
-  if (mode !== "gauntlet") el.classList.add("lesson-wide");
+  if (!noLessons) el.classList.add("lesson-wide");
 
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
   if (learn) {
@@ -565,6 +587,12 @@ function afterLessons(): void {
     return;
   }
 
+  // The Mastery Test has its own pass bar, trophy, and retry — no redemption.
+  if (state.mode === "mastery") {
+    void finishMastery(base);
+    return;
+  }
+
   if (base >= threshold) {
     void finalize(base, { mode: "clean", base });
   } else if (base + REDEMPTION_CAP + 1e-9 >= threshold) {
@@ -600,6 +628,76 @@ function finishPractice(score: number): void {
     // Practice doesn't change progress, but refresh so any resume/UI re-reads.
     void apiRef.getProgress().then((p) => done(p));
   });
+  mountCard(el);
+}
+
+/**
+ * Mastery-Test result: record the attempt (which may award the module's
+ * trophy), then show pass + trophy or fail + a "Try again" that redraws a fresh
+ * 10-question set. Retries are unlimited and carry no penalty.
+ */
+async function finishMastery(score: number): Promise<void> {
+  if (!state) return;
+  const { node, quiz, correct, retry } = state;
+  const total = quiz.sections.length;
+  const pct = Math.round(score * 100);
+  const bar = Math.round(MASTERY_PASS * 100);
+
+  let outcome: { progress: ProgressData; passed: boolean; awardedTrophy: string | null } | null =
+    null;
+  try {
+    outcome = await apiRef.recordMasteryResult(node.id, score);
+  } catch (err) {
+    console.warn("mastery record failed:", err);
+  }
+  const passed = outcome?.passed ?? score + 1e-9 >= MASTERY_PASS;
+  if (passed) playCue("pass");
+
+  const scoreBlock = passed
+    ? `<div class="result-burst">${Array.from({ length: 12 })
+        .map(() => `<span class="burst-spark"></span>`)
+        .join("")}<div class="result-score pass">${pct}%</div></div>`
+    : `<div class="result-score fail">${pct}%</div>`;
+
+  const verdict = passed
+    ? `You cleared the ${bar}% Mastery bar &mdash; ${correct} of ${total} correct. This topic is proven, not just seen.`
+    : `${correct} of ${total} correct, short of the ${bar}% bar. Retries are unlimited and each draws a fresh set of questions.`;
+
+  const trophyNote = outcome?.awardedTrophy
+    ? `<div class="trophy-award"><span class="trophy-mark" aria-hidden="true">&#9819;</span> Trophy earned &mdash; added to your case.</div>`
+    : passed
+      ? `<div class="unlock-note">Mastery re-confirmed. The trophy is already in your case.</div>`
+      : "";
+
+  const actions = passed
+    ? `<button class="primary-btn" data-action="done">Return to the temple</button>`
+    : `<button class="ghost-btn" data-action="done">Leave</button>` +
+      (retry ? `<button class="primary-btn" data-action="retry">Try again</button>` : "");
+
+  const el = card(`
+    <h2>${escapeHtml(quiz.title)} &middot; Mastery Test</h2>
+    ${scoreBlock}
+    <div class="result-detail">${verdict}</div>
+    ${trophyNote}
+    <div class="modal-actions">${actions}</div>
+  `);
+
+  el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
+    const done = onDoneRef;
+    const prog = outcome?.progress ?? null;
+    closeModal();
+    if (prog) done(prog);
+    else void apiRef.getProgress().then((p) => done(p));
+  });
+  el.querySelector('[data-action="retry"]')?.addEventListener("click", () => {
+    const again = retry;
+    closeModal();
+    again?.();
+  });
+  el.querySelectorAll<HTMLElement>(".burst-spark").forEach((s, i) =>
+    s.style.setProperty("--a", `${i * 30}deg`)
+  );
+
   mountCard(el);
 }
 
@@ -705,6 +803,8 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
   if (result.passed) playCue("pass");
   const pct = Math.round(score * 100);
   const threshold = Math.round(quiz.passThreshold * 100);
+  // A graded module pass opens its Mastery Test (the gauntlet/pediment doesn't).
+  const offerMastery = result.passed && state.mode === "graded";
 
   const unlockNames = result.newlyUnlocked
     .map((id) => result.progress.nodes[id]?.title ?? id)
@@ -757,14 +857,32 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
         : ""
     }
     ${recap}
+    ${
+      offerMastery
+        ? `<div class="mastery-cta"><span class="mc-label">Prove it</span>
+             Pass the Mastery Test (${Math.round(MASTERY_PASS * 100)}% on 10 drawn
+             questions) to earn this pillar's trophy.</div>`
+        : ""
+    }
     <div class="modal-actions">
-      <button class="primary-btn" data-action="done">Return to the temple</button>
+      ${
+        offerMastery
+          ? `<button class="ghost-btn" data-action="done">Not yet</button>
+             <button class="primary-btn" data-action="mastery">Take the Mastery Test &rarr;</button>`
+          : `<button class="primary-btn" data-action="done">Return to the temple</button>`
+      }
     </div>
   `);
 
   el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
     closeModal();
     onDoneRef(result.progress);
+  });
+  el.querySelector('[data-action="mastery"]')?.addEventListener("click", () => {
+    const node = result.progress.nodes[state!.node.id] ?? state!.node;
+    closeModal();
+    onDoneRef(result.progress);
+    launchMastery(node);
   });
 
   // Spark angles via CSSOM (inline style attributes violate the CSP).

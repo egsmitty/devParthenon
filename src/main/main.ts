@@ -8,6 +8,7 @@ import {
   loadSettings,
   migrateProgress,
   progressFilePath,
+  recordMasteryResult,
   recordSectionResult,
   resetProgress,
   saveAttempt,
@@ -20,6 +21,7 @@ import { isDue, orderDeck } from "./review";
 import type {
   ActiveAttempt,
   GlossaryEntry,
+  MasteryOutcome,
   QuizModule,
   ReviewDeckEntry,
   Settings,
@@ -263,6 +265,23 @@ function registerIpc(): void {
     }
     return saveQuizScore(storePaths, nodeId, score);
   });
+
+  ipcMain.handle(
+    "record-mastery-result",
+    (_event, nodeId: string, score: number): MasteryOutcome => {
+      if (typeof nodeId !== "string" || typeof score !== "number" || score < 0 || score > 1) {
+        throw new Error("record-mastery-result: invalid arguments");
+      }
+      const data = loadProgress(storePaths);
+      const hadTrophy = (data.trophies ?? []).includes(nodeId);
+      recordMasteryResult(data, nodeId, score, new Date().toISOString());
+      writeProgress(storePaths, data);
+      const passed = data.mastery?.[nodeId]?.passed ?? false;
+      const awardedTrophy =
+        !hadTrophy && (data.trophies ?? []).includes(nodeId) ? nodeId : null;
+      return { progress: data, passed, awardedTrophy };
+    }
+  );
 
   ipcMain.handle("reset-progress", () => {
     clearAttempt(storePaths);

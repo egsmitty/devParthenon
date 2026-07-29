@@ -9,15 +9,19 @@
  */
 import type {
   GlossaryEntry,
+  LessonSection,
   ModuleNode,
   NodeStatus,
   ParthenonApi,
   ProgressData,
   QuizModule,
+  QuizQuestion,
 } from "../types/schema.js";
 import {
   configureLessonLinks,
+  configureMastery,
   escapeHtml,
+  MASTERY_QUESTION_COUNT,
   ModuleMode,
   openModule,
   openReviewDrill,
@@ -665,23 +669,50 @@ async function buildGauntlet(node: ModuleNode): Promise<QuizModule> {
   };
 }
 
+/**
+ * A module's Mastery Test: MASTERY_QUESTION_COUNT questions drawn at random
+ * from the module's whole variant bank (across all its sections), each shown
+ * as a bare exam question. A bigger bank = more variety per draw.
+ */
+async function buildMasteryQuiz(node: ModuleNode): Promise<QuizModule> {
+  const module = await api.getQuiz(node.quizFile);
+  const bank: QuizQuestion[] = [];
+  for (const s of module.sections) {
+    const pool = s.variants ?? [s.question, s.altQuestion].filter(Boolean) as QuizQuestion[];
+    bank.push(...pool);
+  }
+  for (let i = bank.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bank[i], bank[j]] = [bank[j], bank[i]];
+  }
+  const chosen = bank.slice(0, Math.min(MASTERY_QUESTION_COUNT, bank.length));
+  const sections: LessonSection[] = chosen.map((q, i) => ({
+    heading: `Mastery ${i + 1}`,
+    paragraphs: [],
+    variants: [q],
+  }));
+  return { id: `${module.id}-mastery`, title: module.title, passThreshold: 0.8, sections };
+}
+
 async function launchModule(
   node: ModuleNode,
   mode: ModuleMode = "graded"
 ): Promise<void> {
+  const onDone = (updated: ProgressData) => {
+    progress = updated;
+    renderTemple();
+  };
+  if (mode === "mastery") {
+    const quiz = await buildMasteryQuiz(node);
+    // The retry callback redraws a fresh set for unlimited attempts.
+    openModule(node, quiz, api, onDone, undefined, "mastery", () =>
+      void launchModule(node, "mastery")
+    );
+    return;
+  }
   const gauntlet = node.id === "pediment" && mode === "graded";
   const quiz = gauntlet ? await buildGauntlet(node) : await api.getQuiz(node.quizFile);
-  openModule(
-    node,
-    quiz,
-    api,
-    (updated) => {
-      progress = updated;
-      renderTemple();
-    },
-    undefined,
-    gauntlet ? "gauntlet" : mode
-  );
+  openModule(node, quiz, api, onDone, undefined, gauntlet ? "gauntlet" : mode);
 }
 
 /* ---------------- Codex of Jargon (slide-out lexicon) ---------------- */
@@ -1077,6 +1108,7 @@ async function init(): Promise<void> {
   renderTemple();
   wireCodex();
   configureLessonLinks(glossary.map((g) => g.term), openCodexWithTerm);
+  configureMastery((node) => void launchModule(node, "mastery"));
   if (!api.isSmoke) {
     if (!settings().introSeen) openWelcome();
     else await offerResume();

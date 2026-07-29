@@ -126,6 +126,14 @@ export interface ProgressData {
   herculean?: HerculeanState;
 }
 
+/** Result of recording a Mastery-Test attempt (v4). */
+export interface MasteryOutcome {
+  progress: ProgressData;
+  passed: boolean;
+  /** Trophy id newly awarded by this attempt, or null if none/already had it. */
+  awardedTrophy: string | null;
+}
+
 export type ThemeName = "temple-dark" | "parchment";
 export type OptionLabelStyle = "letters" | "numbers" | "none";
 
@@ -207,6 +215,8 @@ export interface ParthenonApi {
   windowControl(action: "minimize" | "maximize" | "close"): void;
   /** Open an http(s) URL in the browser (validated in main); false on failure. */
   openExternal(url: string): Promise<boolean>;
+  /** Record a Mastery-Test attempt; may award the module's trophy. */
+  recordMasteryResult(nodeId: string, score: number): Promise<MasteryOutcome>;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
   isSmoke: boolean;

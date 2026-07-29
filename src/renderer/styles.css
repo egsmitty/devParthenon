@@ -1587,6 +1587,44 @@ html[data-theme="parchment"] .lesson-col-right.your-turn {
   filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
 }
 
+/* Mastery-Test call-to-action on a graded pass. */
+.mastery-cta {
+  margin: 14px auto 4px;
+  max-width: 460px;
+  text-align: center;
+  padding: 11px 16px;
+  border: 1px solid rgba(181, 131, 51, 0.4);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), transparent);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.mc-label {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+/* Trophy-earned banner on a Mastery-Test pass. */
+.trophy-award {
+  margin-top: 12px;
+  text-align: center;
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-hi);
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
+.trophy-award .trophy-mark { font-size: 1.25em; margin-right: 6px; }
+html[data-theme="parchment"] .mastery-cta { color: #40331d; }
+
 /* ---------- Living temple: torches, marble sheen, hover lift ---------- */
 
 .flame {
