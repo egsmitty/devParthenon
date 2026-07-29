@@ -30,12 +30,13 @@ never inline `style=`; gate any animation behind `prefers-reduced-motion`.
 
 Do these in order:
 
-1. **Fable — 6 trophy statues.** Add `STATUE_HERMES/APOLLO/HEPHAESTUS/APHRODITE/
-   CHRONOS/ZEUS` next to `STATUE_ATHENA` in `src/renderer/app.ts` (same
-   `viewBox="0 0 140 262"`, `url(#mb)` marble, gold `#e6c063`). Roster/attributes
-   in the table below.
-2. **Fable — Herculean bank.** Create `data/quizzes/herculean.json` per "Fable —
-   content instructions" below. Validate with `npm run lint:data`.
+1. ✅ **Fable — 6 trophy statues.** DONE — `STATUE_HERMES/APOLLO/HEPHAESTUS/
+   APHRODITE/CHRONOS/ZEUS` live next to `STATUE_ATHENA` in `src/renderer/app.ts`
+   (same marble idiom; epithets are in each statue's doc comment).
+2. ✅ **Fable — Herculean bank.** DONE — `data/quizzes/herculean.json` (12
+   cross-topic sections × 4 variants = 48 synthesis questions, full integrity
+   contract incl. option-length balance). `lint:data` now sweeps quiz files not
+   referenced by a progress node, so the bank is gated before its node exists.
 3. **Sonnet — Trophy Case.** New `#trophy-case-root` overlay following the shared
    `#x-root` open/close + Esc/backdrop pattern (copy `flashcards.ts`). Read
    `progress.trophies`; map `nodeId → {god, epithet, art}` (+ `"herculean" → Zeus`).
