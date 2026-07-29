@@ -26,22 +26,20 @@ All four items that were "in progress / next up" are done and verified:
 
 ## Big active initiative: Progression & Trophies
 
-See **[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)**. Shipped so far: the
-tested **v4 spine**, a big **content expansion** (41→76 sections, 164→304
-questions — foundation + all 6 pillars deepened to ~10), the **Mastery
-Test** (10-question, 80%, trophy, unlimited retries; offered on a graded pass),
-and **Fable's brief — DONE:** the 6 trophy statues (`STATUE_HERMES/APOLLO/
-HEPHAESTUS/APHRODITE/CHRONOS/ZEUS` in `app.ts`, epithets in doc comments) and
-the **Herculean bank** (`data/quizzes/herculean.json`, 12 cross-topic sections
-× 4 variants = 48 questions; `lint:data` now sweeps node-unreferenced banks).
-**Next up, in order (Sonnet then Opus per the plan's "start here" list):**
-(1) **Trophy Case** overlay; (2) the pre-test **Overview page**; (3) **node
-re-entry / mastery-pending cue** (unblocks the gate); (4) **enable the gate**
-— require the Mastery Test pass to unlock the next pillar; (5) **Herculean
-Test UI** + weak-area side-quest (Phase C — the bank is ready); (6) **capstone
-expansion** — grow it to ~10 like the pillars, but first adjust `buildGauntlet`
-to cap how many capstone sections the gauntlet samples (else the "17 questions"
-audit assertion breaks).
+**COMPLETE — the whole Progression & Trophies initiative shipped.** See
+**[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)** for the full map. Delivered:
+the tested v4 spine; content expansion (foundation + 6 pillars + **capstone now
+10** — 93 sections, 372 questions); the **Mastery Test**; the **Overview page**;
+**the gate is ON** (unlock requires completed AND mastered) with soft-lock-free
+**node re-entry** (a passed-but-unmastered stone launches its Mastery Test, with
+a "prove it" cue); the **Trophy Case** (nine gods, footer entry); the **Herculean
+Test** (thunderbolt marker → 25-question timed trial → Zeus trophy or a weak-area
+side-quest); and a **gauntlet cap** keeping it at 17 Qs. `record-mastery-result`
+and `record-herculean-result` IPC both run the unlock sweep / stash weak areas.
+48 unit tests + all 21 audit shots green.
+
+Only optional Phase D polish remains (see the plan): the Hercules HP-bar boss
+skin and character customization — pure gamification, not required for the loop.
 
 ## Next up (menu — pick by value; nothing committed to)
 

@@ -7,17 +7,27 @@ logic/architecture/review), **Sonnet 5** (UI build), and **Fable** (content &
 art). The tested data/logic **spine already exists** (schema v4 + `store.ts`);
 this doc is the map for the rest.
 
-> Status: **spine + Mastery Test + content expansion shipped.**
+> Status: **COMPLETE — Phases A, B, and C all shipped.** 🏛️
 > - v4 store spine (trophies/mastery/herculean, migration, tests). ✅
-> - **Content expanded**: 41→76 sections, 164→304 questions (foundation + all 6
->   pillars deepened to ~10; capstone still 5 — see below). ✅
-> - **Mastery Test (Phase A)**: a graded pass offers a 10-question, 80%-to-pass
->   trophy exam drawn from the module's bank; awards + persists the trophy;
->   unlimited retries. `record-mastery-result` IPC wired. ✅
-> Next: the pre-test **Overview page**; **enable the gate** (require mastery pass
-> to unlock the next pillar); **Trophy Case** (Phase B); **Herculean** (Phase C);
-> and **capstone expansion** (needs a `buildGauntlet` sampling tweak so the
-> gauntlet stays ~17 Qs when capstone grows).
+> - **Content expanded**: foundation + all 6 pillars to ~10 sections; **capstone
+>   now 10** (5→10, mock-interview depth). 93 sections, 372 questions. ✅
+> - **Mastery Test (Phase A)**: graded pass → 10-question, 80%-to-pass trophy
+>   exam; awards/persists the trophy; unlimited retries. ✅
+> - **Overview page**: "what you now know" recap on the graded-pass screen
+>   (headings + summaries + Codex terms). ✅
+> - **The gate is ON**: unlocking a node now requires the prerequisite to be
+>   *completed AND mastered*. Node re-entry (a passed-but-unmastered stone
+>   launches its Mastery Test, with a "prove it" cue) keeps it soft-lock-free. ✅
+> - **Trophy Case (Phase B)**: `#trophy-case-root` hall of the nine gods —
+>   earned = lit statue, sealed = silhouette. Footer entry. ✅
+> - **Herculean Test (Phase C)**: a thunderbolt marker beside the pediment; a
+>   25-question timed trial (seen + new bank), ≥85%; pass → Zeus trophy, fail →
+>   weak-area side-quest (Review drill over the missed keys). ✅
+> - **Gauntlet**: `buildGauntlet` caps capstone sampling to 5, so it stays 17 Qs
+>   as the capstone grows. ✅
+>
+> Optional future polish only (Phase D): the Hercules HP-bar boss skin and
+> character customization. The core loop is complete.
 
 ---
 
