@@ -1464,24 +1464,25 @@ html[data-theme="parchment"] .fc-term { color: #5a3f14; text-shadow: none; }
 
 /* ---------- Two-column lesson: text | "Your turn" ---------- */
 
-/* A taught section is wider to seat the lesson beside the check. */
-.modal-card.lesson-wide { width: min(1060px, 95vw); }
+/* A taught section is wide to seat the lesson beside a roomy check. */
+.modal-card.lesson-wide { width: min(1320px, 96vw); }
 
 .lesson-columns {
   display: flex;
-  gap: 26px;
+  gap: 30px;
   align-items: stretch;
 }
 
-.lesson-col-left { flex: 1 1 54%; min-width: 0; }
+.lesson-col-left { flex: 1 1 44%; min-width: 0; }
 
-/* The "Your turn" panel: a squarish inset tablet holding the question. */
+/* The "Your turn" panel: a roomy inset tablet holding the question — it gets
+   the larger share so long answer options never wrap awkwardly. */
 .lesson-col-right.your-turn {
-  flex: 1 1 42%;
+  flex: 1 1 54%;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px 18px;
+  padding: 20px 24px;
   border-radius: 6px;
   border: 1px solid rgba(181, 131, 51, 0.28);
   background:
