@@ -8,6 +8,7 @@ import {
   loadSettings,
   migrateProgress,
   progressFilePath,
+  recordHerculeanOutcome,
   recordMasteryOutcome,
   recordSectionResult,
   resetProgress,
@@ -21,6 +22,7 @@ import { isDue, orderDeck } from "./review";
 import type {
   ActiveAttempt,
   GlossaryEntry,
+  HerculeanOutcome,
   MasteryOutcome,
   QuizModule,
   ReviewDeckEntry,
@@ -275,6 +277,17 @@ function registerIpc(): void {
       // The store records the attempt, runs the unlock sweep (a mastery pass is
       // what advances the temple under the gate), and persists atomically.
       return recordMasteryOutcome(storePaths, nodeId, score, new Date().toISOString());
+    }
+  );
+
+  ipcMain.handle(
+    "record-herculean-result",
+    (_event, score: number, missedKeys: unknown): HerculeanOutcome => {
+      if (typeof score !== "number" || score < 0 || score > 1 || !Array.isArray(missedKeys)) {
+        throw new Error("record-herculean-result: invalid arguments");
+      }
+      const keys = missedKeys.filter((k): k is string => typeof k === "string");
+      return recordHerculeanOutcome(storePaths, score, keys, new Date().toISOString());
     }
   );
 

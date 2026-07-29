@@ -16,12 +16,16 @@ import type {
   ProgressData,
   QuizModule,
   QuizQuestion,
+  ReviewDeckEntry,
 } from "../types/schema.js";
 import {
+  configureHerculean,
   configureLessonLinks,
   configureMastery,
   configureOverview,
   escapeHtml,
+  HERCULEAN_PASS,
+  HERCULEAN_QUESTION_COUNT,
   MASTERY_QUESTION_COUNT,
   ModuleMode,
   openModule,
@@ -234,6 +238,15 @@ function hideNodeTip(): void {
   nodeTip().hidden = true;
 }
 
+/** Cartouche for non-progress markers (e.g. the Herculean node). */
+function showRawTip(title: string, desc: string, x: number, y: number): void {
+  const tip = nodeTip();
+  tip.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(desc)}</span>`;
+  tip.hidden = false;
+  tip.style.left = `${x}px`;
+  tip.style.top = `${y}px`;
+}
+
 function nodeGroup(node: ModuleNode): SVGGElement {
   const g = el("g");
   g.classList.add("node", node.status);
@@ -361,6 +374,64 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
   return g;
 }
 
+/**
+ * The Herculean marker — a thunderbolt medallion beside the pediment, shown
+ * once the final trial unlocks. Pulses as a challenge; laurel-wreathed and
+ * still once conquered. Clicking (or Enter/Space) launches the trial.
+ */
+function buildHerculeanMarker(): SVGGElement {
+  const passed = herculeanPassed();
+  const cx = 916;
+  const cy = 92;
+  const g = el("g");
+  g.classList.add("herc-node");
+  if (passed) g.classList.add("conquered");
+  g.setAttribute("tabindex", "0");
+  g.setAttribute("role", "button");
+  const desc = passed
+    ? "Conquered — the ultimate trophy is yours. Click to face it again."
+    : "The final trial: 25 questions across the whole craft, 85% to pass, timed.";
+  g.setAttribute("aria-label", `The Herculean Trial. ${desc}`);
+
+  g.appendChild(el("circle", { cx, cy, r: 27, class: "herc-ring", fill: "none" }));
+  g.appendChild(el("circle", { cx, cy, r: 21, class: "herc-disc" }));
+  // Thunderbolt.
+  g.appendChild(
+    el("path", {
+      d: `M ${cx - 3} ${cy - 13} L ${cx + 6} ${cy - 2} L ${cx} ${cy - 1} L ${cx + 4} ${cy + 13} L ${cx - 6} ${cy + 1} L ${cx + 1} ${cy} Z`,
+      class: "herc-bolt",
+    })
+  );
+  if (passed) {
+    g.appendChild(el("path", { d: `M ${cx - 25} ${cy + 8} C ${cx - 31} ${cy - 8} ${cx - 20} ${cy - 22} ${cx - 7} ${cy - 24}`, class: "herc-laurel", fill: "none" }));
+    g.appendChild(el("path", { d: `M ${cx + 25} ${cy + 8} C ${cx + 31} ${cy - 8} ${cx + 20} ${cy - 22} ${cx + 7} ${cy - 24}`, class: "herc-laurel", fill: "none" }));
+  }
+  const t = el("text", { x: cx, y: cy + 42, class: "node-label herc-label" });
+  t.textContent = "HERCULEAN";
+  g.appendChild(t);
+
+  g.addEventListener("mouseenter", (e) => {
+    const me = e as MouseEvent;
+    showRawTip("The Herculean Trial", desc, me.clientX, me.clientY);
+  });
+  g.addEventListener("mousemove", (e) => moveNodeTip(e as MouseEvent));
+  g.addEventListener("mouseleave", hideNodeTip);
+  g.addEventListener("focus", () => {
+    const r = (g as unknown as SVGGraphicsElement).getBoundingClientRect();
+    showRawTip("The Herculean Trial", desc, r.left + r.width / 2, r.top);
+  });
+  g.addEventListener("blur", hideNodeTip);
+  const go = () => void launchHerculean();
+  g.addEventListener("click", go);
+  g.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      go();
+    }
+  });
+  return g;
+}
+
 /* ---------------- Temple construction ---------------- */
 
 /**
@@ -479,6 +550,10 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   if (pediment.status === "locked") pg.appendChild(ironwork(500, 88, 120));
   else if (pediment.status === "completed") pg.appendChild(seal(500, 95, pediment.score));
   svg.appendChild(pg);
+
+  // The Herculean trial: a parallel marker beside the pediment once every
+  // stone stands. It sits alongside the roof, never gating it.
+  if (herculeanUnlocked()) svg.appendChild(buildHerculeanMarker());
 
   // Torch sconces flanking the temple front.
   svg.appendChild(torch(116, 160));
@@ -729,6 +804,158 @@ async function buildMasteryQuiz(node: ModuleNode): Promise<QuizModule> {
     variants: [q],
   }));
   return { id: `${module.id}-mastery`, title: module.title, passThreshold: 0.8, sections };
+}
+
+/* ---------------- The Herculean final ---------------- */
+
+/** A synthetic node for the parallel Herculean trial (not in progress.nodes). */
+const HERCULEAN_NODE: ModuleNode = {
+  id: "herculean",
+  category: "pediment",
+  title: "The Herculean Trial",
+  description: "The final trial — 25 questions across the whole craft.",
+  status: "unlocked",
+  score: null,
+  prerequisites: [],
+  quizFile: "herculean.json",
+};
+
+/** Fisher–Yates shuffle in place. */
+function shuffle<T>(a: T[]): T[] {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * The Herculean unlocks (mirrors store.herculeanUnlocked, which is Electron-
+ * bound and can't be imported here) once the foundation and every pillar is
+ * built — it sits parallel to the pediment, never gating the roof.
+ */
+function herculeanUnlocked(): boolean {
+  return Object.values(progress.nodes)
+    .filter((n) => n.id !== "pediment")
+    .every((n) => n.status === "completed");
+}
+
+function herculeanPassed(): boolean {
+  return progress.herculean?.passed ?? (progress.trophies ?? []).includes("herculean");
+}
+
+/**
+ * Assemble the Herculean exam: ~half new cross-topic questions (herculean.json)
+ * and ~half previously-seen canonical questions drawn from every module bank,
+ * shuffled into HERCULEAN_QUESTION_COUNT single-question sections. Each carries
+ * its origin key ("nodeId/sectionIndex", or null for the new bank) so a miss
+ * can seed the side-quest.
+ */
+async function buildHerculeanExam(): Promise<{ quiz: QuizModule; origins: (string | null)[] }> {
+  const bank = await api.getQuiz("herculean.json");
+  const fresh: { q: QuizQuestion; origin: string | null }[] = [];
+  for (const s of bank.sections) for (const q of s.variants ?? []) fresh.push({ q, origin: null });
+
+  const seen: { q: QuizQuestion; origin: string | null }[] = [];
+  const ids = ["foundation", ...PILLAR_ORDER.map((p) => p.id), "pediment"];
+  for (const id of ids) {
+    const node = progress.nodes[id];
+    if (!node) continue;
+    const quiz = await api.getQuiz(node.quizFile);
+    quiz.sections.forEach((s, i) => {
+      const v = (s.variants ?? ([s.question, s.altQuestion].filter(Boolean) as QuizQuestion[]))[0];
+      if (v) seen.push({ q: v, origin: `${id}/${i}` });
+    });
+  }
+
+  shuffle(fresh);
+  shuffle(seen);
+  const freshCount = Math.min(Math.floor(HERCULEAN_QUESTION_COUNT / 2), fresh.length);
+  const picked = [
+    ...fresh.slice(0, freshCount),
+    ...seen.slice(0, HERCULEAN_QUESTION_COUNT - freshCount),
+  ];
+  shuffle(picked);
+  const chosen = picked.slice(0, HERCULEAN_QUESTION_COUNT);
+
+  const sections: LessonSection[] = chosen.map((c, i) => ({
+    heading: `Trial ${i + 1}`,
+    paragraphs: [],
+    variants: [c.q],
+  }));
+  return {
+    quiz: {
+      id: "herculean-exam",
+      title: "The Herculean Trial",
+      passThreshold: HERCULEAN_PASS,
+      sections,
+    },
+    origins: chosen.map((c) => c.origin),
+  };
+}
+
+async function launchHerculean(): Promise<void> {
+  const { quiz, origins } = await buildHerculeanExam();
+  openModule(
+    HERCULEAN_NODE,
+    quiz,
+    api,
+    (updated) => {
+      progress = updated;
+      renderTemple();
+    },
+    undefined,
+    "herculean",
+    () => void launchHerculean(),
+    origins
+  );
+}
+
+/** Resolve weak-area keys ("nodeId/sectionIndex") to a review deck. */
+async function deckFromKeys(keys: string[]): Promise<ReviewDeckEntry[]> {
+  const out: ReviewDeckEntry[] = [];
+  const cache = new Map<string, QuizModule>();
+  for (const key of keys) {
+    const slash = key.lastIndexOf("/");
+    const nodeId = key.slice(0, slash);
+    const sectionIndex = Number(key.slice(slash + 1));
+    const node = progress.nodes[nodeId];
+    if (!node || Number.isNaN(sectionIndex)) continue;
+    let quiz = cache.get(node.quizFile);
+    if (!quiz) {
+      quiz = await api.getQuiz(node.quizFile);
+      cache.set(node.quizFile, quiz);
+    }
+    const section = quiz.sections[sectionIndex];
+    if (!section) continue;
+    out.push({
+      key,
+      nodeId,
+      sectionIndex,
+      nodeTitle: node.title,
+      heading: section.heading,
+      quizFile: node.quizFile,
+      due: true,
+      missed: 1,
+      seen: 1,
+    });
+  }
+  return out;
+}
+
+/** The failed-Herculean side-quest: drill the exact concepts missed. */
+async function openHerculeanSideQuest(keys: string[]): Promise<void> {
+  const refresh = () =>
+    void api.getProgress().then((p) => {
+      progress = p;
+      renderTemple();
+    });
+  const deck = await deckFromKeys(keys);
+  if (deck.length === 0) {
+    refresh();
+    return;
+  }
+  openReviewDrill(deck, api, refresh);
 }
 
 async function launchModule(
@@ -1096,6 +1323,7 @@ async function init(): Promise<void> {
   configureLessonLinks(glossary.map((g) => g.term), openCodexWithTerm);
   configureMastery((node) => void launchModule(node, "mastery"));
   configureOverview((quiz) => openOverview(quiz, glossary));
+  configureHerculean((keys) => void openHerculeanSideQuest(keys));
   if (!api.isSmoke) {
     if (!settings().introSeen) openWelcome();
     else await offerResume();

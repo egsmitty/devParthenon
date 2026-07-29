@@ -22,6 +22,8 @@ const api: ParthenonApi = {
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   recordMasteryResult: (nodeId, score) =>
     ipcRenderer.invoke("record-mastery-result", nodeId, score),
+  recordHerculeanResult: (score, missedKeys) =>
+    ipcRenderer.invoke("record-herculean-result", score, missedKeys),
   isSmoke: process.argv.includes("--parthenon-smoke"),
   onMaximizeChange: (cb) =>
     ipcRenderer.on("window-maximize-changed", (_e, isMax: boolean) =>

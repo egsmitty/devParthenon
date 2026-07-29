@@ -84,15 +84,27 @@ function flashLearnMoreError(btn: HTMLButtonElement): void {
  * random variants, a countdown, no lesson paragraphs, not resumable.
  * "mastery" is a module's Mastery Test: 10 random questions from its bank, no
  * lessons, ≥80% to earn the trophy, infinite retries, not resumable.
+ * "herculean" is the final trial: 25 questions spanning the whole curriculum
+ * (seen + new), timed, ≥85%, not resumable; a fail stashes weak areas for a
+ * side-quest and a pass awards the ultimate trophy.
  */
-export type ModuleMode = "graded" | "practice" | "gauntlet" | "mastery";
+export type ModuleMode = "graded" | "practice" | "gauntlet" | "mastery" | "herculean";
 
 /** Questions drawn for a Mastery Test, and the fraction needed to pass it. */
 export const MASTERY_QUESTION_COUNT = 10;
 export const MASTERY_PASS = 0.8;
 
-/** Mock-interview pacing: seconds allotted per gauntlet question. */
+/** The Herculean final: question count and the fraction needed to pass. */
+export const HERCULEAN_QUESTION_COUNT = 25;
+export const HERCULEAN_PASS = 0.85;
+
+/** Mock-interview pacing: seconds allotted per gauntlet/Herculean question. */
 export const GAUNTLET_SECONDS_PER_QUESTION = 40;
+
+/** True for the timed, lesson-free exam modes (gauntlet + Herculean). */
+function isTimedExam(mode: ModuleMode): boolean {
+  return mode === "gauntlet" || mode === "herculean";
+}
 
 export function escapeHtml(s: string): string {
   return s
@@ -132,6 +144,14 @@ export function configureOverview(fn: (quiz: QuizModule) => void): void {
   launchOverview = fn;
 }
 
+/* Herculean side-quest: app.ts wires how to drill a set of weak-area keys (it
+   resolves them to a review deck), so a failed Herculean can send the learner
+   to train the exact concepts they missed before retrying. */
+let launchSideQuest: (weakAreas: string[]) => void = () => {};
+export function configureHerculean(fn: (weakAreas: string[]) => void): void {
+  launchSideQuest = fn;
+}
+
 /** Glossary terms mentioned (whole-word) in a section's paragraphs. */
 function relatedTerms(paragraphs: string[]): string[] {
   const text = " " + paragraphs.join("  ").toLowerCase() + " ";
@@ -157,11 +177,17 @@ interface ModalState {
   redeemPoints: number;
   /** Variant id actually shown per section (redemption must avoid repeats). */
   shownIds: Record<number, string>;
-  /** Gauntlet countdown state. */
+  /** Gauntlet/Herculean countdown state. */
   deadline?: number;
   timerId?: number;
-  /** Mastery Test: relaunch a fresh 10-question draw for "Try again". */
+  /** Mastery/Herculean: relaunch a fresh draw for "Try again". */
   retry?: () => void;
+  /**
+   * Herculean only: the review key ("nodeId/sectionIndex") each question came
+   * from, aligned by section index; null for the "new/general" bank questions
+   * that map to no single concept. Missed ones seed the side-quest.
+   */
+  origins?: (string | null)[];
 }
 
 let state: ModalState | null = null;
@@ -175,9 +201,9 @@ function root(): HTMLElement {
 /** Record one answered check for the spaced-repetition scheduler. */
 function recordResult(sectionIndex: number, correct: boolean): void {
   if (!state) return;
-  // The gauntlet and the Mastery Test draw questions across a bank, so their
-  // indices don't map to real sections — an exam, not tracked drilling. Skip.
-  if (state.mode === "gauntlet" || state.mode === "mastery") return;
+  // The exams (gauntlet, Mastery, Herculean) draw questions across banks, so
+  // their indices don't map to real sections — not tracked drilling. Skip.
+  if (state.mode === "gauntlet" || state.mode === "mastery" || state.mode === "herculean") return;
   void apiRef
     .recordSectionResult(state.node.id, sectionIndex, correct)
     .catch((err) => console.warn("section-stat record failed:", err));
@@ -190,7 +216,8 @@ export function openModule(
   onDone: (updated: ProgressData) => void,
   resumeFrom?: ActiveAttempt,
   mode: ModuleMode = "graded",
-  retry?: () => void
+  retry?: () => void,
+  examOrigins?: (string | null)[]
 ): void {
   state = {
     node,
@@ -203,11 +230,12 @@ export function openModule(
     redeemPoints: resumeFrom?.redeemPoints ?? 0,
     shownIds: {},
     retry,
+    origins: examOrigins,
   };
   apiRef = api;
   onDoneRef = onDone;
   root().hidden = false;
-  if (mode === "gauntlet") startGauntletClock();
+  if (isTimedExam(mode)) startGauntletClock();
   if (resumeFrom?.phase === "redeem") {
     if (state.redeemQueue.length > 0) renderRedeem();
     else renderRedemptionIntro();
@@ -258,7 +286,7 @@ function expireGauntlet(): void {
 }
 
 function timerChip(): string {
-  return state?.mode === "gauntlet"
+  return state && isTimedExam(state.mode)
     ? ` &middot; <span id="gauntlet-timer" class="gauntlet-timer"></span>`
     : "";
 }
@@ -464,8 +492,8 @@ function renderLesson(): void {
       : pickVariant(section, { mode: "practice" });
   state.shownIds[sectionIndex] = q.id;
 
-  // The gauntlet and Mastery Test are exams: no teaching text, just the check.
-  const noLessons = mode === "gauntlet" || mode === "mastery";
+  // The exams (gauntlet, Mastery, Herculean) show no teaching text — just the check.
+  const noLessons = mode === "gauntlet" || mode === "mastery" || mode === "herculean";
   const paragraphs = noLessons
     ? ""
     : section.paragraphs
@@ -480,13 +508,17 @@ function renderLesson(): void {
         ? " &middot; <em>gauntlet</em>"
         : mode === "mastery"
           ? " &middot; <em>mastery test</em>"
-          : "";
+          : mode === "herculean"
+            ? " &middot; <em>herculean trial</em>"
+            : "";
   const label =
     mode === "gauntlet"
       ? "Interview question"
       : mode === "mastery"
         ? "Mastery question"
-        : "Your turn";
+        : mode === "herculean"
+          ? "Trial of Heracles"
+          : "Your turn";
   const related = noLessons ? [] : relatedTerms(section.paragraphs);
   const relatedHtml = related.length
     ? `<div class="related-terms"><span class="rt-label">In the Codex</span>` +
@@ -597,6 +629,12 @@ function afterLessons(): void {
   // The Mastery Test has its own pass bar, trophy, and retry — no redemption.
   if (state.mode === "mastery") {
     void finishMastery(base);
+    return;
+  }
+
+  // The Herculean final: its own 85% bar, ultimate trophy, and side-quest.
+  if (state.mode === "herculean") {
+    void finishHerculean(base);
     return;
   }
 
@@ -714,6 +752,95 @@ async function finishMastery(score: number): Promise<void> {
     const again = retry;
     closeModal();
     again?.();
+  });
+  el.querySelectorAll<HTMLElement>(".burst-spark").forEach((s, i) =>
+    s.style.setProperty("--a", `${i * 30}deg`)
+  );
+
+  mountCard(el);
+}
+
+/**
+ * Herculean result: record the attempt (awarding the ultimate trophy on a pass,
+ * stashing weak areas on a fail), then show pass + Zeus, or fail + the
+ * side-quest to drill the exact concepts missed before retrying.
+ */
+async function finishHerculean(score: number): Promise<void> {
+  if (!state) return;
+  const { quiz, correct, retry, origins } = state;
+  const total = quiz.sections.length;
+  const pct = Math.round(score * 100);
+  const bar = Math.round(HERCULEAN_PASS * 100);
+
+  // Missed questions that trace to a real concept seed the side-quest; the
+  // "new/general" bank questions (origin null) map to no single review key.
+  const missedKeys = origins
+    ? [...new Set(state.missed.map((i) => origins[i]).filter((k): k is string => !!k))]
+    : [];
+
+  let outcome: {
+    progress: ProgressData;
+    passed: boolean;
+    awardedTrophy: string | null;
+    weakAreas: string[];
+  } | null = null;
+  try {
+    outcome = await apiRef.recordHerculeanResult(score, missedKeys);
+  } catch (err) {
+    console.warn("herculean record failed:", err);
+  }
+  const passed = outcome?.passed ?? score + 1e-9 >= HERCULEAN_PASS;
+  if (passed) playCue("pass");
+
+  const scoreBlock = passed
+    ? `<div class="result-burst">${Array.from({ length: 12 })
+        .map(() => `<span class="burst-spark"></span>`)
+        .join("")}<div class="result-score pass">${pct}%</div></div>`
+    : `<div class="result-score fail">${pct}%</div>`;
+
+  const verdict = passed
+    ? `You cleared the ${bar}% Herculean bar &mdash; ${correct} of ${total} across the whole craft. The pantheon is yours.`
+    : `${correct} of ${total} correct, short of the ${bar}% bar. The trial has marked the concepts you missed &mdash; drill them, then return stronger.`;
+
+  const trophyNote = outcome?.awardedTrophy
+    ? `<div class="trophy-award"><span class="trophy-mark" aria-hidden="true">&#9819;</span> The ultimate trophy &mdash; Zeus &mdash; is enshrined in your case.</div>`
+    : "";
+
+  const weak = outcome?.weakAreas ?? missedKeys;
+  const sideQuestBtn =
+    !passed && weak.length
+      ? `<button class="primary-btn" data-action="sidequest">Train ${weak.length} weak spot${weak.length === 1 ? "" : "s"} &rarr;</button>`
+      : "";
+  const retryBtn =
+    !passed && retry ? `<button class="ghost-btn" data-action="retry">Retry the trial</button>` : "";
+  const actions = passed
+    ? `<button class="primary-btn" data-action="done">Return to the temple</button>`
+    : `<button class="ghost-btn" data-action="done">Leave</button>${retryBtn}${sideQuestBtn}`;
+
+  const el = card(`
+    <h2>The Herculean Trial</h2>
+    ${scoreBlock}
+    <div class="result-detail">${verdict}</div>
+    ${trophyNote}
+    <div class="modal-actions">${actions}</div>
+  `);
+
+  el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
+    const done = onDoneRef;
+    const prog = outcome?.progress ?? null;
+    closeModal();
+    if (prog) done(prog);
+    else void apiRef.getProgress().then((p) => done(p));
+  });
+  el.querySelector('[data-action="retry"]')?.addEventListener("click", () => {
+    const again = retry;
+    closeModal();
+    again?.();
+  });
+  el.querySelector('[data-action="sidequest"]')?.addEventListener("click", () => {
+    const keys = weak;
+    closeModal();
+    launchSideQuest(keys);
   });
   el.querySelectorAll<HTMLElement>(".burst-spark").forEach((s, i) =>
     s.style.setProperty("--a", `${i * 30}deg`)

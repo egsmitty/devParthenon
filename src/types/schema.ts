@@ -136,6 +136,16 @@ export interface MasteryOutcome {
   newlyUnlocked: string[];
 }
 
+/** Result of recording a Herculean-Test attempt (v4). */
+export interface HerculeanOutcome {
+  progress: ProgressData;
+  passed: boolean;
+  /** "herculean" if this attempt awarded the ultimate trophy, else null. */
+  awardedTrophy: string | null;
+  /** Missed section keys stashed as the side-quest (empty on a pass). */
+  weakAreas: string[];
+}
+
 export type ThemeName = "temple-dark" | "parchment";
 export type OptionLabelStyle = "letters" | "numbers" | "none";
 
@@ -219,6 +229,8 @@ export interface ParthenonApi {
   openExternal(url: string): Promise<boolean>;
   /** Record a Mastery-Test attempt; may award the module's trophy. */
   recordMasteryResult(nodeId: string, score: number): Promise<MasteryOutcome>;
+  /** Record a Herculean-Test attempt; may award the ultimate trophy or stash weak areas. */
+  recordHerculeanResult(score: number, missedKeys: string[]): Promise<HerculeanOutcome>;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
   isSmoke: boolean;

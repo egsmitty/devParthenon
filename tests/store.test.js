@@ -444,6 +444,30 @@ describe("v3 -> v4 migration + Mastery Tests + Herculean (trophies)", () => {
     assert.equal(data.herculean.cooldownUntil, undefined);
     assert.deepEqual(data.trophies, [store.HERCULEAN_TROPHY]);
   });
+
+  test("recordHerculeanOutcome: fail stashes weak areas, then a pass awards Zeus", () => {
+    store.loadProgress(paths);
+    const fail = store.recordHerculeanOutcome(
+      paths,
+      0.6,
+      ["foundation/1", "pillar-node/2"],
+      "2026-07-28T00:00:00Z"
+    );
+    assert.equal(fail.passed, false);
+    assert.equal(fail.awardedTrophy, null);
+    assert.deepEqual(fail.weakAreas, ["foundation/1", "pillar-node/2"]);
+    // Persisted for a later session's side-quest.
+    assert.deepEqual(
+      store.loadProgress(paths).herculean.weakAreas,
+      ["foundation/1", "pillar-node/2"]
+    );
+
+    const pass = store.recordHerculeanOutcome(paths, 0.9, [], "2026-07-28T01:00:00Z");
+    assert.equal(pass.passed, true);
+    assert.equal(pass.awardedTrophy, store.HERCULEAN_TROPHY);
+    assert.deepEqual(pass.weakAreas, []);
+    assert.ok(pass.progress.trophies.includes(store.HERCULEAN_TROPHY));
+  });
 });
 
 describe("SM-2-lite scheduler (review.ts)", () => {

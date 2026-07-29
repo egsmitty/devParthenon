@@ -645,6 +645,49 @@ text.mastery-crown {
 html[data-motion="reduce"] .mastery-halo,
 html[data-motion="reduce"] text.mastery-crown { animation: none; opacity: 0.9; }
 
+/* The Herculean marker — a thunderbolt medallion beside the pediment. */
+.herc-node { cursor: pointer; }
+.herc-node:focus { outline: none; }
+.herc-disc {
+  fill: url(#grad-stone-warm);
+  stroke: var(--gold-deep);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+}
+.herc-ring {
+  stroke: var(--gold-hi);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: herc-pulse 2.4s ease-in-out infinite;
+}
+.herc-bolt {
+  fill: var(--gold-hi);
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.85));
+}
+.herc-laurel { stroke: var(--gold-hi); stroke-width: 2.2; opacity: 0.9; }
+text.herc-label {
+  fill: var(--gold-hi);
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+.herc-node:hover .herc-disc,
+.herc-node:focus-visible .herc-disc { stroke: var(--gold-hi); }
+.herc-node:hover .herc-ring,
+.herc-node:focus-visible .herc-ring { stroke-width: 3; }
+/* Conquered: still and marble, laurel-crowned. */
+.herc-node.conquered .herc-disc { fill: url(#grad-marble); }
+.herc-node.conquered .herc-ring { animation: none; opacity: 0.85; }
+@keyframes herc-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) { .herc-ring { animation: none; opacity: 0.9; } }
+html[data-motion="reduce"] .herc-ring { animation: none; opacity: 0.9; }
+
 /* ---------- Glossary: carved index ---------- */
 
 /* ---------- Codex: book-spine tab ---------- */

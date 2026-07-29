@@ -8,6 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type {
   ActiveAttempt,
+  HerculeanOutcome,
   HerculeanState,
   MasteryOutcome,
   ModuleNode,
@@ -174,6 +175,31 @@ export function recordHerculeanResult(
   }
   data.herculean = h;
   return data;
+}
+
+/**
+ * Record a Herculean attempt and persist. A file-backed wrapper over the pure
+ * recordHerculeanResult, returning what the renderer needs (pass, trophy, the
+ * stashed weak areas that seed the side-quest). Electron-free/testable.
+ */
+export function recordHerculeanOutcome(
+  paths: StorePaths,
+  score: number,
+  missedKeys: string[],
+  nowISO: string,
+  cooldownMs = 0
+): HerculeanOutcome {
+  const data = loadProgress(paths);
+  const hadTrophy = (data.trophies ?? []).includes(HERCULEAN_TROPHY);
+  recordHerculeanResult(data, score, missedKeys, nowISO, cooldownMs);
+  writeProgress(paths, data);
+  const h = data.herculean;
+  const passed = h?.passed ?? false;
+  const awardedTrophy =
+    !hadTrophy && (data.trophies ?? []).includes(HERCULEAN_TROPHY)
+      ? HERCULEAN_TROPHY
+      : null;
+  return { progress: data, passed, awardedTrophy, weakAreas: h?.weakAreas ?? [] };
 }
 
 /**
