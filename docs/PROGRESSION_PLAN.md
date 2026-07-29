@@ -39,16 +39,18 @@ customizable character.
 
 ## Design decisions (recommended)
 
-- **Mastery Test does NOT change unlock progression.** Pillars still unlock on the
-  existing 85% graded pass. The Mastery Test is the *trophy* layer — an
-  achievement, not a gate. (Rationale: keeps the proven progression intact,
-  matches "trophies to show off," lets learners chase mastery without softening
-  or hardening the path. Alternative — mastery gates the stone — is possible but
-  riskier; flagged in Open Decisions.)
-- **Reuse existing question banks for Mastery v1.** Each module already has ~20–24
-  variants (Test A/B/C/D across its sections). Draw 10 at random from that pooled
-  set → an instant 20–30-question bank with **zero new content** to ship v1.
-  Fable can *expand* banks (Test E/F) afterward for more variety.
+- **The Mastery Test GATES progression** (decided). A module is only truly
+  *mastered* — and the next pillar only unlocks — once you pass its Mastery Test
+  (≥80%). The 85% graded pass still sets the stone visually and opens the
+  Mastery Test, but you can't "ease your way through" the temple without proving
+  mastery on each topic. **Sequencing matters:** the gate can only switch on
+  *after* the Mastery Test UI ships (else a learner is stuck with no test to
+  take). Build order: expand banks → build the Mastery Test + Overview →
+  **then** flip the unlock rule to require `mastery[nodeId].passed`.
+- **Question banks feed the Mastery Test's random draw.** The Mastery Test pulls
+  10 at random from a module's pooled variants, so a bigger pool = more variety
+  and replayability. See the Content Expansion section — we're growing both the
+  number of sections and the variants per section.
 - **Overview is auto-generated v1.** Build it from data we already have: section
   `heading` + `summary` ("In short") + the related Codex terms and their
   glossary definitions. Fable can later author richer per-module overview prose.
@@ -60,6 +62,33 @@ customizable character.
   the Herculean are independent. `herculeanUnlocked()` already encodes this.
 
 ---
+
+## Content expansion (teaching depth + bank size)
+
+Feedback: lessons feel rushed; teaching should roughly double, and banks want
+more variety. Targets:
+
+- **~10–12 sections per module** (from 5–6). More sections = more topic chunks =
+  genuinely deeper coverage, while respecting the ≤3-paragraph anti-overwhelm
+  law. New sections cover important sub-topics each module currently skips
+  (e.g. Foundation: HTTPS/TLS, caching, cookies vs sessions, REST basics, the
+  browser render pipeline, CORS).
+- **Fuller teaching within each section.** Existing sections' `paragraphs` get
+  enriched to be substantive (still ≤3), so each chunk actually teaches.
+- **+10–15 variants per bank** for replayability and a deeper Mastery-Test draw.
+  New sections bring 4 variants each; add Test E/F to thinner sections as needed.
+
+**Hard rule when enriching existing sections:** you may improve `paragraphs` and
+`summary`, but do NOT touch existing `options`, `correctAnswerIndex`,
+`optionExplanations`, `id`, or `question` — that preserves the answer-length
+balancing and the integrity contract we already fixed. New variants must follow
+the full contract (4 balanced-length options, aligned "Correct —" explanation,
+unique ids, variants 0/1 differ on correct index) and pass `npm run lint:data`.
+
+**Approach: pilot then fan out.** Expand ONE module (Foundation) first as the
+quality template, review it, lock the bar, then run one agent per remaining
+module against that template. This keeps technical accuracy high and avoids
+mass-generating content that needs rework.
 
 ## The trophy roster (gods)
 
@@ -198,16 +227,19 @@ optional Test E/F variants for any module's Mastery pool.
 
 ---
 
-## Open decisions (need your call)
+## Decisions (settled)
 
-1. **Does the Mastery Test gate the stone, or is it trophy-only?** Recommended:
-   trophy-only (progression unchanged). Say the word to make it a gate instead.
-2. **Herculean retry gating:** side-quest only, timed cooldown, or both? The spine
-   supports both (`weakAreas` + optional `cooldownUntil`).
-3. **Boss fight (Phase D):** ship the plain exam first and add the Hercules HP-bar
-   skin as a follow-up? (Recommended — decouples a big polish item from the core.)
-4. **Character customization:** in or out of scope for now? (My take: fun but it's
-   a separate feature; I'd defer until Phases A–C land.)
+1. **Mastery gates progression** — ✅ decided (must pass to unlock the next
+   pillar; enable after the test UI ships).
+2. **Content:** ~10–12 sections/module + fuller paragraphs + bigger banks — ✅
+   decided (pilot Foundation, then fan out).
+3. **Boss fight:** ship the plain Herculean exam first, add the Hercules HP-bar
+   skin as a follow-up. ✅
+4. **Character customization:** deferred until Phases A–C land. ✅
+
+Still open (minor): Herculean retry gating — side-quest only, timed cooldown, or
+both? The spine supports both; defaulting to **side-quest gate** unless told
+otherwise.
 
 ---
 
