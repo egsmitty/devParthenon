@@ -1,0 +1,1027 @@
+{
+  "id": "herculean",
+  "title": "The Herculean Trial — Labors of the Full Stack",
+  "passThreshold": 0.85,
+  "sections": [
+    {
+      "heading": "Anatomy of a page load",
+      "paragraphs": [
+        "The final trial begins where the curriculum began: the journey of a single request. Every layer you have studied — DNS, TLS, the server, the framework, the browser — takes its turn in the half-second between pressing Enter and seeing pixels, and a full-stack engineer can point at any symptom and name the layer it lives in."
+      ],
+      "summary": "One page load walks the whole stack in order — knowing the order is what lets you localize any failure.",
+      "variants": [
+        {
+          "id": "h1",
+          "question": "You type a URL for a server-rendered page and press Enter. Which sequence best describes what happens before anything renders?",
+          "options": [
+            "The browser downloads the JavaScript bundle first, runs it, and then asks DNS where the API server lives",
+            "TLS encrypts the DNS lookup, and the server pushes every asset before the browser sends its first request",
+            "DNS resolves the name, the connection is made, the server returns rendered HTML, then assets are fetched",
+            "The CDN assembles the page out of the browser's cache, then DNS checks the HTML's signature before display"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The order is fixed: resolve the name (DNS), open the connection (TCP + TLS), send the request, let the server do its work (render, query, respond), then parse the HTML and fetch the assets it references. Every debugging session starts by asking which of those steps failed.",
+          "optionExplanations": [
+            "The bundle cannot download before the HTML that references it arrives — and DNS must resolve before anything downloads at all.",
+            "DNS happens before TLS, not inside it, and servers respond to requests; they don't push the asset graph unprompted.",
+            "Correct — name resolution, connection, server render, response, then asset fetches: each step depends on the one before.",
+            "A CDN is a server like any other — it answers requests after DNS resolves; nothing 'assembles from the browser cache' pre-request."
+          ],
+          "interviewTip": "'Walk me through what happens when you type a URL' is the classic opener. Answer as a pipeline with named stages — it gives the interviewer natural hooks to zoom into."
+        },
+        {
+          "id": "h1-alt",
+          "question": "A user says the site is 'down', but your server logs show the request never arrived. Which layer should you suspect first?",
+          "options": [
+            "React hydration — the bundle probably crashed while attaching event handlers to the rendered HTML",
+            "DNS or the network path — the request is dying somewhere before it ever reaches your application",
+            "The database — a slow query is making the server refuse to write any log lines for the request",
+            "The HTTP cache — a stale response header is instructing the browser to hide the page entirely"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "No log line means the request never reached your code — so the failure sits earlier in the journey: DNS resolution, the connection, or routing in front of your server. 'Where is the last place I have evidence the request existed?' is the whole diagnostic method.",
+          "optionExplanations": [
+            "A hydration crash happens after HTML is delivered — the request would appear in your logs first.",
+            "Correct — an absent log line places the failure before your application: DNS, network, or the infrastructure in front of it.",
+            "A slow query would still show the request arriving; databases can't retroactively erase log lines.",
+            "Caches can serve stale pages, but they don't make sites report as 'down' while also leaving no trace of other requests."
+          ],
+          "interviewTip": "Debugging questions reward localization before theorizing. Say 'the logs prove it died before my code' out loud — evidence-first reasoning is exactly what's being probed."
+        },
+        {
+          "id": "h1-c",
+          "question": "For a server-rendered React page, which of this work happens in the browser rather than on the server?",
+          "options": [
+            "Running the data fetches that fill the page with content before the first byte of HTML is sent",
+            "Turning React components into the HTML string that arrives as the body of the response",
+            "Checking the session cookie and deciding whether to respond with the page or a redirect",
+            "Parsing the HTML, downloading the bundle, and hydrating the markup into a live React tree"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "SSR splits the work: the server fetches data, checks auth, and renders components to an HTML string; the browser parses that HTML, downloads the JavaScript, and hydrates — attaching React to the existing markup so it becomes interactive.",
+          "optionExplanations": [
+            "Pre-response data fetching is the server's half — it happens before the HTML exists.",
+            "Rendering components to an HTML string is the definition of the server's role in SSR.",
+            "Auth checks and redirects must happen server-side, before a response body is committed.",
+            "Correct — parse, download, hydrate: the browser's half of the SSR contract, turning static markup into a live app."
+          ],
+          "interviewTip": "If you can draw the SSR timeline with a vertical line labeled 'network' between server work and browser work, hydration questions become easy to answer precisely."
+        },
+        {
+          "id": "h1-d",
+          "question": "The HTML has arrived. Which pipeline does the browser follow to turn it into pixels?",
+          "options": [
+            "Parse HTML into the DOM and CSS into the CSSOM, compute layout, then paint to the screen",
+            "Paint the raw HTML text immediately, then re-render it once every stylesheet has finished loading",
+            "Execute all JavaScript first, since the DOM cannot exist until scripts have defined its elements",
+            "Request layout coordinates from the server, which computes each element's position during SSR"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The render pipeline is parse → style → layout → paint: HTML becomes the DOM, CSS becomes the CSSOM, the two combine into a render tree, layout computes geometry, and paint rasterizes it. It's also why the app animates only transform and opacity — those skip the expensive layout step.",
+          "optionExplanations": [
+            "Correct — DOM plus CSSOM, then layout, then paint; each stage feeds the next.",
+            "Browsers block rendering on CSS rather than painting unstyled text and redoing it wholesale.",
+            "The DOM is built from HTML by the parser; JavaScript manipulates a DOM that already exists.",
+            "Layout is computed by the browser on the device — servers send markup, never pixel coordinates."
+          ],
+          "interviewTip": "Knowing the pipeline explains performance rules you already follow: transform/opacity animations are cheap precisely because they skip layout. Connecting rule to reason is senior-signal."
+        }
+      ]
+    },
+    {
+      "heading": "Where state lives",
+      "paragraphs": [
+        "HTTP forgets between requests, React state dies with the tab, and the database remembers everything. Most 'weird bugs' in a full-stack app are really one question: which of those three memories did you treat as the source of truth, and which one actually was?"
+      ],
+      "summary": "Client state, cookies/tokens, and the database are three different memories — bugs breed wherever two of them disagree.",
+      "variants": [
+        {
+          "id": "h2",
+          "question": "You log in, browse to another page, and you're still logged in — over a stateless protocol. Where does that continuity physically live?",
+          "options": [
+            "In the server's HTTP layer, which upgrades the connection to a stateful one after a successful login",
+            "In a cookie or token the browser re-sends with every request, which the server verifies each time",
+            "In React state, which survives full page navigations because the virtual DOM persists between loads",
+            "In the CDN, which remembers authenticated visitors and injects their identity into cached pages"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The protocol never remembers — the client re-presents its credential (a session cookie or token) on every request, and the server re-derives who you are each time. Login 'persistence' is a re-enactment, not a memory.",
+          "optionExplanations": [
+            "There is no stateful upgrade for HTTP requests — each one stands alone regardless of login status.",
+            "Correct — the cookie or token rides along on every request; the server rebuilds your identity from it each time.",
+            "React state lives in a page's JavaScript memory and is destroyed by a full navigation.",
+            "Shared caches must never hold per-user identity — that pattern is a data leak, not an auth mechanism."
+          ],
+          "interviewTip": "'The protocol forgets, so the client reminds it every request' is a one-liner that answers half of all session questions. Name the exact carrier: cookie or Authorization header."
+        },
+        {
+          "id": "h2-alt",
+          "question": "Sessions in a server-side store versus self-contained JWTs — what is the real trade-off you are choosing between?",
+          "options": [
+            "JWTs are encrypted while session ids are plaintext, so JWTs are the only option safe to use over HTTP",
+            "Session stores only work with SQL databases, while JWTs require a document database to verify claims",
+            "JWTs expire automatically while server sessions last forever unless every client logs out cleanly",
+            "Instant server-side revocation versus stateless verification that skips a store lookup per request"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "A server-side session can be deleted the moment you need to log someone out — at the cost of a store lookup on every request. A JWT verifies from its signature alone — but stays valid until it expires, so revocation needs extra machinery. That's the axis; everything else is noise.",
+          "optionExplanations": [
+            "JWTs are signed, not encrypted — their payload is readable by anyone who holds one; neither belongs on plain HTTP.",
+            "Session stores commonly live in Redis or memory, and JWT verification needs no database at all — just the signing key.",
+            "Both can carry expirations; the difference is that a live session can also be killed early, while a JWT cannot without extra state.",
+            "Correct — kill-switch control with a per-request lookup, or lookup-free verification you cannot instantly revoke."
+          ],
+          "interviewTip": "Frame it as 'revocation versus lookups' before listing pros and cons — interviewers hear structure. Mention short-lived JWTs plus refresh tokens as the common middle path."
+        },
+        {
+          "id": "h2-c",
+          "question": "A teammate wants to keep the auth token in localStorage 'because it's easy to read from fetch calls'. What is the strongest objection?",
+          "options": [
+            "Any injected script can read localStorage, while an HttpOnly cookie is invisible to page JavaScript",
+            "localStorage is wiped whenever the tab closes, so users would be forced to log in again constantly",
+            "localStorage belongs to the server process, so reading it from browser code is not actually possible",
+            "Tokens in localStorage are sent on every request automatically, which doubles the bandwidth used"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The moment any XSS lands, everything readable by JavaScript belongs to the attacker — including tokens in localStorage. HttpOnly cookies keep the credential out of script reach entirely, which is why they remain the default recommendation for session credentials.",
+          "optionExplanations": [
+            "Correct — one XSS hole turns a script-readable token into a stolen credential; HttpOnly cookies remove that entire class of theft.",
+            "localStorage persists across tabs and restarts — that durability is exactly why a stolen copy is so valuable.",
+            "localStorage is browser-side storage; page JavaScript reads it trivially — which is precisely the problem.",
+            "localStorage values are only sent when your code sends them; automatic attachment is how cookies behave, not localStorage."
+          ],
+          "interviewTip": "Security questions about storage reduce to one test: 'what does an attacker get from one XSS?' Apply it aloud and the localStorage-vs-cookie answer argues itself."
+        },
+        {
+          "id": "h2-d",
+          "question": "The cart badge shows 3 items; after a hard refresh it shows 1. What does this bug tell you about where the truth lives?",
+          "options": [
+            "The browser cache dropped two items, so the fix is disabling HTTP caching on every cart endpoint",
+            "The database lost writes during the refresh, so the fix is wrapping every add-to-cart in a transaction",
+            "Client state and the server's record drifted apart — the refresh rebuilt the UI from the real source",
+            "React unmounted the badge too early, so the fix is moving the count into a longer-lived component"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A hard refresh throws away client memory and rebuilds from the server — so the post-refresh number is the server's truth, and the pre-refresh number was optimistic client state that never made it back (or failed silently). The bug is a synchronization gap, and the fix is reconciling client updates with server confirmations.",
+          "optionExplanations": [
+            "HTTP caches store responses, not fragments of a count — and disabling caching wouldn't explain the pre-refresh 3.",
+            "Databases don't lose committed writes because a browser refreshed; the refresh only revealed what was actually stored.",
+            "Correct — the refresh is a truth serum: it rebuilds the UI from the server, exposing client state that had drifted.",
+            "Component lifetimes affect when state resets in-page — but a hard refresh destroys all of it regardless of structure."
+          ],
+          "interviewTip": "'What does a hard refresh reveal?' is a great self-check for any state bug: whatever survives is server truth; whatever changes was unsynced client state."
+        }
+      ]
+    },
+    {
+      "heading": "Rendering strategies and data freshness",
+      "paragraphs": [
+        "Static generation, server rendering, client rendering, and incremental regeneration are not rival ideologies — they are four positions on one dial: how fresh must this data be, and who is asking? Choosing well is a matter of reading the page's requirements, not of loyalty to a technique."
+      ],
+      "summary": "Pick a rendering strategy by asking two questions of the page: how fresh must it be, and is it the same for everyone?",
+      "variants": [
+        {
+          "id": "h3",
+          "question": "A store's product pages change price about once an hour and get heavy traffic. Which rendering strategy fits best?",
+          "options": [
+            "Client-side rendering only, so every visitor fetches prices from the API after the empty page loads",
+            "Pure static generation at build time, rebuilding and redeploying the whole site whenever a price moves",
+            "Server-side rendering on every request, paying a full render and data fetch for each of the visitors",
+            "Incremental regeneration — serve the cached page, re-building it in the background once it goes stale"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Hourly freshness with heavy traffic is the textbook ISR case: almost every visitor gets a static-speed cached page, and the framework re-renders it in the background on an interval — fresh enough for prices, cheap enough for the traffic.",
+          "optionExplanations": [
+            "CSR gives every visitor a blank-then-loading experience and hides prices from crawlers — a poor trade for data that barely changes.",
+            "Full rebuilds on every price change turn an hourly data tweak into a deploy pipeline event — operationally miserable at scale.",
+            "Per-request SSR pays render-plus-query costs thousands of times an hour to produce the same page — pure waste for shared content.",
+            "Correct — regeneration on an interval matches hourly freshness exactly, while nearly all requests are served statically."
+          ],
+          "interviewTip": "Name the two axes — freshness needed and audience sameness — then place the page on them. Interviewers reward the framework more than the acronym."
+        },
+        {
+          "id": "h3-alt",
+          "question": "A logged-in analytics dashboard shows different numbers to every user. Why is build-time static generation the wrong tool?",
+          "options": [
+            "The HTML is baked once for everyone, but this page's content depends on who is asking and when",
+            "Static pages cannot include any JavaScript, so the dashboard's charts would never become interactive",
+            "Static generation only supports public marketing pages, and frameworks refuse to build anything else",
+            "Build-time pages cannot set cookies, so users would be logged out every time they opened the dashboard"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Build-time generation produces one HTML artifact shared by all visitors — but a per-user dashboard has as many correct renderings as it has users, and they change constantly. Per-user, always-fresh content needs request-time work: SSR or client-side fetching behind auth.",
+          "optionExplanations": [
+            "Correct — one prebuilt page cannot represent content that varies per viewer and per minute.",
+            "Static pages ship JavaScript happily — interactivity isn't the constraint, per-user data is.",
+            "Frameworks will statically build anything you ask; it's the data's shape that makes it wrong here.",
+            "Cookies are set by responses and scripts at request time — the constraint is who rendered the data, not cookie mechanics."
+          ],
+          "interviewTip": "'Same for everyone?' is the fastest disqualifier in rendering questions. A per-user page fails it instantly, and saying so shows you reason from data shape, not habit."
+        },
+        {
+          "id": "h3-c",
+          "question": "Your statically generated blog shows an edited post's old text days after you fixed a typo. What is the actual cause?",
+          "options": [
+            "The reader's browser is ignoring the Cache-Control headers your host attaches to static HTML files",
+            "The page was rendered at build time and nothing has re-generated it since the content changed",
+            "The database is still returning the old row because the edit was written to a read replica instead",
+            "React is hydrating the page with stale props because the bundle was cached by the service worker"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A statically generated page is a snapshot from the moment of the last build. Edit the source afterward and the artifact stays frozen until something re-renders it — a rebuild, an ISR revalidation, or an on-demand invalidation. The staleness is by design; you opted into it at build time.",
+          "optionExplanations": [
+            "Days of staleness across readers points at the artifact itself, not at individual browsers misreading headers.",
+            "Correct — static output is a build-time snapshot; without a rebuild or revalidation, the edit never reaches the page.",
+            "A replica lagging by days would break far more than one blog post — and static pages don't query the database at all.",
+            "Hydration reuses data baked into the page — which is the same stale snapshot, not a separate service-worker problem."
+          ],
+          "interviewTip": "Say 'static means rendered at build time' and the follow-ups answer themselves — every staleness question becomes 'what triggers the re-render, and when did it last run?'"
+        },
+        {
+          "id": "h3-d",
+          "question": "React logs a hydration mismatch: the server HTML doesn't match the client render. Which cause fits that symptom?",
+          "options": [
+            "The JavaScript bundle loaded too slowly, so React gave up waiting and rendered a different tree",
+            "The CSS arrived after the HTML, which changed the DOM structure before React could attach to it",
+            "The component renders a value that differs between passes, like the current time or a random id",
+            "The server rendered with an older React version than the client, which changes how elements nest"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Hydration replays the render in the browser and compares it to the server's HTML. Anything that evaluates differently in the two environments — Date.now(), Math.random(), window checks, locale formatting — produces two different trees and triggers the mismatch warning.",
+          "optionExplanations": [
+            "Hydration has no timeout that swaps in a different tree — slowness delays interactivity, it doesn't change output.",
+            "CSS styles the DOM; it doesn't restructure markup, so late stylesheets can't cause tree mismatches.",
+            "Correct — non-deterministic or environment-dependent values render differently on server and client, splitting the trees.",
+            "Version skew between builds would break far louder than a mismatch warning — the everyday cause is non-deterministic render output."
+          ],
+          "interviewTip": "The hydration-mismatch fix pattern is worth memorizing: make the first client render match the server (render a placeholder, then update after mount for client-only values)."
+        }
+      ]
+    },
+    {
+      "heading": "The caching gauntlet",
+      "paragraphs": [
+        "Between your database and a user's screen there may be four caches: the browser's, a CDN edge, your server's memory, and the database's own. Each exists to skip work — and each is a place where yesterday's answer can outlive today's truth. Mastery is knowing which layer answered and how to make it let go."
+      ],
+      "summary": "Every cache is a bet that yesterday's answer is still right — debugging staleness means finding which layer took the bet.",
+      "variants": [
+        {
+          "id": "h4",
+          "question": "A response can be cached in the browser, on a CDN edge, and in your server's memory. Which copy serves with no network request at all?",
+          "options": [
+            "The CDN edge copy, because edge nodes sit inside the user's ISP and bypass the network entirely",
+            "The browser's local cache — a fresh hit is served straight from disk or memory on the device",
+            "The server's in-memory cache, because RAM lookups do not count as network traffic in any layer",
+            "None of them — every cache still revalidates with the origin server before each response is used"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Only the browser's cache lives on the user's own device — a fresh hit there costs zero network round-trips. CDN and server caches still require the request to travel to them; they save origin work, not the trip itself. That's why cache headers on static assets matter so much for perceived speed.",
+          "optionExplanations": [
+            "Edge nodes are close, but reaching them is still a network round-trip from the device.",
+            "Correct — a valid browser-cache hit never leaves the machine; it is the only truly free layer.",
+            "A server-side cache saves database work, but the user's request still had to cross the network to reach the server.",
+            "Revalidation only happens once a cached copy goes stale — within its freshness lifetime a copy serves directly."
+          ],
+          "interviewTip": "Order the layers by where the request stops: browser (no network), CDN (no origin), server memory (no database), database (no disk, ideally). That gradient organizes any caching answer."
+        },
+        {
+          "id": "h4-alt",
+          "question": "After a deploy, some users run broken pages: old JavaScript against new APIs. Which release habit prevents this whole class of bug?",
+          "options": [
+            "Telling users to hard-refresh after every release, documented in a persistent banner on the login page",
+            "Setting Cache-Control: no-store on every asset so browsers are never allowed to keep a copy",
+            "Fingerprinting asset filenames with a content hash so new HTML references new, uncached files",
+            "Deploying only at night, when few users are active enough to be caught holding stale bundles"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Hash the content into the filename (app.3f9c2.js) and a changed file is a new URL — old caches can't serve it because they've never seen it. You get aggressive, immutable caching and instant updates at once; the HTML document, cached briefly, is the only moving part.",
+          "optionExplanations": [
+            "Asking users to fix your cache strategy manually is an apology, not a mechanism.",
+            "no-store trades the bug for a performance disaster — every visit re-downloads every asset.",
+            "Correct — content-hashed filenames make stale delivery impossible while letting caches hold assets forever.",
+            "Timing a deploy reduces how many users are bitten; it doesn't stop the mismatch from existing."
+          ],
+          "interviewTip": "'Immutable assets, short-lived HTML' is the deployment caching strategy in five words — bundlers hash filenames for exactly this reason, and naming that shows you know why."
+        },
+        {
+          "id": "h4-c",
+          "question": "A CDN cached a page that greets 'Welcome back, Dana' and served it to other visitors. Which header discipline was missing?",
+          "options": [
+            "Personalized responses must say private or no-store, so shared caches never keep a copy",
+            "The page needed a longer max-age so the CDN would keep Dana's copy pinned to her own session",
+            "The HTML should have been gzip-compressed, since CDNs only deduplicate compressed payloads",
+            "The server forgot an ETag, which is what CDNs use to route each user to their own cached copy"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Shared caches store whatever they're told is cacheable. A per-user response must carry Cache-Control: private (browser may keep it, shared caches may not) or no-store — otherwise the first user's page becomes everyone's page, which is both a bug and a data leak.",
+          "optionExplanations": [
+            "Correct — private/no-store is the contract that keeps personalized responses out of shared caches.",
+            "max-age controls how long a copy lives, not who it belongs to — longer would spread Dana's page further.",
+            "Compression changes payload size, not cacheability or identity.",
+            "ETags support revalidation ('is my copy still current?'); they don't partition cached copies per user."
+          ],
+          "interviewTip": "Cache-leak stories are a favorite security-adjacent question. The crisp answer: cacheability is declared by headers, and personalization makes a response private by definition."
+        },
+        {
+          "id": "h4-d",
+          "question": "Support says a customer 'sees old data'. What is the right first move in a stack with browser, CDN, and server caches?",
+          "options": [
+            "Restart the database server, since long-running connections are the usual source of stale query results",
+            "Rebuild the JavaScript bundle, because stale data almost always means an outdated client build",
+            "Ask which page — then clear every cache layer at once so the search does not take all afternoon",
+            "Trace one request through browser cache, CDN, and server cache to find which layer answered stale"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Staleness has a location: exactly one layer answered with an old copy, and headers (age, cache-hit markers, response times) tell you which. Trace a single concrete request through the layers and the culprit identifies itself; from there the fix is that layer's invalidation story, not a stack-wide purge.",
+          "optionExplanations": [
+            "Databases return current committed data; restarting one to fix staleness is superstition, not diagnosis.",
+            "A stale bundle can render stale UI, but assuming it skips the diagnosis — the data path has more cache layers than the bundle.",
+            "Purging everything may hide the symptom today and teaches you nothing — the misconfigured layer will serve stale again tomorrow.",
+            "Correct — one traced request with its response headers pinpoints the guilty layer, turning a mystery into a config fix."
+          ],
+          "interviewTip": "'Staleness always has an address' is a strong debugging stance — name the layers in order and say what evidence (Age header, x-cache: HIT) would convict each one."
+        }
+      ]
+    },
+    {
+      "heading": "Designing and consuming APIs",
+      "paragraphs": [
+        "An API is a contract between a backend and every client that will ever call it. REST gives the contract a shared grammar — resources as nouns, methods as verbs, status codes as outcomes — and the client's half of the bargain is reading those signals honestly instead of assuming every response is a 200 full of JSON."
+      ],
+      "summary": "Methods say what you're doing, status codes say how it went — both halves of the contract must read them honestly.",
+      "variants": [
+        {
+          "id": "h5",
+          "question": "A POST /orders succeeds and creates a resource; a GET for a missing order id arrives later. Which status pair fits REST semantics?",
+          "options": [
+            "200 for the creation and 200 with an empty body for the missing order, keeping clients simple",
+            "301 for the creation, redirecting to the new order, and 500 for the missing id to signal failure",
+            "201 with the new order's location for the creation, and 404 for the id that does not exist",
+            "204 for the creation since nothing needs returning, and 401 for the missing id the user cannot see"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "201 Created is the specific 'this made a new resource' success, conventionally with a Location header pointing at it; 404 is the specific 'this resource does not exist'. Specific codes let generic clients, caches, and monitoring react correctly without reading your response bodies.",
+          "optionExplanations": [
+            "A 200-with-empty-body 'miss' forces every client to invent its own not-found detection — the code exists so they don't have to.",
+            "301 means 'permanently moved', not 'created' — and 500 blames the server for a client asking after a nonexistent id.",
+            "Correct — 201 Created (with a Location) for the new resource, 404 Not Found for the absent one: the codes say exactly what happened.",
+            "204 discards the chance to return the created order's identity, and 401 means 'not authenticated', not 'not found'."
+          ],
+          "interviewTip": "Learn the specific-success family (200/201/204) as well as the errors — using 201 and 204 correctly in an API design question quietly signals real-world experience."
+        },
+        {
+          "id": "h5-alt",
+          "question": "Your fetch().then(...) chain never hits its catch, yet users see broken data after a 500. Why?",
+          "options": [
+            "fetch only rejects on network failure — an HTTP error status still resolves, so you must check res.ok",
+            "The catch block runs on the server, not the client, so browser code never observes rejected fetches",
+            "500 responses are retried by the browser automatically until they succeed, which swallows the error",
+            "JSON parsing silently repairs error bodies, so the broken data is already fixed by the time it renders"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "fetch's promise rejects only when the request itself fails (network drop, DNS, CORS). A completed request with a 500 is, to fetch, a success — the response simply arrived. Handling HTTP errors is your job: check res.ok or res.status before trusting the body.",
+          "optionExplanations": [
+            "Correct — fetch resolves on any completed exchange; the res.ok check is where HTTP errors become code paths.",
+            "fetch and its handlers run wherever they're called — in this page, the browser; there is no server-side catch relocation.",
+            "Browsers don't auto-retry failed API responses; a 500 arrives once and it's yours to handle.",
+            "JSON.parse throws on malformed input — it never repairs anything, and a parsed error body is still an error."
+          ],
+          "interviewTip": "'fetch doesn't reject on HTTP errors' is a classic gotcha — mention that a wrapper enforcing res.ok in one place beats remembering it at every call site."
+        },
+        {
+          "id": "h5-c",
+          "question": "Which endpoint design most matches REST conventions for working with a user's orders?",
+          "options": [
+            "POST /getOrders with the user id in the body, POST /makeOrder to create, POST /orderDelete to remove",
+            "GET /users/42/orders to list, POST /users/42/orders to create, DELETE /orders/7 to remove one",
+            "GET /api?action=orders&op=list to read and GET /api?action=orders&op=create to write new orders",
+            "PUT /orders for every operation, with a 'mode' field that tells the server what the request means"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "REST puts nouns in paths and verbs in methods: a nested path names the collection, GET reads it, POST adds to it, DELETE removes a member. Follow the grammar and intermediaries get it for free — caches can store the GETs, and no one caches or retries your writes by accident.",
+          "optionExplanations": [
+            "Verbs in URLs with POST-for-everything discards method semantics — nothing can be cached, retried, or reasoned about generically.",
+            "Correct — resource nouns in the path, HTTP methods as the verbs: the shared grammar every REST client speaks.",
+            "A GET that creates orders is the cardinal sin: GETs must be safe, and prefetchers or crawlers will happily 'create' on your behalf.",
+            "Tunneling every action through PUT plus a mode field reinvents RPC while wearing REST's clothes — and PUT promises idempotency this design breaks."
+          ],
+          "interviewTip": "The red flag interviewers plant is a state-changing GET. Call it out by name — 'GET must be safe' — and explain what prefetching does to such an endpoint."
+        },
+        {
+          "id": "h5-d",
+          "question": "A flaky connection re-sends a request. Which HTTP method choice was the design mistake if that retry created a duplicate?",
+          "options": [
+            "Using DELETE for removal — repeating a DELETE always resurrects the row it previously removed",
+            "Using GET for the read — repeated GETs multiply server load and should be throttled per user",
+            "Using PUT for the update — PUT applies its body twice, doubling any number fields it contains",
+            "Using POST for the create without an idempotency key — POST makes no safe-retry promise"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "GET, PUT, and DELETE are defined as idempotent — repeating them lands in the same state. POST is not: each send may create a new resource, which is exactly what a retry does. That's why payment-style APIs accept an idempotency key, letting the server recognize and deduplicate the resend.",
+          "optionExplanations": [
+            "DELETE is idempotent — deleting an already-deleted resource changes nothing and resurrects nothing.",
+            "Repeated GETs cost load but are safe — they can never create a duplicate anything.",
+            "PUT replaces the resource with the sent representation — applying the same body twice yields the same state, not doubled fields.",
+            "Correct — POST carries no idempotency promise, so the retry legitimately created a second resource; a client-sent key is the standard cure."
+          ],
+          "interviewTip": "Define idempotency as 'repeating lands in the same state', then map the methods. Volunteering the idempotency-key pattern for POST is a strong senior signal."
+        }
+      ]
+    },
+    {
+      "heading": "One thread, many requests",
+      "paragraphs": [
+        "The same event loop beats in both halves of your stack: one JavaScript thread in the browser, one in each Node process. Everything you know about responsiveness — why servers stall, why pages freeze, why some code runs 'later' — follows from what that single thread is allowed to do and what it must never be asked to hold."
+      ],
+      "summary": "One thread runs your JavaScript on each side of the wire — block it anywhere and everything that thread owes stops.",
+      "variants": [
+        {
+          "id": "h6",
+          "question": "One Node route handler parses a huge CSV synchronously for 8 seconds. What happens to other users' requests meanwhile?",
+          "options": [
+            "They all wait — the single JavaScript thread is busy, so the event loop cannot run their handlers",
+            "Nothing changes — Node spawns one operating-system thread per request, so the others run in parallel",
+            "They fail with 404s, because the router unloads its routes while any handler is still running",
+            "They are handled by the database driver, which takes over request handling while JavaScript is busy"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Node runs your JavaScript on one thread. A handler that computes synchronously for 8 seconds owns that thread for 8 seconds — every other request queues behind it. That's why CPU-heavy work belongs in worker threads, separate processes, or chunked async steps.",
+          "optionExplanations": [
+            "Correct — one busy thread means one stalled event loop; every pending request waits its turn behind the CSV.",
+            "That's the thread-per-request model of other platforms — Node deliberately chose one loop instead.",
+            "Routes stay registered; requests aren't rejected, just silently delayed — which is often worse.",
+            "Drivers hand results back to JavaScript callbacks; they can't execute your handlers for you."
+          ],
+          "interviewTip": "'Node is single-threaded — so what kind of work is dangerous?' wants exactly this: synchronous CPU work stalls every request, and worker threads or chunking are the escape."
+        },
+        {
+          "id": "h6-alt",
+          "question": "Node runs JavaScript on one thread, yet a single process serves thousands of concurrent requests. What squares that?",
+          "options": [
+            "The V8 engine secretly multiplies the thread whenever the request queue grows past a threshold",
+            "Each incoming socket gets a forked copy of the process, so concurrency is really multi-process",
+            "Handlers spend most of their lives waiting on I/O, and other work runs during those waits",
+            "Requests are batched and answered once per second, which makes serial handling look concurrent"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A typical request is mostly waiting — on the database, the disk, another API. Node registers those waits and moves on; when results arrive, callbacks resume. Thousands of requests interleave on one thread because at any instant nearly all of them are waiting, not computing.",
+          "optionExplanations": [
+            "V8 doesn't scale threads with load — your JavaScript stays on one thread no matter the queue depth.",
+            "Forking per socket is roughly the old CGI model — Node multiplexes many sockets in one process instead.",
+            "Correct — I/O waits dominate request lifetimes, and the loop fills every wait with other requests' work.",
+            "There is no batching clock; responses go out as soon as their work completes."
+          ],
+          "interviewTip": "Say 'concurrency through interleaved waiting, not parallel computing' — then add the caveat that this is why Node excels at I/O-bound loads and struggles with CPU-bound ones."
+        },
+        {
+          "id": "h6-c",
+          "question": "Clicking 'Sort' on a 50,000-row client-side table freezes the whole page for four seconds. Why does the UI lock up?",
+          "options": [
+            "React batches state updates, and a batch that large exceeds the browser's paint budget for a frame",
+            "The sort runs on the main thread, and while it runs the browser cannot paint or respond to input",
+            "The browser suspends all tabs while any array allocates, to protect the machine from memory pressure",
+            "CSS transitions block JavaScript, so the sort waits on animations while animations wait on the sort"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The browser's main thread runs your JavaScript and paints the page and processes input. A four-second synchronous sort owns it for four seconds, so nothing paints and no click lands. The cures are moving the work off-thread (Web Worker) or slicing it so paint can breathe between chunks.",
+          "optionExplanations": [
+            "Batching coalesces re-renders — it's a performance feature, and it can't freeze input handling by itself.",
+            "Correct — same thread, three jobs: while your sort computes, painting and input handling are starved.",
+            "Browsers isolate tabs precisely so one tab's work can't suspend the others.",
+            "CSS animations can even keep running off-thread during JS work — they don't deadlock with your sort."
+          ],
+          "interviewTip": "The browser question mirrors the Node question — one thread, blocked. Showing you see it's the same principle on both sides of the wire is the senior move."
+        },
+        {
+          "id": "h6-d",
+          "question": "This code awaits fetch inside a for-loop over 20 ids and takes 20x longer than expected. What is the idiomatic fix?",
+          "options": [
+            "Move the loop to a Web Worker, since workers execute awaited fetches faster than the main thread",
+            "Replace fetch with XMLHttpRequest, which supports true parallelism that promises cannot express",
+            "Increase the browser's connection limit with a header so the sequential awaits overlap anyway",
+            "Start all 20 requests first, then await Promise.all so they run concurrently, not one by one"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "await inside a loop serializes: each request waits for the previous response before starting. Kick off all 20 fetches first (collecting promises), then await Promise.all — the requests fly together and total time approaches the slowest single request instead of the sum of all of them.",
+          "optionExplanations": [
+            "Workers don't speed up network waits — the requests would serialize identically over there.",
+            "fetch and XHR ride the same network stack; the serialization came from awaiting in sequence, not from the API.",
+            "No header widens a browser's connection behavior — and the code never had two requests in flight to overlap.",
+            "Correct — create the promises eagerly, await them together: latency overlaps instead of accumulating."
+          ],
+          "interviewTip": "'Sequential await in a loop' is a beloved code-review question. Bonus points for mentioning Promise.allSettled when partial failure shouldn't sink the batch."
+        }
+      ]
+    },
+    {
+      "heading": "The database under the app",
+      "paragraphs": [
+        "Every sluggish page eventually leads here: the queries under it. The database is where the costs are real — disk, indexes, locks — and where innocent-looking application code quietly multiplies work. Reading an app's data access the way the database experiences it is a whole-stack skill, not a specialist's."
+      ],
+      "summary": "Pages are fast or slow in the database's terms — count the queries and the rows they touch, not the lines of app code.",
+      "variants": [
+        {
+          "id": "h7",
+          "question": "A page listing 50 posts with author names runs 51 queries. What is the fix for this classic shape?",
+          "options": [
+            "Add an index to the authors table so each of the 50 follow-up queries returns a few ms faster",
+            "Cache the page for an hour so only the first visitor of each hour pays for the 51 queries",
+            "Fetch posts with their authors in one joined (or eager-loaded) query instead of one per row",
+            "Move the author lookups into React so the browser spreads the 50 queries out over time"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "This is the N+1 pattern: one query for the list, then one per row for the relation — usually an ORM lazy-loading in a loop. The fix is to declare the relationship up front (a JOIN or the ORM's eager-load/include) so the database returns posts and authors in one round-trip.",
+          "optionExplanations": [
+            "Indexes make each of the 51 queries faster; the problem is that there are 51 of them.",
+            "Caching hides the cost from most visitors while the shape underneath stays broken — and someone always pays it cold.",
+            "Correct — eager-loading collapses N+1 round-trips into one; the fix is in how the data is asked for, not how fast each ask is.",
+            "Moving the loop to the browser turns 50 server-local queries into 50 HTTP requests — strictly worse."
+          ],
+          "interviewTip": "Name it — 'this is N+1' — then give the fix in the interviewer's stack (include/joins in Prisma, select_related in Django). Naming the pattern is half the credit."
+        },
+        {
+          "id": "h7-alt",
+          "question": "A query is instant in development but takes 9 seconds in production. What is the most likely story?",
+          "options": [
+            "Production has millions of rows and no index for this query, so the database scans the whole table",
+            "Production databases parse SQL more strictly, and the extra parsing dominates the execution time",
+            "The ORM only generates efficient SQL in development mode and falls back to cursors when deployed",
+            "Network latency between the server and database multiplies per byte, and production rows are larger"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Without an index that matches the query, the database reads every row to find the matches. On a dev table of a thousand rows that's invisible; on production's millions it's seconds. Same query, same plan, different table size — EXPLAIN shows the scan, and the right index removes it.",
+          "optionExplanations": [
+            "Correct — a full table scan scales with row count, so it hides in small dev data and erupts at production size.",
+            "Parsing a query takes microseconds everywhere; execution against real data is where the seconds go.",
+            "ORMs generate the same SQL in every environment — there is no deploy-time efficiency mode to lose.",
+            "Round-trip latency adds milliseconds per query, not seconds to one — and row size differences are marginal."
+          ],
+          "interviewTip": "'Fast in dev, slow in prod' is nearly always data volume meeting a missing index. Saying 'I'd EXPLAIN it and expect a sequential scan' shows you verify instead of guess."
+        },
+        {
+          "id": "h7-c",
+          "question": "Transferring credits between two accounts requires a debit and a credit. Why wrap both in a transaction?",
+          "options": [
+            "Transactions make both writes faster by batching them into a single network round-trip to the database",
+            "So the two writes commit or roll back together — a crash between them can never strand the money",
+            "Because databases refuse UPDATE statements on two different rows unless a transaction names both",
+            "To lock the whole table so no other user can read balances while any transfer is in progress"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A transfer is one logical change expressed as two writes. Without a transaction, a crash after the debit leaves money destroyed. Inside one, the database guarantees atomicity: both effects become visible together or neither happens — that's the A in ACID doing real work.",
+          "optionExplanations": [
+            "Transactions are about correctness, not batching — round-trips are an orthogonal concern.",
+            "Correct — atomicity means the debit and credit are indivisible: no crash, retry, or race can leave just one applied.",
+            "Databases happily update many rows outside transactions — nothing forces the pairing except your correctness needs.",
+            "Transactions use row-level machinery, not table freezes — other users keep reading and writing unrelated rows."
+          ],
+          "interviewTip": "The transfer example is the canonical atomicity story — tell it with the crash in the middle. Follow with 'and isolation handles two transfers racing', and you've covered the letters that matter."
+        },
+        {
+          "id": "h7-d",
+          "question": "Orders, customers, and products with strict consistency and lots of ad-hoc reporting queries. Which storage argument is right?",
+          "options": [
+            "A document store, because each order can embed its customer and every report is one document read",
+            "Flat JSON files per order, since reporting tools prefer reading files to querying live databases",
+            "A key-value cache as the primary store, with the relational shape rebuilt nightly for reports",
+            "A relational database — joins, constraints, and transactions are exactly the workload described"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The requirements name the relational sweet spot: interconnected entities (joins), strict consistency (constraints and transactions), and unpredictable questions (SQL over normalized data). Document stores shine when data clusters into self-contained aggregates and query patterns are known up front — the opposite of this brief.",
+          "optionExplanations": [
+            "Embedding customers into orders duplicates them across orders — updates fan out, and cross-cutting reports must unpick every document.",
+            "Files have no indexes, constraints, or concurrent-write story; 'ad-hoc reporting' over them means writing a database badly.",
+            "A cache as the source of truth inverts the architecture — and nightly rebuilds discard the strict consistency requirement outright.",
+            "Correct — normalized entities, enforced invariants, transactional writes, and SQL for arbitrary questions: the brief describes relational."
+          ],
+          "interviewTip": "Answer 'SQL or NoSQL?' with the workload test: how connected is the data, how strict the consistency, how predictable the queries. Reciting that test matters more than the verdict."
+        }
+      ]
+    },
+    {
+      "heading": "Security across the stack",
+      "paragraphs": [
+        "Attacks are layer-crossing by nature: a string typed into a form becomes script in another user's browser, or SQL in your database, or a forged request wearing a real cookie. Defenses only work when you match them to the attack — and know which tool guards which door."
+      ],
+      "summary": "Each classic attack has a matching defense at its own layer — security failures are usually a mismatch, not an absence.",
+      "variants": [
+        {
+          "id": "h8",
+          "question": "One attack injects script into your page; another rides a logged-in user's cookie to forge actions. Which defenses pair with which?",
+          "options": [
+            "Escaping output stops CSRF, while SameSite cookies and tokens are the standard answer to XSS",
+            "Escaping output stops XSS, while SameSite cookies and CSRF tokens defend the forged requests",
+            "HTTPS stops both at the transport layer, which is why modern apps need no per-attack defenses",
+            "Both are database problems, so parameterized queries are the shared fix for the two attacks"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "XSS is untrusted content executing in your page — the cure is escaping/sanitizing output (plus CSP). CSRF is another site triggering authenticated requests with the victim's cookie — the cures are SameSite cookies and anti-forgery tokens. Swap the defenses and both doors stay open.",
+          "optionExplanations": [
+            "Reversed — escaping neutralizes injected markup (XSS), and SameSite/tokens break cross-site request forgery.",
+            "Correct — match the defense to the mechanism: escape what you render, and prove same-origin intent on state changes.",
+            "HTTPS encrypts the channel; both attacks travel happily inside encrypted requests.",
+            "Parameterized queries stop SQL injection — a third attack; neither XSS nor CSRF touches the query layer."
+          ],
+          "interviewTip": "Define each attack by its mechanism before naming defenses — 'XSS runs script in the victim's page; CSRF borrows the victim's cookie' — and the pairing becomes impossible to scramble."
+        },
+        {
+          "id": "h8-alt",
+          "question": "You concatenate a search box's text into a SQL string. What is the failure mode, and the real fix?",
+          "options": [
+            "Input can end the string and add its own SQL — send parameterized queries so input stays data",
+            "Long search terms overflow the query buffer — truncate all user input to 64 characters first",
+            "Special characters crash the SQL parser — strip quotes and semicolons with a regex before querying",
+            "Users could read the query text in DevTools — move the concatenation into a stored procedure"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Concatenation lets input change the query's structure — a quote ends your string and everything after is live SQL. Parameterized queries fix the category: the query's shape is fixed at prepare time and input is bound as pure data, with no path back into syntax.",
+          "optionExplanations": [
+            "Correct — injection is input crossing from data into syntax; parameter binding closes the crossing permanently.",
+            "Length isn't the weapon — a 20-character payload injects fine, and truncation stops none of them.",
+            "Blocklists lose forever — encodings and edge cases slip through, and you've broken every honest quote in a name.",
+            "The query runs server-side either way; visibility was never the issue, and a procedure built by concatenation is just as injectable."
+          ],
+          "interviewTip": "Say 'the structure is fixed, the input is bound as data' — explaining why parameterization works beats reciting that it does. Add that ORMs parameterize by default until someone writes a raw template string."
+        },
+        {
+          "id": "h8-c",
+          "question": "CORS blocked your frontend's request in the browser, yet curl fetches the same API fine. What does that reveal about CORS?",
+          "options": [
+            "curl bypasses security through a loophole that browser vendors have been unable to close for years",
+            "The API is broken for all clients, and curl only appears to work because it ignores response headers",
+            "CORS is a browser-enforced policy protecting users — it never was a server-side access control",
+            "CORS applies only to POST requests, so curl succeeded because it happened to be sending a GET"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The same-origin policy is the browser protecting its user: it stops a page from one origin reading responses from another unless the server opts in via CORS headers. curl has no user to protect and no origin to enforce, so it just sees the response. Real access control lives in auth, on the server.",
+          "optionExplanations": [
+            "curl isn't exploiting anything — it's simply not a browser, so browser-only policies don't apply to it.",
+            "The API responded correctly to both clients; only the browser withheld the response from page JavaScript.",
+            "Correct — CORS relaxes the browser's same-origin rule for users' protection; anyone without a browser was never subject to it.",
+            "CORS governs cross-origin requests of every method — GETs are blocked from being read just the same."
+          ],
+          "interviewTip": "'If CORS blocks browsers, what stops curl?' is the trap — the answer is authentication. Saying 'CORS protects users, auth protects servers' resolves it in one sentence."
+        },
+        {
+          "id": "h8-d",
+          "question": "A 'harmless' analytics key was put in NEXT_PUBLIC_-prefixed env config, then reused for the payment API. What went wrong?",
+          "options": [
+            "Env vars are re-read on every request, so reusing the key doubled the load on the payment provider",
+            "The prefix encrypts values for the browser, and the payment API could not decrypt the ciphertext",
+            "Nothing, so long as the repository stays private — env values only leak through source control",
+            "Public-prefixed values are compiled into the browser bundle, so the key shipped to every visitor"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The NEXT_PUBLIC_ prefix is a promise to inline that value into client JavaScript — anyone can read it from the bundle. Fine for a public analytics id; catastrophic once the same key can move money. Secrets belong in server-only env vars, behind endpoints the client calls.",
+          "optionExplanations": [
+            "Build-time inlining is the mechanism at play — request-time re-reading isn't, and load was never the issue.",
+            "The prefix marks values as public; it performs no encryption in either direction.",
+            "The bundle ships to every visitor's browser — the repo's privacy is irrelevant once the value is compiled into public JavaScript.",
+            "Correct — public-prefixed means bundled and readable by anyone; a payment credential in the bundle is a published secret."
+          ],
+          "interviewTip": "State the rule as an interface: 'the client may hold only what the whole world may hold.' Every secrets question — env vars, API keys, tokens — resolves against it."
+        }
+      ]
+    },
+    {
+      "heading": "Performance end-to-end",
+      "paragraphs": [
+        "Slow has many addresses: the server (TTFB), the network (bytes), the bundle (parse and hydrate), the images (largest paint), the layout (shift). The discipline is always measure-then-match — let the metric tell you which layer is guilty before you spend a week optimizing an innocent one."
+      ],
+      "summary": "Each performance metric points at a specific layer — read the measurement first, then fix the layer it accuses.",
+      "variants": [
+        {
+          "id": "h9",
+          "question": "Lighthouse says LCP is 6s; the network tab shows HTML arriving in 300ms and a 4MB hero image. Where does the fix belong?",
+          "options": [
+            "The image — compress, size, and prioritize it, since the largest paint is waiting on those bytes",
+            "The server — 300ms of TTFB means rendering is the bottleneck and needs an in-memory cache layer",
+            "The database — LCP counts query time, so the index behind the hero image query must be missing",
+            "The bundle — LCP waits for hydration, so code-splitting the header will pull the metric under 2s"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Largest Contentful Paint marks when the biggest above-the-fold element renders — here, a 4MB image on a page whose HTML arrived in 300ms. The evidence convicts the asset: compress it, serve responsive sizes and modern formats, and give it fetch priority. The server was never the suspect.",
+          "optionExplanations": [
+            "Correct — the metric literally times the hero image's arrival, and 4MB is the number to attack.",
+            "300ms TTFB is healthy — caching a fast server improves nothing the user can see.",
+            "Query time is inside TTFB, which is already fine; LCP is waiting on image bytes, not SQL.",
+            "Hydration affects interactivity, not paint — the image renders without JavaScript's help."
+          ],
+          "interviewTip": "Performance questions are evidence-reading tests. Recite what the metric measures, point at the number that violates it, and only then propose the fix."
+        },
+        {
+          "id": "h9-alt",
+          "question": "Your single JavaScript bundle has grown to 2MB and first load crawls. Which lever actually attacks that problem?",
+          "options": [
+            "Move the bundle to a cookie so returning visitors send it to the server instead of downloading it",
+            "Minify the HTML more aggressively, since markup size is what gates JavaScript parse time",
+            "Split by route and lazy-load rarely used parts, so first paint ships only the code it needs",
+            "Switch the bundle to HTTP so it skips TLS overhead, then upgrade back once it has loaded"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A monolithic bundle makes every visitor pay for every feature on first load. Route-based code splitting with dynamic imports ships the entry route's code first and fetches the rest on demand — attacking download, parse, and hydration cost at once.",
+          "optionExplanations": [
+            "Cookies ride along on requests — stuffing megabytes into them would slow every request ever made.",
+            "HTML minification saves a few kilobytes of markup; the 2MB of JavaScript doesn't care.",
+            "Correct — splitting turns 'everything up front' into 'this route now, the rest when asked for'.",
+            "Mixed-content downgrades are blocked outright — and TLS overhead is nowhere near the cost of 2MB of script."
+          ],
+          "interviewTip": "Pair the mechanism with its tool in your stack — 'dynamic import(), which Next.js does per-page automatically' — to show applied knowledge, not vocabulary."
+        },
+        {
+          "id": "h9-c",
+          "question": "TTFB is 3 seconds on a page whose bundle is tiny and whose images are optimized. Which direction does the evidence point?",
+          "options": [
+            "The client — a tiny bundle hydrates too quickly, and racing hydration inflates time-to-first-byte",
+            "The server — time before the first byte is spent rendering and waiting on data, likely queries",
+            "The CDN — small assets fall below edge-caching thresholds, forcing every request back to origin",
+            "The DNS — 3 seconds is the standard resolution time for domains without a wildcard record"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Time-to-first-byte is the window between the request and the first byte of response — entirely before bundles or images matter. Three seconds there means the server is doing three seconds of work or waiting: slow queries, slow upstream calls, or missing caching. Profile the server; the frontend is innocent.",
+          "optionExplanations": [
+            "Client work can't start until bytes arrive — nothing browser-side can inflate TTFB.",
+            "Correct — TTFB is a pure server-and-upstream measurement; the profiler and query logs are the next stop.",
+            "Caching thresholds like that aren't a real mechanism — and a cache miss adds origin latency, not three seconds of it.",
+            "DNS typically resolves in tens of milliseconds and is measured separately in any waterfall."
+          ],
+          "interviewTip": "Segment the waterfall out loud: 'TTFB is server, transfer is network, paint and hydrate are client.' Then place the slow number in its segment — that's the whole method."
+        },
+        {
+          "id": "h9-d",
+          "question": "Users complain the page 'jumps' as it loads and they mis-tap buttons. Which discipline addresses this metric?",
+          "options": [
+            "Debounce all of the click handlers so mis-taps land harmlessly until the page has finished settling",
+            "Inline every script so the page assembles in one pass instead of several progressive renders",
+            "Preconnect to third-party origins, which lets ads and embeds pop in before users start reading",
+            "Reserve space — give images, embeds, and ads set dimensions so late content cannot shift layout"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Jumping content is Cumulative Layout Shift: late-arriving images, ads, and embeds pushing settled content around. The cure is reserving their space up front — explicit dimensions or aspect-ratio boxes — so late arrivals fill a hole that was always there instead of shoving the page.",
+          "optionExplanations": [
+            "Debouncing treats the mis-tap after the layout already moved the target — the shift itself is the bug.",
+            "Progressive rendering is good — the problem isn't rendering in passes, it's late content without reserved space.",
+            "Preconnect makes third-party content arrive sooner; without reserved space it shifts the layout just as hard.",
+            "Correct — dimensions and aspect-ratio placeholders eliminate shift at the source; CLS is fixed in markup, not timing."
+          ],
+          "interviewTip": "Naming the metric — 'that jump is CLS' — and its one-line cure — 'reserve the space' — turns a vague complaint into a crisp answer. That translation is the skill being tested."
+        }
+      ]
+    },
+    {
+      "heading": "Styling systems at scale",
+      "paragraphs": [
+        "CSS at scale is a fight against entropy: specificity wars, orphaned rules nobody dares delete, and fifteen slightly different blues. Utility systems like Tailwind, cascade layers, and component extraction are all the same bet from different angles — constrain the choices, flatten the conflicts, and let deletion be safe."
+      ],
+      "summary": "Scaling CSS means constraining choices and flattening specificity — the tools differ, the bet is the same.",
+      "variants": [
+        {
+          "id": "h10",
+          "question": "A team adopts Tailwind and stops writing bespoke CSS files. What is the actual mechanism that keeps the UI consistent?",
+          "options": [
+            "Utilities compile to inline styles, which browsers render more consistently than stylesheets",
+            "Class names double as documentation, and reviewers reject any class they do not recognize",
+            "Utilities draw from one constrained scale of spacing and color tokens, so choices converge",
+            "Tailwind ships a linter that rewrites off-brand values to the nearest approved design token"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Tailwind's consistency comes from its design scale: p-4, text-lg, and bg-slate-800 all index into one fixed set of spacing, type, and color tokens. When every choice comes from the same short menu, ad-hoc values (13px here, #4a90d9 there) simply stop appearing.",
+          "optionExplanations": [
+            "Utilities compile to ordinary classes in a stylesheet — no inline styles, and rendering consistency was never CSS's problem.",
+            "Review culture helps any system, but the mechanism is structural: the menu of values is short by construction.",
+            "Correct — a constrained token scale is the consistency engine; convergence is a property of the menu, not of discipline.",
+            "No such rewriting linter — and arbitrary values remain possible; the scale makes them rare, not illegal."
+          ],
+          "interviewTip": "In 'why Tailwind?' discussions, skip the class-name aesthetics debate and name the token scale — it reframes the choice as design-system thinking, which is the level that matters."
+        },
+        {
+          "id": "h10-alt",
+          "question": "Two stylesheets fight over one button, and someone reaches for !important. What is the sustainable way out?",
+          "options": [
+            "Flatten specificity — prefer single-class selectors and decide who wins with cascade layers",
+            "Escalate evenly — give every competing selector !important so the cascade becomes fair again",
+            "Inline the styles on the element, since inline declarations end every specificity dispute",
+            "Duplicate the button per stylesheet so each sheet styles its own copy without any conflict"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Specificity wars end structurally, not by escalation: keep selectors flat (one class deep), and make precedence explicit with source order or @layer, which sets priority regardless of selector weight. That's the machinery utility systems exploit — every utility has identical specificity, so order alone decides.",
+          "optionExplanations": [
+            "Correct — flat selectors plus explicit layer order make 'who wins' a stated decision instead of an arms race.",
+            "Universal !important is the arms race completed — now nothing can override anything without a new, worse weapon.",
+            "Inline styles outrank stylesheets and scatter design into markup — a bigger hammer, and this app's CSP forbids them anyway.",
+            "Forked buttons drift apart within weeks — you've traded a specificity conflict for a consistency bug."
+          ],
+          "interviewTip": "Mentioning @layer marks current knowledge — it exists precisely to end specificity fights, and most candidates still answer this question as if it doesn't."
+        },
+        {
+          "id": "h10-c",
+          "question": "In Tailwind, `sm:text-lg` did nothing on phones and worked on desktop, confusing a teammate. What did they misread?",
+          "options": [
+            "The sm: prefix targets 'small devices', so the rule runs on phones only when they rotate to landscape",
+            "Breakpoint prefixes require a matching desktop: pair before the mobile side of a rule activates",
+            "text-lg is unresponsive by design; only spacing utilities may carry a breakpoint prefix like sm:",
+            "Prefixes are min-widths — sm: means 'from that width up', and the bare utility is the phone styling"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Tailwind is mobile-first: an unprefixed utility applies everywhere, and each breakpoint prefix switches on at that min-width and stays on above it. sm:text-lg therefore reads 'large text from 640px upward' — the phone experience is whatever you wrote without a prefix.",
+          "optionExplanations": [
+            "sm names a viewport width threshold, not a device class — orientation never enters into it.",
+            "There are no required prefix pairs; every prefix stands alone as a min-width switch.",
+            "Every utility accepts every breakpoint prefix — typography included.",
+            "Correct — min-width semantics: design the phone case bare, then layer changes upward with prefixes."
+          ],
+          "interviewTip": "'Mobile-first means the default is the phone and breakpoints add from there' — one sentence that untangles most responsive-CSS confusion, in Tailwind or raw media queries."
+        },
+        {
+          "id": "h10-d",
+          "question": "The same 14-utility class string appears on 30 buttons across the app. What is the idiomatic cure in a React + Tailwind codebase?",
+          "options": [
+            "Register the string as a global CSS variable and interpolate it into each className at runtime",
+            "Extract one Button component that owns the classes, and reuse it wherever a button appears",
+            "Move the string into @apply rules for every element type that might ever display a button",
+            "Shorten the class list by dropping the states — hover and focus styles rarely earn their bytes"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "In a component framework, the component is the reuse unit: one Button owns the class string, the variants, and the behavior, and every call site inherits updates automatically. Repetition disappears at the component layer — no parallel CSS abstraction needed.",
+          "optionExplanations": [
+            "CSS variables hold values, not class lists — and runtime interpolation defeats Tailwind's static class scanning.",
+            "Correct — extract the component; the class string becomes an implementation detail written exactly once.",
+            "Broad @apply rebuilds the semantic-CSS layer Tailwind was chosen to avoid — its own docs warn against reaching for it reflexively.",
+            "Deleting focus and hover states trades a maintenance smell for an accessibility regression."
+          ],
+          "interviewTip": "'Repetition is solved at the component layer, not the CSS layer' is the modern answer — and knowing why casual @apply is discouraged marks real Tailwind experience."
+        }
+      ]
+    },
+    {
+      "heading": "From commit to production",
+      "paragraphs": [
+        "Code on your machine helps no one. Between a commit and a user stands the delivery machinery — branches, reviews, CI gates, environment config, deploys, and the occasional urgent retreat. Teams that move fast are the ones whose machinery makes the safe path the easy path."
+      ],
+      "summary": "Delivery machinery exists to make shipping boring — catch failures while they're isolated, and keep retreat cheap.",
+      "variants": [
+        {
+          "id": "h11",
+          "question": "Why do teams run CI checks on the pull request rather than after merging to main?",
+          "options": [
+            "Because CI minutes are billed at a lower rate for branches than for the protected main branch",
+            "So a failing change is caught while still isolated, before it can break the shared branch",
+            "Because merged code cannot be tested — main's protection rules block CI from checking out",
+            "So reviewers can skip reading the diff whenever the status checks happen to come back green"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The PR is the last moment a change is quarantined. Catch the failure there and one author fixes one branch; let it merge and main is broken for everyone — deploys freeze and every teammate pulls the breakage. Gating the merge on green keeps the shared branch always shippable.",
+          "optionExplanations": [
+            "CI pricing doesn't vary by branch — the economics here are team time, not compute.",
+            "Correct — a red PR costs its author an afternoon; a red main costs the whole team until reverted.",
+            "CI tests main constantly (branch protection requires it) — the point is testing before the merge, not instead of after.",
+            "Green checks verify what's automated; review exists for design, clarity, and everything tests can't see."
+          ],
+          "interviewTip": "'Keep main always shippable' is the principle behind PR gates, protected branches, and trunk-based development — name it and the individual practices slot in as corollaries."
+        },
+        {
+          "id": "h11-alt",
+          "question": "The same build must talk to a test database locally and the real one in production. What is the standard mechanism?",
+          "options": [
+            "Two copies of the codebase, one per database, kept in sync by a scheduled nightly merge job",
+            "An if-statement on the deployed domain name that swaps connection strings inside the application code",
+            "A config file committed to the repository holding both connection strings side by side",
+            "Environment variables — each environment injects its own values, and secrets stay out of the repo"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Config that varies by environment belongs in the environment: the same artifact reads DATABASE_URL wherever it runs, and each environment supplies its own. Code stays identical everywhere, secrets never enter version control, and standing up a new environment means setting variables, not editing source.",
+          "optionExplanations": [
+            "Forked codebases drift immediately — and a merge job is machinery for a problem env vars dissolve.",
+            "Hardcoded environment detection buries deploy knowledge in application logic — and every new environment means a code change.",
+            "Committing the production connection string publishes a credential to everyone with repo access, forever (git history included).",
+            "Correct — same build, injected config: the twelve-factor rule that keeps code portable and secrets out of history."
+          ],
+          "interviewTip": "Citing 'config in the environment' (twelve-factor) earns credit — as does the operational corollary: leaked secrets get rotated, not just deleted from the repo, because history remembers."
+        },
+        {
+          "id": "h11-c",
+          "question": "Ten minutes after a deploy, checkout is broken in production. What is the right first move?",
+          "options": [
+            "Roll back to the previous known-good release, then diagnose the bad change without user pressure",
+            "Start a fix-forward branch and debug on main, since rollbacks invalidate the release history",
+            "Disable CI so the eventual hotfix is not delayed by the same checks that let the bug through",
+            "Restart the database, because deploy-adjacent breakage usually means connection pools went stale"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "With revenue broken, the first goal is ending user impact — and the previous release is a tested, known-good artifact you can return to in minutes. Roll back first, then investigate calmly. Debugging live while checkout burns optimizes for pride over users.",
+          "optionExplanations": [
+            "Correct — restore service with the known-good release, then find the bug without the clock running.",
+            "Fixing forward under pressure means shipping hasty code onto a broken system — rollbacks are routine, and history survives them fine.",
+            "Disabling the safety checks during an incident is how one bad deploy becomes two.",
+            "The evidence points at the deploy, not the database — restarting infrastructure on a hunch adds risk mid-incident."
+          ],
+          "interviewTip": "Incident questions grade your priorities: mitigate, then diagnose, then prevent. Say those three words in order and the follow-ups become easy."
+        },
+        {
+          "id": "h11-d",
+          "question": "Git halts your merge with conflict markers in two files. What is Git actually telling you?",
+          "options": [
+            "The branch is corrupted, and the safest recovery is deleting it and reapplying the work by hand",
+            "Someone force-pushed over your history, and the markers show where their commits overwrote yours",
+            "Both branches edited the same lines, and Git needs a human to choose or combine the versions",
+            "The files exceeded the diff size limit, so Git split them and needs you to approve each half"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Git merges cleanly when changes touch different lines; when both branches edited the same region, there's no mechanical answer to 'which version is right'. The markers lay out both versions and ask you to decide — a conflict is a question, not an error.",
+          "optionExplanations": [
+            "Nothing is corrupted — a conflict is normal merge behavior, and deleting the branch throws away good work.",
+            "Force-pushes rewrite remote history; they don't produce merge markers. This is two branches honestly disagreeing.",
+            "Correct — overlapping edits need human judgment; resolve the markers, stage, and commit to finish the merge.",
+            "There is no diff size limit behind conflicts — only overlapping edits to the same lines."
+          ],
+          "interviewTip": "Demystify it: 'a conflict means Git is asking a question, not reporting an error.' Teams read calm conflict resolution as everyday fluency in collaborative work."
+        }
+      ]
+    },
+    {
+      "heading": "Debugging the full stack",
+      "paragraphs": [
+        "Every skill in this trial converges here. A real bug gives you a symptom in one layer and a cause in another, and the craft is the traversal: read the evidence, name the layer it convicts, and descend with intent. Guessing is the only method that gets slower as the stack gets deeper."
+      ],
+      "summary": "Debugging is localization — let each piece of evidence eliminate layers until only the guilty one remains.",
+      "variants": [
+        {
+          "id": "h12",
+          "question": "A page renders but its data table is empty. The network tab shows the API call returned 500. Where do you look next?",
+          "options": [
+            "The React error boundary, since a 500 means a component threw while rendering the table rows",
+            "The CDN configuration, because 5xx codes are produced at the edge before requests reach servers",
+            "The server logs for that endpoint — a 500 is a backend failure, and the stack trace lives there",
+            "The browser console, because a 500 is the browser's way of reporting that parsing failed"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A 500 is the server confessing: the request arrived and the backend threw while handling it. The browser can only tell you that much — the stack trace, the failing query, the null that broke things are all in the server's logs. The network tab located the layer; go where the evidence points.",
+          "optionExplanations": [
+            "Error boundaries catch client render crashes — this page rendered fine around an API that failed.",
+            "CDNs can emit 5xx when the origin is unreachable, but the ordinary meaning of a 500 on an API call is origin code failing.",
+            "Correct — the status localizes the failure to the backend; its logs hold the trace that names the actual line.",
+            "The console shows client-side errors; the 500 already happened on the other side of the wire."
+          ],
+          "interviewTip": "Narrate status-code triage: 4xx means inspect the request, 5xx means read the server logs. Interviewers listen for the layer-jump — symptom in the browser, investigation on the server."
+        },
+        {
+          "id": "h12-alt",
+          "question": "A feature works on your machine and fails in production. Which category of difference should you enumerate first?",
+          "options": [
+            "Environment: env vars, build mode, data shape, versions — the inputs that differ between the two",
+            "Hardware: server CPUs lack the SIMD extensions local machines use, which changes numeric results",
+            "Scale: more users means more renders, and React batches state updates differently under real load",
+            "Network: production HTTPS adds latency that reorders resolved promises inside your components"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "'Works on my machine' means the code is reacting to something that differs between the machines — and the usual suspects are enumerable: environment variables, production versus development build behavior, real data versus seed data, dependency and runtime versions. List them and check them off; the bug is hiding in one.",
+          "optionExplanations": [
+            "Correct — the systematic move is enumerating the input differences; env, build, data, and versions cover nearly every case.",
+            "JavaScript engines produce identical results across CPUs — instruction sets don't change your program's semantics.",
+            "React's batching rules are per-render-pass, fixed by the framework — user count doesn't reconfigure them.",
+            "TLS adds a handshake's latency, but your promises resolve in whatever order operations complete either way — that's true locally too."
+          ],
+          "interviewTip": "Turn the cliché into a checklist: 'same env vars? same build mode? same data? same versions?' Asking those four out loud is the difference between debugging and hoping."
+        },
+        {
+          "id": "h12-c",
+          "question": "A bug appears 'sometimes' on a big page. What is the highest-value next step, before touching any code?",
+          "options": [
+            "Add a global try/catch that swallows the error, then wait to see whether the reports keep coming",
+            "Shrink the page and inputs to a minimal, reliable reproduction that shows the bug on demand",
+            "Rewrite the page's data layer, since intermittent bugs usually hide in whichever code is oldest",
+            "Bump every dependency to latest, because flaky behavior is most often fixed upstream already"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "An intermittent bug you can't trigger is unfixable — you can't even prove a fix worked. Shrinking the scenario until the bug fires on demand converts 'sometimes' into 'always', and the deletions themselves are diagnosis: whatever removal makes the bug vanish was load-bearing.",
+          "optionExplanations": [
+            "Swallowing the error hides the symptom, corrupts state silently, and destroys the evidence you needed.",
+            "Correct — a minimal on-demand reproduction turns a ghost into a specimen; it's the step every later step depends on.",
+            "Rewriting on a hunch might coincidentally fix it — you'll never know, and never trust the code again.",
+            "Blind upgrades change many things at once mid-hunt — if the bug fades, you learned nothing about which change mattered."
+          ],
+          "interviewTip": "'First I make it reproducible, because an unreproducible bug can't be verified fixed' — opening with that sentence signals method before cleverness, which is what debugging questions measure."
+        },
+        {
+          "id": "h12-d",
+          "question": "A stack trace is 40 frames deep, mostly framework internals. How do you read it productively?",
+          "options": [
+            "Bottom-up only — the last frame is always the broken one, and the rest can safely be ignored",
+            "Count the frames — traces past thirty frames indicate an infinite loop rather than a thrown error",
+            "Search each framework frame's source on GitHub, since library bugs outnumber application bugs",
+            "Scan for the first frame in your own code — usually where the bad value entered the machinery"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The throw often happens deep in library code, but the library was almost certainly doing what it was told — with a value your code handed it. The first frame from your own files marks the boundary where your logic met the machinery; that's where the null, the wrong type, or the bad argument came from.",
+          "optionExplanations": [
+            "The deepest frame is where the error surfaced, not where it was caused — a null created upstream detonates downstream.",
+            "Trace depth reflects call nesting, nothing more — frameworks routinely stack dozens of frames in healthy code.",
+            "Assuming the library is broken inverts the odds — your new code is the variable; the library ran a million times today.",
+            "Correct — find your own frame at the boundary; the bad value almost always crossed into the library from there."
+          ],
+          "interviewTip": "'I scan for my code's frame first, because libraries usually fail when handed bad input' — a one-sentence method that doubles as good statistical humility."
+        }
+      ]
+    }
+  ]
+}

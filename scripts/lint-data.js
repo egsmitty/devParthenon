@@ -44,31 +44,17 @@ function readJson(file, label) {
 
 const template = readJson(templatePath, "progress.json");
 
-if (template) {
-  // Prerequisites resolve to real nodes.
-  for (const node of Object.values(template.nodes)) {
-    for (const pre of node.prerequisites ?? []) {
-      check(template.nodes[pre], `${node.id}: requires unknown node "${pre}"`);
-    }
-  }
+/** Lint one parsed quiz module (shared by node-referenced and extra banks). */
+function lintQuiz(quiz) {
+  modules++;
 
-  for (const node of Object.values(template.nodes)) {
-    const file = path.join(quizzesDir, node.quizFile);
-    if (!fs.existsSync(file)) {
-      problems.push(`${node.id}: missing quiz file ${node.quizFile}`);
-      continue;
-    }
-    const quiz = readJson(file, node.quizFile);
-    if (!quiz) continue;
-    modules++;
+  check(quiz.passThreshold === 0.85, `${quiz.id}: pass threshold must be 0.85`);
+  check(
+    Array.isArray(quiz.sections) && quiz.sections.length >= 5,
+    `${quiz.id}: needs at least 5 sections`
+  );
 
-    check(quiz.passThreshold === 0.85, `${quiz.id}: pass threshold must be 0.85`);
-    check(
-      Array.isArray(quiz.sections) && quiz.sections.length >= 5,
-      `${quiz.id}: needs at least 5 sections`
-    );
-
-    for (const section of quiz.sections ?? []) {
+  for (const section of quiz.sections ?? []) {
       sections++;
       const where = `${quiz.id}/${section.heading}`;
       check(
@@ -119,7 +105,35 @@ if (template) {
           `${where}: variants 0 and 1 share a correct index (anti-rote)`
         );
       }
+  }
+}
+
+if (template) {
+  // Prerequisites resolve to real nodes.
+  for (const node of Object.values(template.nodes)) {
+    for (const pre of node.prerequisites ?? []) {
+      check(template.nodes[pre], `${node.id}: requires unknown node "${pre}"`);
     }
+  }
+
+  const linted = new Set();
+  for (const node of Object.values(template.nodes)) {
+    const file = path.join(quizzesDir, node.quizFile);
+    if (!fs.existsSync(file)) {
+      problems.push(`${node.id}: missing quiz file ${node.quizFile}`);
+      continue;
+    }
+    linted.add(node.quizFile);
+    const quiz = readJson(file, node.quizFile);
+    if (quiz) lintQuiz(quiz);
+  }
+
+  // Banks not referenced by a node yet (e.g. herculean.json) obey the same
+  // contract — sweep the directory so nothing ships unlinted.
+  for (const file of fs.readdirSync(quizzesDir)) {
+    if (!file.endsWith(".json") || linted.has(file)) continue;
+    const quiz = readJson(path.join(quizzesDir, file), file);
+    if (quiz) lintQuiz(quiz);
   }
 }
 
