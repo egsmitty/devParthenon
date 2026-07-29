@@ -437,6 +437,436 @@
           "interviewTip": "Keep a running 'questions I fumbled' file and rehearse the answers out loud, not in your head — the gap between knowing and articulating is exactly what interviews measure."
         }
       ]
+    },
+    {
+      "heading": "Mock interview: the live coding round",
+      "paragraphs": [
+        "The live coding round tests how you think, not whether you memorized the answer. Interviewers watch you clarify the problem, narrate your plan, and react when something breaks. A silent candidate who types a perfect solution often scores below one who reasons aloud through a messier path — because the reasoning is the thing being hired.",
+        "Before writing anything, restate the problem and ask about inputs, edge cases, and scale. Then talk while you work: name the plan, call out assumptions, and test with a tiny example. When you hit a bug, debug out loud. That narration is the exact skill the round measures."
+      ],
+      "summary": "The live coding round scores your visible reasoning — clarify, narrate, and test aloud, because a silent perfect answer reads worse than a well-explained messy one.",
+      "variants": [
+        {
+          "id": "c6",
+          "question": "Halfway through, you realize your approach is O(n²) and won't scale. What reads best to the interviewer?",
+          "options": [
+            "Name the bottleneck aloud, propose a better approach, then rewrite toward it",
+            "Quietly delete everything and restart so they never see the slow first version",
+            "Finish the slow version in silence, since a working answer is all that counts",
+            "Ask the interviewer to just tell you the optimal algorithm to save everyone time"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The round measures reasoning under pressure. Naming your own bottleneck and pivoting aloud demonstrates the self-correction interviewers hire for — far more than a silent restart or a silent finish. Narrating the pivot turns a stumble into a positive signal.",
+          "optionExplanations": [
+            "Correct — spotting your own complexity and pivoting aloud is the self-awareness the round rewards.",
+            "A silent restart hides your reasoning, which is the one thing the interviewer is watching for.",
+            "Finishing silently wastes the chance to show you can spot and fix your own complexity.",
+            "Asking for the answer forfeits the problem-solving signal the whole round exists to measure."
+          ],
+          "interviewTip": "Say your complexity out loud as you go ('this is O(n²) because…'). Volunteering the Big-O before you're asked is a strong senior signal."
+        },
+        {
+          "id": "c6-alt",
+          "question": "You don't understand the prompt fully but the clock is running. What's the best first move?",
+          "options": [
+            "Start coding the part you do understand and hope the rest becomes clear as you go",
+            "Sit and think in silence until the whole solution is fully formed in your head",
+            "Restate the problem in your words and ask two clarifying questions before coding",
+            "Ask the interviewer to reword the entire question because the phrasing was unclear"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Clarifying up front is never wasted time — it prevents solving the wrong problem and shows the requirement-gathering instinct teams want. Restating in your own words also surfaces misunderstandings while they're cheap to fix.",
+          "optionExplanations": [
+            "Coding half-understood risks building the wrong thing, then unwinding it under time pressure.",
+            "Long silence reads as freezing; the interviewer can't tell whether you're stuck or thinking.",
+            "Correct — restate and ask a couple of pointed questions before committing to code.",
+            "Blaming the phrasing shifts ownership; take the problem and pin down the ambiguity yourself."
+          ],
+          "interviewTip": "Budget the first minute for clarifying questions on purpose. Interviewers plant ambiguity to see whether you ask or assume."
+        },
+        {
+          "id": "c6-c",
+          "question": "Your code throws an error and you're not sure why, with the interviewer watching. What's best?",
+          "options": [
+            "Silently rewrite the whole function from scratch and pray the error simply disappears",
+            "Announce that this language is buggy and that the error is not really your fault here",
+            "Freeze and apologize repeatedly until the interviewer offers to give you the fix",
+            "Debug out loud: read the message, form a hypothesis, and check it with a small test"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Debugging is the job, and doing it visibly is a gift to the interviewer: reading the error, hypothesizing, and testing shows a real process. A silent rewrite hides that process, and blaming the tools signals you can't localize your own bugs.",
+          "optionExplanations": [
+            "A blind rewrite discards the evidence in the error message and often reintroduces the same bug.",
+            "Blaming the language reads as an inability to own and localize your own mistakes.",
+            "Freezing and apologizing forfeits the exact debugging demonstration the moment offers.",
+            "Correct — read the message, hypothesize, and verify with a small test, all out loud."
+          ],
+          "interviewTip": "Treat a live bug as a chance, not a disaster. Calmly narrating 'the message says X, so I'd check Y' is often worth more than clean code."
+        },
+        {
+          "id": "c6-d",
+          "question": "You finish with time to spare and the tests pass. What's the strongest way to use the remaining minutes?",
+          "options": [
+            "Say you're done and wait quietly for the interviewer to move on to the next question",
+            "Walk through edge cases aloud, name the complexity, and suggest one improvement",
+            "Immediately start rewriting the working solution in a completely different paradigm",
+            "Add as many extra features as possible to show off breadth before the time runs out"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Finishing early is a chance to show rigor: verifying edge cases, stating time and space complexity, and naming one honest improvement all signal senior habits. A silent 'done' leaves signal on the table; a paradigm rewrite or feature sprawl risks breaking working code.",
+          "optionExplanations": [
+            "A silent 'done' wastes minutes you could spend demonstrating rigor and self-review.",
+            "Correct — verify edge cases, state the complexity, and propose one honest improvement.",
+            "Rewriting a passing solution for style risks breaking it with nothing to gain.",
+            "Piling on features trades a solid answer for scope creep the round never asked for."
+          ],
+          "interviewTip": "End a live-coding answer by volunteering edge cases and complexity unprompted. It signals you'd catch these in real code review too."
+        }
+      ]
+    },
+    {
+      "heading": "Mock interview: defending trade-offs",
+      "paragraphs": [
+        "Senior interviews are full of questions with no single right answer: SQL or NoSQL, REST or GraphQL, monolith or services. The interviewer isn't checking which side you pick — they're checking whether you can name the axis the decision turns on and argue from the specific requirements in front of you.",
+        "The trap is dogma ('always use X') and its mirror, mush ('it depends', with no follow-through). A strong answer states the trade-off, ties it to this system's constraints, makes a call, and names what would change your mind."
+      ],
+      "summary": "Open-ended design questions test trade-off reasoning — state the axis the decision turns on, make a call from the requirements, and say what would flip it.",
+      "variants": [
+        {
+          "id": "c7",
+          "question": "'Would you use SQL or NoSQL for this feature?' What's the strongest way to answer?",
+          "options": [
+            "Name your all-time favorite and defend it, since consistency across projects beats waffling",
+            "Ask about the data's shape and access patterns, then justify a call from those specifics",
+            "Say 'it depends' and wait for the interviewer to narrow the requirements down for you",
+            "Pick whatever the company already runs, because matching their stack is the safe answer"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The question tests trade-off reasoning, not brand loyalty. Asking about relationships, consistency needs, and query patterns — then choosing from those — shows you decide from requirements. Dogma and un-followed-through 'it depends' both dodge the actual skill.",
+          "optionExplanations": [
+            "A fixed preference regardless of the problem is exactly the dogma these questions screen out.",
+            "Correct — reason from the data's shape and access patterns to a justified, requirement-driven call.",
+            "'It depends' with no follow-through hands the reasoning they asked for back to the interviewer.",
+            "Matching the stack may be pragmatic, but it skips the trade-off analysis being probed."
+          ],
+          "interviewTip": "End trade-off answers with 'I'd revisit this if…'. Naming your decision's breaking point shows you hold opinions loosely, which is what senior means."
+        },
+        {
+          "id": "c7-alt",
+          "question": "You're asked to defend a choice and you genuinely think both options are close. What's best?",
+          "options": [
+            "Pick one at random and defend it aggressively so you never appear the least bit indecisive",
+            "Refuse to choose, insisting there is truly no meaningful difference between the two options",
+            "State the deciding factor, make a call, and name the conditions that would reverse it",
+            "List every possible pro and con for both sides and let the interviewer make the decision"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "When options are close, the signal is how you break the tie: naming the deciding factor, committing, and stating what would flip it. Aggressive random defense reads as insecurity; refusing to choose reads as an inability to ship a decision.",
+          "optionExplanations": [
+            "Aggressively defending a coin-flip reads as insecurity, not conviction.",
+            "Claiming no difference dodges the tie-break the interviewer is explicitly asking you to make.",
+            "Correct — name the deciding factor, commit, and state what would reverse the call.",
+            "Dumping every pro and con without a verdict makes the interviewer do your job."
+          ],
+          "interviewTip": "For close calls, say 'they're close, so I'd decide on X' — naming the tie-breaker is the whole point of the question."
+        },
+        {
+          "id": "c7-c",
+          "question": "The interviewer pushes back hard on your architecture choice. What's the best reaction?",
+          "options": [
+            "Immediately abandon your choice and adopt theirs, since they clearly must know better",
+            "Weigh the concern against your reasons, then adjust or hold with a stated reason",
+            "Defend your original design without engaging with the specific objection they raised",
+            "Change the subject to a different part of the system to avoid the uncomfortable pushback"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Pushback is often a probe, not a verdict. Engaging with the specific concern and then either updating or holding — with reasons — shows you reason from arguments rather than authority. Instant capitulation and stubborn defense both skip the actual engagement.",
+          "optionExplanations": [
+            "Folding instantly signals you argue from authority, not from the merits of the design.",
+            "Correct — engage the specific concern, then adjust or hold with a clear, stated rationale.",
+            "Restating your design without addressing the objection ignores the point being tested.",
+            "Dodging to another topic reads as an inability to defend the decision you just made."
+          ],
+          "interviewTip": "Treat pushback as 'convince me', not 'you're wrong'. Sometimes the right move is to update; sometimes it's to hold — both need reasons."
+        },
+        {
+          "id": "c7-d",
+          "question": "'Why not just use microservices for everything?' How do you answer well?",
+          "options": [
+            "Agree fully, because services are the modern standard and monoliths are simply outdated now",
+            "Reject them outright, since a monolith is always simpler and easier for every team to run",
+            "Name the cost — ops overhead, network calls — and tie the choice to team size and scale",
+            "Say microservices are only ever about following whatever the biggest tech companies do"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Services trade code-level complexity for operational complexity: deploys, network failure modes, and distributed debugging. The strong answer names that trade and ties it to concrete factors — team size, scale, deploy independence — rather than treating either option as a default.",
+          "optionExplanations": [
+            "Calling monoliths outdated is a fashion argument, not a trade-off analysis.",
+            "'Always simpler' ignores the real scaling and team-autonomy problems services solve.",
+            "Correct — name the operational cost and tie the decision to team size and scale.",
+            "Reducing it to cargo-culting big-tech skips the actual engineering trade-off."
+          ],
+          "interviewTip": "For 'why not microservices', lead with the operational cost. Candidates who mention distributed debugging and deploy overhead sound like they've run them."
+        }
+      ]
+    },
+    {
+      "heading": "Mock interview: the take-home walkthrough",
+      "paragraphs": [
+        "A take-home is judged twice: the code, and how you talk about it. Interviewers rarely expect a finished product — they want to see scoping (what you built, what you cut, and why) and whether your README makes the project runnable and legible in minutes.",
+        "In the walkthrough, lead with the decisions, not a line-by-line tour. Say what you'd do with more time, where you cut corners on purpose, and what you'd change now. Owning the gaps reads as senior; pretending there are none reads as junior."
+      ],
+      "summary": "A take-home tests scoping and communication — document what you built, cut, and would change, and defend the trade-offs instead of hiding them.",
+      "variants": [
+        {
+          "id": "c8",
+          "question": "You ran low on time and skipped tests on the take-home. What's the best move?",
+          "options": [
+            "Note it in the README — what you'd test first and why — and be ready to defend the cut",
+            "Add a few hasty assertions at the end so the reviewer at least sees the word 'tests'",
+            "Say nothing about tests and hope the reviewer only looks at the visible feature set",
+            "Apologize at length in the README and describe the whole submission as unfinished work"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Reviewers reward honest scoping. A short note naming what you'd test first and why shows the same judgment about risk and priorities as writing the tests. Hasty filler or silence hides the decision; over-apologizing undersells otherwise solid work.",
+          "optionExplanations": [
+            "Correct — a documented, defensible cut shows the same risk judgment as the tests themselves.",
+            "Filler assertions just to show the word 'tests' is theater the reviewer sees straight through.",
+            "Silence invites the reviewer to assume you didn't even notice the tests were missing.",
+            "Over-apologizing frames good work as a failure; state the cut plainly and move on."
+          ],
+          "interviewTip": "A 'Trade-offs & next steps' section in the README does double duty: it scopes your work honestly and scripts the walkthrough conversation in advance."
+        },
+        {
+          "id": "c8-alt",
+          "question": "The prompt was open-ended and you couldn't build everything. How should the README frame that?",
+          "options": [
+            "List only the finished features and quietly omit any mention of what was left undone",
+            "State what you scoped in, what you deferred, and the reasoning behind each call",
+            "Claim you finished the entire spec even though several parts are only partially working",
+            "Describe every feature you imagined but did not build, in exhaustive aspirational detail"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Open-ended prompts test scoping judgment. Stating what you included, what you deferred, and why demonstrates prioritization — the actual skill. Hiding the cuts or overstating completeness both destroy trust the moment the reviewer runs the code.",
+          "optionExplanations": [
+            "Omitting the cuts hides the very prioritization decisions the open prompt is testing.",
+            "Correct — show what you scoped in, what you deferred, and the reasoning behind each.",
+            "Claiming false completeness collapses the instant the reviewer runs a half-built feature.",
+            "Cataloguing unbuilt dreams is noise; the reviewer cares about the decisions you actually made."
+          ],
+          "interviewTip": "For open-ended take-homes, the scoping story is the deliverable. 'I built X, deferred Y because Z' is exactly what earns the follow-up conversation."
+        },
+        {
+          "id": "c8-c",
+          "question": "In the walkthrough, how should you present your submitted code?",
+          "options": [
+            "Read the code aloud file by file, from the first import down to the last closing brace",
+            "Wait silently for questions rather than volunteering anything about your own decisions",
+            "Lead with the key decisions and trade-offs, then open code only where it's asked",
+            "Focus entirely on the parts you're proudest of and steer around anything you cut short"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A walkthrough is a decision tour, not a code recital. Leading with the architecture and the trade-offs, then drilling into code on demand, respects the interviewer's time and foregrounds judgment. A line-by-line read buries the signal; hiding the weak spots invites suspicion.",
+          "optionExplanations": [
+            "A file-by-file recital buries your decisions under mechanical detail nobody asked for.",
+            "Volunteering nothing forfeits your chance to frame the work before questions steer it.",
+            "Correct — lead with decisions and trade-offs, then go into code where the interviewer asks.",
+            "Steering around the cuts reads as hiding them; owning them openly reads as senior."
+          ],
+          "interviewTip": "Open the walkthrough with 'the three decisions that mattered were…'. It frames the whole conversation around judgment instead of syntax."
+        },
+        {
+          "id": "c8-d",
+          "question": "A reviewer points out a real bug in your take-home during the call. Best response?",
+          "options": [
+            "Insist it works on your machine and that the reviewer must be running it incorrectly",
+            "Acknowledge it, diagnose the likely cause aloud, and say how you'd fix and prevent it",
+            "Go quiet and hope the conversation moves past the bug to something more flattering",
+            "Blame the ambiguous prompt for the bug rather than the code you actually wrote yourself"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A found bug is a live debugging prompt. Acknowledging it, reasoning about the cause, and naming a fix plus a prevention (a test, a guard) shows exactly how you'd behave in a real code review. Denial and blame-shifting signal the opposite.",
+          "optionExplanations": [
+            "'Works on my machine' denies the evidence and reads as defensiveness, not diagnosis.",
+            "Correct — acknowledge, diagnose aloud, and name both the fix and how you'd prevent it.",
+            "Going quiet forfeits the debugging demonstration the found bug just handed you.",
+            "Blaming the prompt shifts ownership away from the code you actually shipped."
+          ],
+          "interviewTip": "When a reviewer finds a bug, thank them and diagnose it live. Turning a defect into a calm root-cause story is a strong senior signal."
+        }
+      ]
+    },
+    {
+      "heading": "Mock interview: talking about scale",
+      "paragraphs": [
+        "Scaling questions ('what happens at 10x traffic?') reward structured estimation over precise numbers. Interviewers want to see you locate the likely bottleneck — usually the database or an N+1 query, rarely the language — and reason about it, not recite a menu of buzzwords.",
+        "Work from the request path: where does time go, what grows with users, what's shared state. Name the first thing that breaks, propose a targeted fix (an index, a cache, a queue), and only then reach for horizontal scaling. Measure-first beats optimize-blind, and saying so is part of the answer."
+      ],
+      "summary": "Scale questions reward locating the real bottleneck from the request path and proposing a measured, targeted fix — not reciting optimizations blindly.",
+      "variants": [
+        {
+          "id": "c9",
+          "question": "'This endpoint is slow at scale — where do you look first?' Best opening?",
+          "options": [
+            "Rewrite the hot path in a faster language, since the runtime is usually the real bottleneck",
+            "Profile the request to see where time goes — often a query or N+1, rarely the language",
+            "Add more application servers right away, because more machines is the general fix for slow",
+            "Cache the whole endpoint's response so the slow work simply never has to run for anyone"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Scaling answers should start with evidence. Profiling shows where time actually goes — usually a slow or N+1 query — before you spend effort. Language rewrites, blind horizontal scaling, and blanket caching all optimize before measuring, which interviewers read as guessing.",
+          "optionExplanations": [
+            "The language is rarely the bottleneck; a slow query dwarfs interpreter overhead many times over.",
+            "Correct — profile first to find the real hotspot, usually a query, before spending any effort.",
+            "More servers won't help if a shared database is the limit — you'd just queue on it faster.",
+            "Caching a per-user or write-heavy endpoint wholesale risks staleness and correctness bugs."
+          ],
+          "interviewTip": "Open scaling answers with 'I'd measure first', then name the usual suspect (the database). Evidence-before-optimization is the senior tell."
+        },
+        {
+          "id": "c9-alt",
+          "question": "Asked to estimate whether a design handles 1M daily users, what's the strongest approach?",
+          "options": [
+            "Declare it fine because the framework and cloud host are marketed as being web-scale",
+            "Refuse to answer without exact hardware specs, since any estimate would be a pure guess",
+            "Do rough math: requests per second, per-request cost, and where the first limit shows up",
+            "Quote the largest user number you've personally worked with and assume this design matches"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Estimation questions want a back-of-the-envelope model, not a precise figure: convert users to requests per second, reason about per-request work, and find the first resource to saturate. Refusing to estimate or hand-waving to marketing both dodge the reasoning being tested.",
+          "optionExplanations": [
+            "'It's web-scale' is a marketing claim, not the arithmetic the question is asking for.",
+            "Refusing to estimate dodges the whole point; rough numbers are exactly what's wanted.",
+            "Correct — convert users to requests per second, cost each, and find the first limit to break.",
+            "Anchoring on a past number without the math ignores this system's specific request cost."
+          ],
+          "interviewTip": "Practice one estimation chain out loud: users → requests/sec → per-request cost → first bottleneck. It's the backbone of every capacity question."
+        },
+        {
+          "id": "c9-c",
+          "question": "Reads are fine but writes slow to a crawl under load. What's the most likely culprit to name?",
+          "options": [
+            "The frontend framework, which surely re-renders too often and drags the write path down",
+            "The DNS layer, since name resolution obviously gets slower as more users are writing data",
+            "CSS specificity, which must be forcing the browser to recompute styles on every write",
+            "Write contention — locks, index updates, or a single primary all writes funnel through"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "Write-heavy slowdowns point at the write path: row or table locks, the cost of updating every index on write, and a single primary that all writes serialize through. Frontend rendering, DNS, and CSS live nowhere near where write throughput is actually limited.",
+          "optionExplanations": [
+            "Frontend re-renders can't slow a server's write throughput; they're on the client entirely.",
+            "DNS resolves once per connection and has nothing to do with write speed under load.",
+            "CSS runs in the browser; it can't touch how fast the database commits writes.",
+            "Correct — locks, index-update cost, and a single write primary are where writes actually contend."
+          ],
+          "interviewTip": "When writes lag but reads don't, talk about locks, index write-amplification, and the single-primary bottleneck. It shows you know where writes serialize."
+        },
+        {
+          "id": "c9-d",
+          "question": "You've found the bottleneck is a slow query. What's the best-ordered next step?",
+          "options": [
+            "Immediately shard the database across many machines to spread the query's load out wide",
+            "EXPLAIN the query, add the missing index, and re-measure before the bigger guns",
+            "Cache every query result forever so the slow query never has to execute a second time",
+            "Rewrite the entire data layer in a new ORM that advertises faster benchmark performance"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The cheapest, highest-leverage fix comes first: read the query plan, add the index that removes the scan, and re-measure. Sharding, forever-caching, and rewriting the data layer are heavy moves you escalate to only after the simple, targeted fix falls short.",
+          "optionExplanations": [
+            "Sharding is a major operational leap; you don't reach for it before trying an index.",
+            "Correct — EXPLAIN, add the missing index, and re-measure before escalating to bigger fixes.",
+            "Caching forever hides the slow query but invites staleness and dodges the real fix.",
+            "Swapping ORMs for a benchmark number rewrites everything to avoid adding one index."
+          ],
+          "interviewTip": "The fix ladder for a slow query is EXPLAIN → index → cache → shard. Naming that order shows you escalate cost deliberately, not in a panic."
+        }
+      ]
+    },
+    {
+      "heading": "Mock interview: recovering from a wrong answer",
+      "paragraphs": [
+        "You will get something wrong in an interview — a hint you missed, a fact you misremembered. The round isn't over; how you recover is itself a data point. Interviewers watch whether you get defensive, freeze, or update gracefully when new information arrives.",
+        "When corrected, don't argue reflexively and don't collapse. Acknowledge the correction, integrate it, and re-reason from the new fact out loud. 'Good point — that changes my answer because…' turns a miss into a demonstration of exactly the coachability teams hire for."
+      ],
+      "summary": "Getting something wrong isn't fatal — interviewers score how you update; acknowledge the correction, integrate it, and re-reason aloud rather than defending or freezing.",
+      "variants": [
+        {
+          "id": "c10",
+          "question": "The interviewer says 'actually, that's not quite right.' Best response?",
+          "options": [
+            "Ask what you're missing, take the correction, and re-reason to a new answer aloud",
+            "Defend your original answer firmly, because backing down looks like a lack of confidence",
+            "Go silent and wait, hoping the interviewer just moves on to a different topic soon",
+            "Immediately agree with whatever they said without checking whether the correction is right"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Interviews test coachability. Asking what you missed and re-reasoning shows you update on evidence — the daily work of engineering. Digging in reads as ego; going silent reads as fragility; blind agreement reads as having no model at all.",
+          "optionExplanations": [
+            "Correct — take the correction and re-reason aloud to show exactly the coachability teams want.",
+            "Reflexively defending a wrong answer signals ego over accuracy, the opposite of the goal.",
+            "Freezing reads as fragility; they want to see you work through the new information.",
+            "Agreeing without checking shows no real model — sometimes the 'correction' is a probe."
+          ],
+          "interviewTip": "When corrected, say 'that changes my answer because…' and walk the new logic. Visibly updating on new facts is a top-tier signal many candidates can't produce."
+        },
+        {
+          "id": "c10-alt",
+          "question": "You confidently stated a fact, then realize mid-sentence it's wrong. What's best?",
+          "options": [
+            "Keep going as if nothing happened and quietly hope the interviewer failed to notice",
+            "Stop, flag the error yourself, correct it, and continue from the corrected position",
+            "Blame nerves for the slip and spend a while apologizing before returning to the point",
+            "Double down on the wrong fact so you at least look internally consistent to them"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Catching your own error and correcting it in real time is a strong positive signal — it shows you monitor your own accuracy. Pretending it didn't happen risks the interviewer noticing anyway, and doubling down converts a small slip into a credibility problem.",
+          "optionExplanations": [
+            "Plowing on hopes they missed it; if they didn't, silence now looks like not knowing.",
+            "Correct — flag your own error, fix it, and continue from the corrected position.",
+            "A long apology magnifies a small slip; a quick self-correction is all that's needed.",
+            "Doubling down trades a minor mistake for a real credibility problem."
+          ],
+          "interviewTip": "Self-correcting mid-answer ('actually, let me fix that — it's really…') reads as intellectual honesty, which interviewers weight heavily."
+        },
+        {
+          "id": "c10-c",
+          "question": "You're completely stuck and have no idea how to proceed. What's the best move?",
+          "options": [
+            "Sit in silence indefinitely rather than admit out loud that you are currently stuck",
+            "Guess random answers rapidly in the hope that one of them happens to be correct",
+            "Say what you do know, where you're stuck, and ask for a hint to unblock yourself",
+            "Declare the question unfair and ask to be given an entirely different one instead"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Being stuck is normal; how you handle it is the signal. Stating what you know, naming exactly where you're blocked, and asking for a targeted hint shows structured thinking and turns a stall into collaboration. Silence, random guessing, and blaming the question all forfeit that.",
+          "optionExplanations": [
+            "Long silence gives the interviewer nothing to work with and reads as shutting down.",
+            "Rapid guessing shows no reasoning and often digs the hole deeper under time pressure.",
+            "Correct — state what you know, pinpoint the blocker, and ask for a targeted hint.",
+            "Calling the question unfair reads as deflection; most hints unlock a stuck candidate."
+          ],
+          "interviewTip": "Interviewers usually have hints ready. 'Here's my thinking, here's where I'm stuck' invites one — and thinking-out-loud is scored even when you're blocked."
+        },
+        {
+          "id": "c10-d",
+          "question": "After the interview you realize you gave a wrong answer to one question. What, if anything, helps?",
+          "options": [
+            "Assume the single mistake sank the whole loop and stop preparing for later rounds",
+            "Send a brief follow-up with the correct answer if it was a substantive technical point",
+            "Email a long message re-arguing every question you think you might have gotten wrong",
+            "Do nothing and never think about the question again, since the round is fully over now"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A short, specific follow-up correcting one substantive point can genuinely help — it shows follow-through and that you kept thinking. One miss rarely sinks a loop, so despair is unwarranted, and a sprawling re-litigation of everything reads as anxious rather than sharp.",
+          "optionExplanations": [
+            "One wrong answer rarely decides a loop; writing yourself off is both premature and unhelpful.",
+            "Correct — a brief, specific follow-up on a substantive point shows follow-through and reflection.",
+            "Re-arguing every question at length reads as anxiety and undoes the calm you want to project.",
+            "Total silence is fine for trivia, but it skips an easy, credible save on a real technical point."
+          ],
+          "interviewTip": "A two-line follow-up correcting one real technical slip can leave a strong final impression — keep it specific and don't re-open everything."
+        }
+      ]
     }
   ]
 }

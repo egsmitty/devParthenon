@@ -758,9 +758,14 @@ function renderStats(): void {
  * shuffled into one timed exam. Practice on a completed pediment replays
  * just the capstone module normally.
  */
+/** How many capstone sections the gauntlet samples, so it stays ~17 questions
+ *  (5 capstone + 6×2 pillar) even as the capstone bank grows past 5. */
+const GAUNTLET_CAPSTONE_SAMPLE = 5;
+
 async function buildGauntlet(node: ModuleNode): Promise<QuizModule> {
   const capstone = await api.getQuiz(node.quizFile);
-  const sections = [...capstone.sections];
+  // Sample a fixed slice of capstone sections rather than all of them.
+  const sections = shuffle([...capstone.sections]).slice(0, GAUNTLET_CAPSTONE_SAMPLE);
   for (const p of PILLAR_ORDER) {
     const pillarQuiz = await api.getQuiz(progress.nodes[p.id].quizFile);
     const pool = [...pillarQuiz.sections];
@@ -769,10 +774,7 @@ async function buildGauntlet(node: ModuleNode): Promise<QuizModule> {
       sections.push(pool.splice(i, 1)[0]);
     }
   }
-  for (let i = sections.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [sections[i], sections[j]] = [sections[j], sections[i]];
-  }
+  shuffle(sections);
   return {
     id: "gauntlet",
     title: "The Pediment — Capstone Gauntlet",
