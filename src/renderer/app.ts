@@ -800,6 +800,14 @@ function renderCodex(filter: string): void {
     right.innerHTML = "";
     return;
   }
+  // A single hit — e.g. jumping to a term like "DNS" from a lesson chip —
+  // lands on the RIGHT page: that's the leaf the book-opening flip turns to,
+  // so the animation reveals the entry instead of it sitting behind on the left.
+  if (matches.length === 1) {
+    left.innerHTML = "";
+    right.innerHTML = cardFor(matches[0]);
+    return;
+  }
   // Fill the left page first, then the right — like reading a real spread.
   const half = Math.ceil(matches.length / 2);
   left.innerHTML = matches.slice(0, half).map(cardFor).join("");
