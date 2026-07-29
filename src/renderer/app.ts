@@ -20,12 +20,14 @@ import type {
 import {
   configureLessonLinks,
   configureMastery,
+  configureOverview,
   escapeHtml,
   MASTERY_QUESTION_COUNT,
   ModuleMode,
   openModule,
   openReviewDrill,
 } from "./modal.js";
+import { openOverview } from "./overview.js";
 import {
   closeSettings,
   initSettings,
@@ -969,7 +971,7 @@ function wireTrophyCase(): void {
 }
 
 function anyOverlayOpen(): boolean {
-  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "flashcards-root", "trophy-case-root", "codex"].some(
+  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "flashcards-root", "trophy-case-root", "overview-root", "codex"].some(
     (id) => {
       const el = document.getElementById(id);
       return el && !el.hasAttribute("hidden");
@@ -1093,6 +1095,7 @@ async function init(): Promise<void> {
   wireCodex();
   configureLessonLinks(glossary.map((g) => g.term), openCodexWithTerm);
   configureMastery((node) => void launchModule(node, "mastery"));
+  configureOverview((quiz) => openOverview(quiz, glossary));
   if (!api.isSmoke) {
     if (!settings().introSeen) openWelcome();
     else await offerResume();

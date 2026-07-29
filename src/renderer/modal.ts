@@ -125,6 +125,13 @@ export function configureMastery(fn: (node: ModuleNode) => void): void {
   launchMastery = fn;
 }
 
+/* Overview launch: app.ts wires the recap overlay (it holds the glossary), so
+   a graded-pass screen can offer a "what you now know" review. */
+let launchOverview: (quiz: QuizModule) => void = () => {};
+export function configureOverview(fn: (quiz: QuizModule) => void): void {
+  launchOverview = fn;
+}
+
 /** Glossary terms mentioned (whole-word) in a section's paragraphs. */
 function relatedTerms(paragraphs: string[]): string[] {
   const text = " " + paragraphs.join("  ").toLowerCase() + " ";
@@ -875,13 +882,14 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
       offerMastery
         ? `<div class="mastery-cta"><span class="mc-label">Prove it</span>
              Pass the Mastery Test (${Math.round(MASTERY_PASS * 100)}% on 10 drawn
-             questions) to earn this pillar's trophy.</div>`
+             questions) to earn this pillar's trophy and unlock the next stone.</div>`
         : ""
     }
     <div class="modal-actions">
       ${
         offerMastery
-          ? `<button class="ghost-btn" data-action="done">Not yet</button>
+          ? `<button class="ghost-btn" data-action="overview">Review what you learned</button>
+             <button class="ghost-btn" data-action="done">Not yet</button>
              <button class="primary-btn" data-action="mastery">Take the Mastery Test &rarr;</button>`
           : `<button class="primary-btn" data-action="done">Return to the temple</button>`
       }
@@ -891,6 +899,10 @@ async function finalize(score: number, meta: FinalizeMeta): Promise<void> {
   el.querySelector('[data-action="done"]')!.addEventListener("click", () => {
     closeModal();
     onDoneRef(result.progress);
+  });
+  el.querySelector('[data-action="overview"]')?.addEventListener("click", () => {
+    // Peek at the recap over the result screen; closing it returns here.
+    launchOverview(quiz);
   });
   el.querySelector('[data-action="mastery"]')?.addEventListener("click", () => {
     const node = result.progress.nodes[state!.node.id] ?? state!.node;
