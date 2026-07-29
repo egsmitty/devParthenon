@@ -24,6 +24,16 @@ All four items that were "in progress / next up" are done and verified:
 4. **Fancify** — torch light-pools, a breathing sun/moon halo, and per-pillar
    topic-tint hover glow (`--pillar-tint`).
 
+## Big active initiative: Progression & Trophies
+
+See **[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)** — end-of-path Overview
+→ Mastery Test (trophy) → Trophy Case, plus the parallel Herculean Test with
+weak-area side-quests. The tested **v4 spine is shipped** (schema + `store.ts`
+`recordMasteryResult`/`herculeanUnlocked`/`recordHerculeanResult` + migration +
+6 tests). Next: Phase A (Mastery-Test modal + auto-generated Overview + IPC).
+Workload split (Opus core / Sonnet 5 UI / Fable content+art) and Fable's
+content instructions are in the plan.
+
 ## Next up (menu — pick by value; nothing committed to)
 
 - **A Playwright *test* (not just the audit)** asserting a full graded pass +
