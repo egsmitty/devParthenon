@@ -316,6 +316,98 @@ describe("v1 -> v2 migration (review scheduler)", () => {
   });
 });
 
+describe("v3 -> v4 migration + Mastery Tests + Herculean (trophies)", () => {
+  test("a version:3 save upgrades to v4 with empty trophy/mastery/herculean state", () => {
+    const v3 = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+    v3.version = 3;
+    delete v3.trophies;
+    delete v3.mastery;
+    delete v3.herculean;
+    v3.nodes["foundation"].status = "completed";
+    v3.nodes["foundation"].score = 0.91;
+    fs.writeFileSync(path.join(tmpDir, "progress.json"), JSON.stringify(v3), "utf-8");
+
+    const loaded = store.loadProgress(paths);
+    assert.equal(loaded.version, store.PROGRESS_VERSION);
+    assert.deepEqual(loaded.trophies, []);
+    assert.deepEqual(loaded.mastery, {});
+    assert.equal(loaded.herculean.passed, false);
+    assert.deepEqual(loaded.herculean.weakAreas, []);
+    // Existing scores/unlock state survive the upgrade.
+    assert.equal(loaded.nodes["foundation"].status, "completed");
+    assert.equal(loaded.nodes["foundation"].score, 0.91);
+  });
+
+  test("Mastery pass (>=80%) awards the module trophy exactly once; best score + attempts tracked", () => {
+    const data = store.loadProgress(paths);
+    store.recordMasteryResult(data, "foundation", 0.7, "2026-07-28T00:00:00Z"); // fail
+    assert.equal(data.mastery["foundation"].passed, false);
+    assert.deepEqual(data.trophies, []);
+
+    store.recordMasteryResult(data, "foundation", 0.9, "2026-07-28T01:00:00Z"); // pass
+    assert.equal(data.mastery["foundation"].passed, true);
+    assert.equal(data.mastery["foundation"].attempts, 2);
+    assert.equal(data.mastery["foundation"].bestScore, 0.9);
+    assert.deepEqual(data.trophies, ["foundation"]);
+
+    store.recordMasteryResult(data, "foundation", 1.0, "2026-07-28T02:00:00Z"); // re-pass
+    assert.equal(data.mastery["foundation"].bestScore, 1.0);
+    assert.deepEqual(data.trophies, ["foundation"], "trophy not duplicated on re-pass");
+  });
+
+  test("exactly 80% passes the Mastery Test; 79% does not", () => {
+    const data = store.loadProgress(paths);
+    store.recordMasteryResult(data, "pillar-react", 0.79, "2026-07-28T00:00:00Z");
+    assert.equal(data.mastery["pillar-react"].passed, false);
+    store.recordMasteryResult(data, "pillar-react", 0.8, "2026-07-28T00:10:00Z");
+    assert.equal(data.mastery["pillar-react"].passed, true);
+    assert.ok(data.trophies.includes("pillar-react"));
+  });
+
+  test("recordMasteryResult rejects an unknown node", () => {
+    const data = store.loadProgress(paths);
+    assert.throws(
+      () => store.recordMasteryResult(data, "pillar-cobol", 1, "2026-07-28T00:00:00Z"),
+      /unknown node/
+    );
+  });
+
+  test("Herculean unlocks only once foundation + every pillar is complete", () => {
+    const data = store.loadProgress(paths);
+    assert.equal(store.herculeanUnlocked(data), false);
+    for (const n of Object.values(data.nodes)) {
+      if (n.id !== "pediment") {
+        n.status = "completed";
+        n.score = 0.9;
+      }
+    }
+    // Pediment still locked — Herculean is parallel to the roof, not gated by it.
+    assert.equal(store.herculeanUnlocked(data), true);
+  });
+
+  test("Herculean fail stashes weak areas + cooldown; a later pass awards the ultimate trophy", () => {
+    const data = store.loadProgress(paths);
+    store.recordHerculeanResult(
+      data,
+      0.6,
+      ["foundation/1", "pillar-react/2", "foundation/1"],
+      "2026-07-28T00:00:00Z",
+      600000
+    );
+    assert.equal(data.herculean.passed, false);
+    assert.deepEqual(data.herculean.weakAreas, ["foundation/1", "pillar-react/2"], "deduped");
+    assert.ok(store.herculeanOnCooldown(data.herculean, Date.parse("2026-07-28T00:05:00Z")));
+    assert.equal(store.herculeanOnCooldown(data.herculean, Date.parse("2026-07-28T00:11:00Z")), false);
+    assert.deepEqual(data.trophies, []);
+
+    store.recordHerculeanResult(data, 0.88, [], "2026-07-28T01:00:00Z");
+    assert.equal(data.herculean.passed, true);
+    assert.deepEqual(data.herculean.weakAreas, [], "weak areas cleared on pass");
+    assert.equal(data.herculean.cooldownUntil, undefined);
+    assert.deepEqual(data.trophies, [store.HERCULEAN_TROPHY]);
+  });
+});
+
 describe("SM-2-lite scheduler (review.ts)", () => {
   const t0 = "2026-01-01T00:00:00.000Z";
   const days = (iso, n) =>

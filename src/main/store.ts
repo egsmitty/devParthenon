@@ -8,6 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type {
   ActiveAttempt,
+  HerculeanState,
   ModuleNode,
   ProgressData,
   SaveScoreResult,
@@ -15,9 +16,18 @@ import type {
 } from "../types/schema";
 import { recordResult } from "./review";
 
-export const PROGRESS_VERSION = 3;
+export const PROGRESS_VERSION = 4;
 
 export const PASS_THRESHOLD = 0.85;
+
+/** Mastery Test: 10 questions drawn from the module's bank, ≥80% to pass. */
+export const MASTERY_PASS_THRESHOLD = 0.8;
+
+/** The Herculean final: broad cross-module exam, ≥85% to pass. */
+export const HERCULEAN_PASS_THRESHOLD = 0.85;
+
+/** The trophy id awarded for beating the Herculean final. */
+export const HERCULEAN_TROPHY = "herculean";
 
 export interface StorePaths {
   /** Directory holding the live save file (e.g. %APPDATA%/DevParthenon). */
@@ -74,7 +84,94 @@ export function migrateProgress(
     data.activity = { streak: 0, lastActiveDay: "" };
     changed = true;
   }
+  // v4: trophies + Mastery Tests + the Herculean final. Additive — existing
+  // scores and unlock state are never touched.
+  if (!data.trophies) {
+    data.trophies = [];
+    changed = true;
+  }
+  if (!data.mastery) {
+    data.mastery = {};
+    changed = true;
+  }
+  if (!data.herculean) {
+    data.herculean = { passed: false, bestScore: 0, attempts: 0, weakAreas: [] };
+    changed = true;
+  }
   if (changed && paths) writeProgress(paths, data);
+  return data;
+}
+
+/* ---------------- Mastery Tests & trophies (v4) ---------------- */
+
+/**
+ * Record a Mastery-Test attempt for a module and, on the first passing run,
+ * award that module's trophy (its nodeId). Pure over `data` — the caller
+ * persists. `nowISO` is injected so this stays Electron-free and testable.
+ */
+export function recordMasteryResult(
+  data: ProgressData,
+  nodeId: string,
+  score: number,
+  nowISO: string
+): ProgressData {
+  if (!data.nodes[nodeId]) throw new Error(`recordMasteryResult: unknown node ${nodeId}`);
+  const mastery = (data.mastery ??= {});
+  const trophies = (data.trophies ??= []);
+  const rec = mastery[nodeId] ?? { passed: false, bestScore: 0, attempts: 0 };
+  rec.attempts += 1;
+  rec.bestScore = Math.max(rec.bestScore, score);
+  rec.lastAttemptISO = nowISO;
+  if (score + 1e-9 >= MASTERY_PASS_THRESHOLD) rec.passed = true;
+  mastery[nodeId] = rec;
+  if (rec.passed && !trophies.includes(nodeId)) trophies.push(nodeId);
+  return data;
+}
+
+/* ---------------- The Herculean final (v4) ---------------- */
+
+/**
+ * The Herculean Test becomes available once the foundation and every pillar is
+ * complete — it sits parallel to the pediment (the roof), never gating it.
+ */
+export function herculeanUnlocked(data: ProgressData): boolean {
+  return Object.values(data.nodes)
+    .filter((n) => n.id !== "pediment")
+    .every((n) => n.status === "completed");
+}
+
+/** True while a failed Herculean run is still cooling down (relative to `nowMs`). */
+export function herculeanOnCooldown(h: HerculeanState | undefined, nowMs: number): boolean {
+  return !!h?.cooldownUntil && h.cooldownUntil > nowMs;
+}
+
+/**
+ * Record a Herculean attempt. On a pass, award the ultimate trophy and clear
+ * any weak-area side-quest; on a fail, stash the missed section keys (the
+ * side-quest targets) and start an optional cooldown before the next attempt.
+ */
+export function recordHerculeanResult(
+  data: ProgressData,
+  score: number,
+  missedKeys: string[],
+  nowISO: string,
+  cooldownMs = 0
+): ProgressData {
+  const trophies = (data.trophies ??= []);
+  const h: HerculeanState =
+    data.herculean ?? { passed: false, bestScore: 0, attempts: 0, weakAreas: [] };
+  h.attempts += 1;
+  h.bestScore = Math.max(h.bestScore, score);
+  if (score + 1e-9 >= HERCULEAN_PASS_THRESHOLD) {
+    h.passed = true;
+    h.weakAreas = [];
+    h.cooldownUntil = undefined;
+    if (!trophies.includes(HERCULEAN_TROPHY)) trophies.push(HERCULEAN_TROPHY);
+  } else {
+    h.weakAreas = [...new Set(missedKeys)];
+    h.cooldownUntil = cooldownMs > 0 ? Date.parse(nowISO) + cooldownMs : undefined;
+  }
+  data.herculean = h;
   return data;
 }
 

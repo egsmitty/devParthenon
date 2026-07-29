@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "foundationCompleted": false,
   "unlockedPillars": [],
   "nodes": {
@@ -107,5 +107,13 @@
   "activity": {
     "streak": 0,
     "lastActiveDay": ""
+  },
+  "trophies": [],
+  "mastery": {},
+  "herculean": {
+    "passed": false,
+    "bestScore": 0,
+    "attempts": 0,
+    "weakAreas": []
   }
 }
