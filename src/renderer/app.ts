@@ -779,6 +779,107 @@ const STATUE_POSEIDON = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS
   <path d="M56 40 C 60 30 80 30 84 40" fill="none" stroke="#b3ab95" stroke-width="2"/>
 </svg>`;
 
+/* Trophy roster (Progression & Trophies, Phase B) — one god per module, in the
+   same marble idiom. Consumed by the Trophy Case via a nodeId → {god, epithet,
+   art} map; epithets live in each statue's doc comment. */
+
+/** Hermes — "Messenger of the Wire" (Foundation). Winged cap, caduceus. */
+const STATUE_HERMES = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <line x1="106" y1="30" x2="106" y2="230" stroke="#cfc7b0" stroke-width="2.6"/>
+  <circle cx="106" cy="24" r="2.8" fill="#e6c063"/>
+  <path d="M101 30 C 94 24 89 25 87 31 M111 30 C 118 24 123 25 125 31" fill="none" stroke="#e6c063" stroke-width="1.7"/>
+  <path d="M100 54 C 114 47 98 38 106 31 M112 54 C 98 47 114 38 106 31" fill="none" stroke="#e6c063" stroke-width="1.6"/>
+  <path d="M70 72 C 57 74 53 93 52 110 L 46 234 L 94 234 L 88 110 C 87 93 83 74 70 72 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M61 102 L 55 230"/><path d="M70 104 L 70 232"/><path d="M79 102 L 85 230"/></g>
+  <path d="M56 78 C 46 90 44 120 48 140 C 50 148 55 147 56 140 C 54 118 56 96 62 84 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <path d="M84 88 C 94 96 98 116 96 132 C 94 140 89 139 88 132 C 90 114 84 100 78 94 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="14" fill="url(#mb)"/>
+  <circle cx="70" cy="48" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M56 44 C 59 32 81 32 84 44" fill="none" stroke="#e6c063" stroke-width="2.4"/>
+  <path d="M56 42 C 49 36 43 36 41 42 C 46 43 51 44 56 46 Z" fill="#e6c063"/>
+  <path d="M84 42 C 91 36 97 36 99 42 C 94 43 89 44 84 46 Z" fill="#e6c063"/>
+</svg>`;
+
+/** Apollo — "Light of the Interface" (React). Sun rays, lyre. */
+const STATUE_APOLLO = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <g stroke="#e6c063" stroke-width="1.8" fill="none"><line x1="70" y1="26" x2="70" y2="14"/><line x1="54" y1="32" x2="46" y2="24"/><line x1="86" y1="32" x2="94" y2="24"/><line x1="48" y1="46" x2="37" y2="43"/><line x1="92" y1="46" x2="103" y2="43"/></g>
+  <path d="M70 72 C 56 74 52 94 53 112 L 45 234 L 95 234 L 87 112 C 88 94 84 74 70 72 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 104 L 53 230"/><path d="M70 106 L 70 232"/><path d="M80 104 L 87 230"/></g>
+  <path d="M54 88 C 44 96 42 118 46 136 C 48 144 53 143 54 136 C 52 118 55 102 60 94 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <path d="M40 128 a 15 19 0 1 0 0.1 0 Z" fill="none" stroke="#e6c063" stroke-width="2"/>
+  <g stroke="#e6c063" stroke-width="1.3"><line x1="34" y1="117" x2="34" y2="143"/><line x1="40" y1="114" x2="40" y2="146"/><line x1="46" y1="117" x2="46" y2="143"/></g>
+  <path d="M86 90 C 96 96 100 118 96 136 C 94 144 89 143 88 136 C 90 118 84 102 78 96 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="14" fill="url(#mb)"/>
+  <circle cx="70" cy="48" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M56 45 C 59 34 81 34 84 45" fill="none" stroke="#e6c063" stroke-width="2.2"/>
+</svg>`;
+
+/** Hephaestus — "Master of the Forge" (Next.js). Hammer, anvil. */
+const STATUE_HEPHAESTUS = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <rect x="40" y="210" width="26" height="6" rx="1.5" fill="url(#mb)" stroke="#8a5a13" stroke-width="0.8"/>
+  <rect x="47" y="216" width="12" height="10" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="44" y="226" width="18" height="8" rx="1" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <line x1="97" y1="130" x2="114" y2="68" stroke="#cfc7b0" stroke-width="2.6"/>
+  <rect x="102" y="52" width="25" height="12" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <path d="M78 74 C 62 76 57 96 57 114 L 50 234 L 100 234 L 96 114 C 96 96 92 76 78 74 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M67 106 L 59 230"/><path d="M78 108 L 76 232"/><path d="M88 106 L 92 230"/></g>
+  <path d="M92 92 C 100 84 104 74 106 66 C 108 60 102 57 99 62 C 96 72 92 80 86 88 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="72" y="60" width="12" height="15" fill="url(#mb)"/>
+  <circle cx="78" cy="49" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M66 55 C 68 68 88 68 90 55 C 87 62 69 62 66 55 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.6"/>
+  <path d="M64 43 C 68 33 88 33 92 43" fill="none" stroke="#b3ab95" stroke-width="2"/>
+</svg>`;
+
+/** Aphrodite — "Beauty & Form" (Tailwind / CSS). Scallop shell. */
+const STATUE_APHRODITE = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <path d="M30 234 A 40 40 0 0 1 110 234 Z" fill="url(#mb)" stroke="#e6c063" stroke-width="1.4"/>
+  <g stroke="#e6c063" fill="none" opacity="0.75"><line x1="70" y1="232" x2="70" y2="196"/><line x1="70" y1="232" x2="52" y2="202"/><line x1="70" y1="232" x2="88" y2="202"/><line x1="70" y1="232" x2="38" y2="216"/><line x1="70" y1="232" x2="102" y2="216"/></g>
+  <path d="M69 74 C 56 76 54 96 56 114 L 48 234 L 90 234 L 85 152 C 87 122 82 94 78 80 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M62 110 L 55 230"/><path d="M70 112 L 68 232"/><path d="M78 120 L 82 230"/></g>
+  <path d="M78 84 C 90 90 94 112 91 128 C 89 136 84 135 83 128 C 85 112 80 96 74 90 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <path d="M56 88 C 48 96 46 116 49 132 C 51 140 56 139 57 132 C 55 114 57 100 62 92 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="63" y="60" width="12" height="15" fill="url(#mb)"/>
+  <circle cx="69" cy="50" r="13" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M58 42 C 52 50 52 62 56 72 M80 42 C 86 50 86 62 82 72" fill="none" stroke="#b3ab95" stroke-width="1.6"/>
+  <path d="M56 46 C 60 36 78 36 82 46" fill="none" stroke="#e6c063" stroke-width="2.2"/>
+</svg>`;
+
+/** Chronos — "Keeper of History" (Git · CI). Hourglass, scythe. */
+const STATUE_CHRONOS = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <line x1="106" y1="30" x2="106" y2="230" stroke="#cfc7b0" stroke-width="2.6"/>
+  <path d="M106 30 C 92 20 72 22 62 32 C 76 27 94 30 106 38 Z" fill="#e6c063" stroke="#8a5a13" stroke-width="0.5"/>
+  <path d="M70 72 C 56 74 52 94 53 112 L 44 234 L 96 234 L 88 112 C 89 94 84 74 70 72 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 104 L 53 230"/><path d="M70 106 L 70 232"/><path d="M80 104 L 87 230"/></g>
+  <path d="M54 86 C 44 94 42 118 46 138 C 48 146 53 145 54 138 C 52 118 55 100 60 92 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <g stroke="#e6c063" stroke-width="1.6" fill="none"><path d="M36 128 h16 M36 156 h16"/><path d="M37 130 C 37 142 51 142 51 154 M51 130 C 51 142 37 142 37 154"/></g>
+  <circle cx="44" cy="150" r="1.8" fill="#e6c063"/>
+  <path d="M86 90 C 96 96 100 118 96 136 C 94 144 89 143 88 136 C 90 118 84 102 78 96 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="15" fill="url(#mb)"/>
+  <circle cx="70" cy="47" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M58 53 C 59 72 81 72 82 53 C 79 64 61 64 58 53 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.6"/>
+  <path d="M54 44 C 54 30 86 30 86 44 C 80 36 60 36 54 44 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.8"/>
+</svg>`;
+
+/** Zeus — "King of the Pantheon" (the Herculean trophy). Thunderbolt. */
+const STATUE_ZEUS = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_DEFS}
+  <rect x="38" y="234" width="64" height="20" rx="2" fill="url(#mb)" stroke="#8a5a13"/>
+  <path d="M104 22 L 111 42 L 103 39 L 113 62 L 100 51 L 107 70" fill="none" stroke="#e6c063" stroke-width="2.6"/>
+  <path d="M70 72 C 55 74 51 94 52 112 L 42 234 L 98 234 L 88 112 C 89 94 85 74 70 72 Z" fill="url(#mb)" stroke="#b3ab95"/>
+  <g stroke="#b3ab95" fill="none" opacity="0.5"><path d="M60 104 L 52 230"/><path d="M70 106 L 70 232"/><path d="M80 104 L 88 230"/></g>
+  <path d="M84 86 C 94 78 100 70 103 62 C 105 56 99 53 96 58 C 92 68 88 76 80 84 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <path d="M52 88 C 42 96 40 120 44 140 C 46 148 52 148 54 140 C 52 120 55 102 60 94 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.7"/>
+  <rect x="64" y="58" width="12" height="15" fill="url(#mb)"/>
+  <circle cx="70" cy="47" r="14" fill="url(#mb)" stroke="#b3ab95"/>
+  <path d="M57 53 C 58 72 82 72 83 53 C 80 64 60 64 57 53 Z" fill="url(#mb)" stroke="#b3ab95" stroke-width="0.6"/>
+  <path d="M55 41 C 59 30 81 30 85 41" fill="none" stroke="#b3ab95" stroke-width="2"/>
+  <path d="M56 38 C 62 32 78 32 84 38" fill="none" stroke="#e6c063" stroke-width="2"/>
+</svg>`;
+
 // The spine holds exactly two goddesses stacked, fixed in place (the pages
 // scroll beside them, the spine does not).
 const GALLERY = [
