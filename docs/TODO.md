@@ -26,13 +26,18 @@ All four items that were "in progress / next up" are done and verified:
 
 ## Big active initiative: Progression & Trophies
 
-See **[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)** — end-of-path Overview
-→ Mastery Test (trophy) → Trophy Case, plus the parallel Herculean Test with
-weak-area side-quests. The tested **v4 spine is shipped** (schema + `store.ts`
-`recordMasteryResult`/`herculeanUnlocked`/`recordHerculeanResult` + migration +
-6 tests). Next: Phase A (Mastery-Test modal + auto-generated Overview + IPC).
-Workload split (Opus core / Sonnet 5 UI / Fable content+art) and Fable's
-content instructions are in the plan.
+See **[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)**. Shipped so far: the
+tested **v4 spine**, a big **content expansion** (41→76 sections, 164→304
+questions — foundation + all 6 pillars deepened to ~10), and the **Mastery
+Test** (10-question, 80%, trophy, unlimited retries; offered on a graded pass).
+**Next up, in order:** (1) the pre-test **Overview page**; (2) **enable the
+gate** — require the Mastery Test pass to unlock the next pillar (the test now
+exists, so it's safe to switch on); (3) **Trophy Case** overlay (Phase B,
+reuse the Codex statue art); (4) **Herculean Test** + weak-area side-quest
+(Phase C); (5) **capstone expansion** — grow it to ~10 like the pillars, but
+first adjust `buildGauntlet` to cap how many capstone sections the gauntlet
+samples (else the "17 questions" audit assertion breaks). Fable's brief (6 new
+trophy statues + the Herculean bank) is in the plan.
 
 ## Next up (menu — pick by value; nothing committed to)
 

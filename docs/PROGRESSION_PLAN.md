@@ -7,8 +7,17 @@ logic/architecture/review), **Sonnet 5** (UI build), and **Fable** (content &
 art). The tested data/logic **spine already exists** (schema v4 + `store.ts`);
 this doc is the map for the rest.
 
-> Status: spine shipped (v4 schema, `recordMasteryResult`, `herculeanUnlocked`,
-> `recordHerculeanResult`, migration, 6 unit tests). UI + content are next.
+> Status: **spine + Mastery Test + content expansion shipped.**
+> - v4 store spine (trophies/mastery/herculean, migration, tests). ✅
+> - **Content expanded**: 41→76 sections, 164→304 questions (foundation + all 6
+>   pillars deepened to ~10; capstone still 5 — see below). ✅
+> - **Mastery Test (Phase A)**: a graded pass offers a 10-question, 80%-to-pass
+>   trophy exam drawn from the module's bank; awards + persists the trophy;
+>   unlimited retries. `record-mastery-result` IPC wired. ✅
+> Next: the pre-test **Overview page**; **enable the gate** (require mastery pass
+> to unlock the next pillar); **Trophy Case** (Phase B); **Herculean** (Phase C);
+> and **capstone expansion** (needs a `buildGauntlet` sampling tweak so the
+> gauntlet stays ~17 Qs when capstone grows).
 
 ---
 
