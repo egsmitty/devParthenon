@@ -23,8 +23,6 @@ const foundation = JSON.parse(
 );
 /** Correct index of the graded (variants[0]) question for each section. */
 const correctA = foundation.sections.map((s) => s.variants[0].correctAnswerIndex);
-/** Correct index of the first redemption variant (variants[1]) for section 0. */
-const correctB0 = foundation.sections[0].variants[1].correctAnswerIndex;
 
 const SIZES = { wide: { w: 1280, h: 840 }, min: { w: 980, h: 680 } };
 const manifest = [];
@@ -123,36 +121,38 @@ async function main() {
     await clickNode(page, "foundation");
     await shot(page, "04-lesson-section", "Lesson chunk + first interactive check");
 
-    // Section 0: answer WRONG to capture failure feedback + set up redemption.
-    const wrong0 = (correctA[0] + 1) % 4;
-    await answer(page, wrong0);
-    await shot(page, "05-feedback-wrong", "Wrong-answer feedback: why it's wrong + interview tip");
-    await advance(page, "Continue");
+    // Land in the Redemption band regardless of the module's section count:
+    // miss section 0 (for the wrong-feedback shot) plus enough of the final
+    // sections to drop just below the pass line, keeping section 1 correct for
+    // the positive-feedback shot. base = (n-missCount)/n lands in [70%, 85%).
+    const n = foundation.sections.length;
+    const missCount = Math.floor(n * 0.15) + 1;
+    const missSet = new Set([0]);
+    for (let k = 0; k < missCount - 1; k++) missSet.add(n - 1 - k);
 
-    // Section 1: answer CORRECT to capture positive feedback.
-    await page.waitForSelector(".option-btn:not([disabled])");
-    await answer(page, correctA[1]);
-    await shot(page, "06-feedback-correct", "Correct-answer feedback: rationale + interview tip");
-    await advance(page, "Continue");
-
-    // Sections 2..5 correct.
-    for (let i = 2; i < foundation.sections.length; i++) {
+    for (let i = 0; i < n; i++) {
       await page.waitForSelector(".option-btn:not([disabled])");
-      await answer(page, correctA[i]);
-      const label = i === foundation.sections.length - 1 ? "See results" : "Continue";
-      await advance(page, label);
+      const idx = missSet.has(i) ? (correctA[i] + 1) % 4 : correctA[i];
+      await answer(page, idx);
+      if (i === 0) await shot(page, "05-feedback-wrong", "Wrong-answer feedback: why it's wrong + interview tip");
+      else if (i === 1) await shot(page, "06-feedback-correct", "Correct-answer feedback: rationale + interview tip");
+      await advance(page, i === n - 1 ? "See results" : "Continue");
     }
 
-    // 5/6 = 83% -> redemption intro.
+    // Missed within 15 points of the pass line -> the Redemption Round.
     await page.waitForSelector('[data-action="begin"]');
-    await shot(page, "07-redemption-intro", "Redemption Round offer (missed 1, within 15 points)");
+    await shot(page, "07-redemption-intro", "Redemption Round offer (missed a few, within 15 points)");
     await page.click('[data-action="begin"]');
 
-    // Redemption question (section 0, variant B).
-    await page.waitForSelector(".option-btn:not([disabled])");
-    await shot(page, "08-redemption-question", "Redemption question: different scenario, same concept");
-    await answer(page, correctB0);
-    await advance(page, "See results");
+    // Re-answer each missed section; its first redemption variant is variants[1].
+    const ascMissed = [...missSet].sort((a, b) => a - b);
+    for (let m = 0; m < ascMissed.length; m++) {
+      await page.waitForSelector(".option-btn:not([disabled])");
+      if (m === 0) await shot(page, "08-redemption-question", "Redemption question: different scenario, same concept");
+      const correctIdx = foundation.sections[ascMissed[m]].variants[1].correctAnswerIndex;
+      await answer(page, correctIdx);
+      await advance(page, m === ascMissed.length - 1 ? "See results" : "Next question");
+    }
 
     // Pass result.
     await page.waitForSelector(".result-score");
