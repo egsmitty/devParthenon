@@ -52,10 +52,28 @@ const LEARN_MORE_KEYWORD: Record<string, string> = {
 
 /** A web-search URL that expands on a section's topic, opened in the browser. */
 function learnMoreUrl(nodeId: string, heading: string): { url: string; topic: string } {
-  const topic = heading.replace(/[`*]/g, "").trim();
+  const topic = heading.replace(/[`*]/g, "").replace(/\s+/g, " ").trim();
   const keyword = LEARN_MORE_KEYWORD[nodeId] ?? "web development";
-  const query = `${topic} ${keyword}`;
-  return { url: `https://www.google.com/search?q=${encodeURIComponent(query)}`, topic };
+  // Cap the query so a pathological heading can never build a runaway URL.
+  const query = `${topic} ${keyword}`.trim().slice(0, 300);
+  return {
+    url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+    topic: topic || keyword,
+  };
+}
+
+/** Briefly show an error on the Learn-more button if the browser won't open. */
+function flashLearnMoreError(btn: HTMLButtonElement): void {
+  if (btn.dataset.restoring) return;
+  const original = btn.innerHTML;
+  btn.dataset.restoring = "1";
+  btn.disabled = true;
+  btn.innerHTML = `<span class="lm-glyph" aria-hidden="true">&#9888;</span> Couldn't open browser`;
+  window.setTimeout(() => {
+    btn.innerHTML = original;
+    btn.disabled = false;
+    delete btn.dataset.restoring;
+  }, 2600);
 }
 
 /**
@@ -501,9 +519,15 @@ function renderLesson(): void {
 
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
   if (learn) {
-    el.querySelector('[data-action="learn-more"]')!.addEventListener("click", () =>
-      apiRef.openExternal(learn.url)
-    );
+    el.querySelector('[data-action="learn-more"]')!.addEventListener("click", (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      void apiRef
+        .openExternal(learn.url)
+        .then((ok) => {
+          if (!ok) flashLearnMoreError(btn);
+        })
+        .catch(() => flashLearnMoreError(btn));
+    });
   }
   el.querySelectorAll<HTMLButtonElement>(".jargon-chip").forEach((chip) =>
     chip.addEventListener("click", () => openCodexTerm(chip.dataset.term ?? ""))

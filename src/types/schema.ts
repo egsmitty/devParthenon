@@ -83,6 +83,31 @@ export interface SectionStat {
   nextReviewISO: string;
 }
 
+/** v4+: a module's Mastery Test standing (10 Qs drawn from its bank, ≥80%). */
+export interface MasteryRecord {
+  passed: boolean;
+  /** Best Mastery-Test score, 0..1. */
+  bestScore: number;
+  attempts: number;
+  lastAttemptISO?: string;
+}
+
+/**
+ * v4+: state of the Herculean Test — the parallel final that unlocks once
+ * every pillar (and the foundation) is built. Sits alongside the pediment, not
+ * gating it.
+ */
+export interface HerculeanState {
+  passed: boolean;
+  /** Best Herculean score, 0..1. */
+  bestScore: number;
+  attempts: number;
+  /** "<nodeId>/<sectionIndex>" keys missed on the last failed run — the side-quest targets. */
+  weakAreas: string[];
+  /** Epoch ms before which a retry is on cooldown after a failed run (optional). */
+  cooldownUntil?: number;
+}
+
 export interface ProgressData {
   version: number;
   foundationCompleted: boolean;
@@ -93,6 +118,12 @@ export interface ProgressData {
   sectionStats?: Record<string, SectionStat>;
   /** v3+: consecutive-day practice streak. */
   activity?: { streak: number; lastActiveDay: string };
+  /** v4+: earned trophy ids — a mastered module's nodeId, plus "herculean". */
+  trophies?: string[];
+  /** v4+: per-module Mastery-Test records, keyed by nodeId. */
+  mastery?: Record<string, MasteryRecord>;
+  /** v4+: the Herculean final's state. */
+  herculean?: HerculeanState;
 }
 
 export type ThemeName = "temple-dark" | "parchment";
@@ -174,8 +205,8 @@ export interface ParthenonApi {
   /** Load progress from a chosen file; null if cancelled. Throws if invalid. */
   importProgress(): Promise<ProgressData | null>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
-  /** Open an http(s) URL in the user's default browser (validated in main). */
-  openExternal(url: string): void;
+  /** Open an http(s) URL in the browser (validated in main); false on failure. */
+  openExternal(url: string): Promise<boolean>;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
   isSmoke: boolean;

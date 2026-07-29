@@ -410,19 +410,23 @@ function registerIpc(): void {
     }
   });
 
-  // Open a "Learn more" link in the user's default browser. Only http(s) URLs
-  // are ever handed to the OS — never file:, javascript:, or other schemes —
-  // so a compromised renderer can't use this to launch arbitrary targets.
-  ipcMain.on("open-external", (_event, url: string) => {
+  // Open a "Learn more" link in the user's default browser. Only well-formed,
+  // bounded http(s) URLs are ever handed to the OS — never file:, javascript:,
+  // or other schemes — so a compromised renderer can't launch arbitrary
+  // targets. Returns whether the hand-off succeeded so the UI can react.
+  ipcMain.handle("open-external", async (_event, url: unknown): Promise<boolean> => {
     try {
-      const parsed = new URL(String(url));
-      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
-        void shell.openExternal(parsed.href);
-      } else {
+      if (typeof url !== "string" || url.length > 2048) return false;
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
         console.warn("open-external: refused non-http(s) URL:", url);
+        return false;
       }
-    } catch {
-      console.warn("open-external: refused malformed URL:", url);
+      await shell.openExternal(parsed.href);
+      return true;
+    } catch (err) {
+      console.warn("open-external: failed:", err);
+      return false;
     }
   });
 }

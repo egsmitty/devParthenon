@@ -19,7 +19,7 @@ const api: ParthenonApi = {
   exportProgress: () => ipcRenderer.invoke("export-progress"),
   importProgress: () => ipcRenderer.invoke("import-progress"),
   windowControl: (action) => ipcRenderer.send("window-control", action),
-  openExternal: (url) => ipcRenderer.send("open-external", url),
+  openExternal: (url) => ipcRenderer.invoke("open-external", url),
   isSmoke: process.argv.includes("--parthenon-smoke"),
   onMaximizeChange: (cb) =>
     ipcRenderer.on("window-maximize-changed", (_e, isMax: boolean) =>
