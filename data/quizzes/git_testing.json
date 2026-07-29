@@ -184,7 +184,7 @@
         "Good tests assert observable behavior ('given an expired token, isValid returns false'), not implementation details ('it calls parseToken once'). Behavior-based tests survive refactors; implementation-based tests break when the code improves.",
         "Determinism is what keeps a suite trusted: tests touching real time, randomness, or network are flaky by construction. Inject or mock those boundaries (`vi.useFakeTimers()`, `vi.mock(...)`) so the same input always yields the same result."
       ],
-      "summary": "Test what your code does, not how it does it, and pin down time, randomness, and network so results stay reliable.",
+      "summary": "Test what your code does, not how it does it, and pin down time, randomness, and network so the same input always gives the same result.",
       "variants": [
         {
           "id": "g3",
@@ -269,7 +269,7 @@
       "paragraphs": [
         "Unit tests check parts; end-to-end tests check the assembled machine: Playwright drives a real browser through real flows — navigate, click, type, assert on what a user would see.",
         "Prefer user-facing selectors — `getByRole('button', { name: 'Save' })`, `getByLabel('Email')` — over CSS/XPath tied to DOM structure. They survive refactors and double as accessibility checks: if getByRole can't find your button, neither can a screen reader.",
-        "Playwright's assertions auto-wait and retry (`await expect(locator).toBeVisible()`), which eliminates the sleep-based flakiness older tools suffered. The testing pyramid still applies: many fast unit tests, fewer integration tests, a thin crust of E2E on the critical paths."
+        "Playwright's assertions auto-wait and retry (`await expect(locator).toBeVisible()`) until the condition holds or a timeout expires, which eliminates the sleep-based flakiness older tools suffered — you synchronize on a real condition, not a guessed duration. The testing pyramid still applies: many fast unit tests, fewer integration tests, a thin crust of E2E on the critical paths."
       ],
       "summary": "Find elements the way a user would (by role and label) and wait on real conditions instead of guessing with sleeps.",
       "variants": [
@@ -435,6 +435,441 @@
             "Nightly runs decouple failures from the commits that caused them, turning actionable PR feedback into next-morning archaeology."
           ],
           "interviewTip": "The phrase to land is 'trust in the pipeline is the asset'. Quarantine-with-a-ticket shows you can keep the gate strict without letting one bad test hold the whole team hostage."
+        }
+      ]
+    },
+    {
+      "heading": "The staging area and the three trees",
+      "paragraphs": [
+        "Git juggles three versions of your project at once. The working directory is the files you edit on disk. The index (a.k.a. the staging area) is the snapshot you're assembling for the next commit. HEAD is the snapshot of your last commit — the tip of the current branch. `git status` is really a diff report between these three trees.",
+        "`git add` copies content from the working directory into the index; `git commit` writes the index into a new commit and moves HEAD to it. The index sitting *between* your edits and history is the whole point: it lets you compose a clean commit out of a messy working directory — stage two of five changed files, leave the rest for the next commit.",
+        "This is why `git diff` and `git diff --staged` show different things: the first compares working directory to index (what you haven't staged yet), the second compares index to HEAD (what you're about to commit). Reading both tells you exactly where every change currently lives."
+      ],
+      "summary": "Git tracks three snapshots — your edits, the staged index, and the last commit — and add/commit move content from one to the next.",
+      "variants": [
+        {
+          "id": "g6",
+          "question": "You edit `app.ts`, run `git add app.ts`, then edit `app.ts` again before committing. What does the commit contain?",
+          "options": [
+            "Only the first edit — the version captured in the index by `git add`",
+            "Both edits combined, since git re-reads the file at the moment of commit",
+            "Nothing at all, because the second edit invalidated the earlier staging",
+            "Whichever edit is larger, as git keeps the more substantial staged copy"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`git add` snapshots the file's content into the index at that instant — it is not a live link to the file. The later edit lives only in the working directory, so the commit writes exactly what was staged: the first edit. `git status` will show `app.ts` as both staged and modified, which is git telling you the two trees now disagree.",
+          "optionExplanations": [
+            "Correct — the index holds the content as of `git add`; the commit writes that snapshot, not the later edit.",
+            "Commit writes the index as it stands; it does not re-read the working directory for unstaged changes.",
+            "A second edit doesn't clear the index — the earlier staged content is still committed.",
+            "Git has no 'larger wins' rule; it commits the staged snapshot regardless of size."
+          ],
+          "interviewTip": "'git add snapshots content, not a reference to the file' explains the classic 'staged and modified at once' status line — a detail that shows you understand the index as a real tree, not a checklist."
+        },
+        {
+          "id": "g6-alt",
+          "question": "You want to see only the changes you have NOT yet staged for the next commit. Which command shows exactly that?",
+          "options": [
+            "`git diff --staged`, which prints every change queued for the commit",
+            "`git diff` with no arguments — working directory versus the index",
+            "`git log -p`, which walks the full patch history commit by commit",
+            "`git show HEAD`, which prints the contents of your most recent commit"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Bare `git diff` compares the working directory against the index, so it shows precisely what you've changed but not yet added. `git diff --staged` (or `--cached`) does the opposite comparison — index versus HEAD — showing what's already queued. Knowing which pair each command compares is what lets you stage deliberately instead of blindly `git add .`-ing everything.",
+          "optionExplanations": [
+            "`--staged` compares index to HEAD — that's the already-staged changes, the opposite of what was asked.",
+            "Correct — plain `git diff` is working-directory-versus-index: exactly the unstaged changes.",
+            "`git log -p` shows historical commit patches, not the state of your current uncommitted work.",
+            "`git show HEAD` prints your last commit's diff, not anything about your working directory."
+          ],
+          "interviewTip": "Being able to say '`git diff` is working-vs-index, `git diff --staged` is index-vs-HEAD' signals you actually navigate the three trees rather than guessing at add/commit."
+        },
+        {
+          "id": "g6-c",
+          "question": "After `git commit`, what happens to HEAD and the staging area?",
+          "options": [
+            "HEAD stays put and the index is wiped clean of all its tracked content",
+            "HEAD rewinds one commit while the index keeps the newly committed files",
+            "Both HEAD and the index are reset to match the remote's current branch tip",
+            "HEAD moves to the new commit; the index now matches it, so both agree"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "A commit writes the index into a new object and advances HEAD (via the current branch) to point at it. The index isn't emptied — it now equals the new HEAD, which is why `git status` reports 'nothing to commit' right after: index and HEAD are identical, and any remaining working-directory edits show up as unstaged. The three trees have simply re-aligned.",
+          "optionExplanations": [
+            "The index isn't wiped — it comes to match the new commit; and HEAD does move forward.",
+            "Commit advances HEAD, it never rewinds it; that would be a reset.",
+            "Commit is local and touches nothing on the remote; the index is set from your staged content, not origin.",
+            "Correct — HEAD advances to the new commit and the index equals it, so status shows a clean tree."
+          ],
+          "interviewTip": "'After a commit, index and HEAD are identical' is the mental model that makes `git reset`'s three modes (--soft/--mixed/--hard) click — each just decides which of the three trees to move."
+        },
+        {
+          "id": "g6-d",
+          "question": "You've made five edits but want the next commit to include changes from only two files, saving the rest for later. What role does the staging area play?",
+          "options": [
+            "It automatically groups related edits so git can split them into commits for you",
+            "It compresses the two chosen files, which is why staging is required before a commit",
+            "It lets you assemble a focused commit by adding only the two files you choose",
+            "It locks the other three files as read-only until the current commit completes"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The index exists precisely so a commit need not equal your entire working directory. You `git add` only the two files you want; the commit captures that curated snapshot while the other three stay modified-but-unstaged for a future commit. This is what makes atomic, single-purpose commits possible even when your working tree is a pile of half-finished work.",
+          "optionExplanations": [
+            "Git doesn't infer 'related' edits or auto-split — *you* choose what to stage; the grouping is manual.",
+            "Staging isn't about compression; it's about selecting which changes the next commit captures.",
+            "Correct — staging lets you hand-pick the two files so the commit is focused, leaving the rest for later.",
+            "Staging never locks files; the unstaged three remain freely editable in the working directory."
+          ],
+          "interviewTip": "Frame the index as 'the commit-composer': it's why you can keep a messy working tree yet still ship clean, atomic commits — a habit reviewers and `git bisect` both reward."
+        }
+      ]
+    },
+    {
+      "heading": "Undoing changes: reset, revert, restore",
+      "paragraphs": [
+        "Three verbs, three jobs. `git restore` throws away uncommitted changes in the working directory or unstages files — it operates on your current mess, not on history. `git reset` moves the current branch pointer to another commit, optionally rewriting the index and working tree with `--soft`/`--mixed`/`--hard`. `git revert` creates a *new* commit that undoes a previous one, leaving history intact.",
+        "The dividing line is whether the work is shared. Reset rewrites history, so it's safe only on local, unpushed commits — the same golden rule that governs rebase. Revert adds forward history instead of erasing it, so it's the correct tool for undoing something already pushed to a branch others use: nobody's clone diverges because nothing was rewritten.",
+        "`reset` modes differ by how many trees they touch: `--soft` moves only the branch pointer (your changes land back in the index), `--mixed` (the default) also resets the index (changes return to the working directory), and `--hard` resets the working directory too — discarding those changes, which is the one genuinely destructive mode."
+      ],
+      "summary": "Restore fixes uncommitted files, reset rewrites local history, and revert safely undoes a pushed commit by adding a new one.",
+      "variants": [
+        {
+          "id": "g7",
+          "question": "A bad commit was pushed to shared `main` an hour ago and several teammates have already pulled it. What's the correct way to undo it?",
+          "options": [
+            "`git reset --hard HEAD~1` locally, then force-push the rewound `main`",
+            "`git revert`, which adds a new commit that cancels out the bad one",
+            "`git restore .`, discarding the bad commit's files across the tree",
+            "`git reset --soft HEAD~1`, quietly dropping the commit from history"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`main` is shared and the commit is already in teammates' clones — rewriting history now would force-push over commits others hold, diverging everyone. `git revert` instead records a new commit that applies the inverse change, so history only moves forward and every clone fast-forwards cleanly. Revert is the shared-branch undo; reset is for local, unpushed work.",
+          "optionExplanations": [
+            "Reset + force-push rewrites shared history — the exact golden-rule violation that leaves every teammate's `main` diverged.",
+            "Correct — revert adds an inverse commit, undoing the change without rewriting anything others already have.",
+            "`git restore` only touches uncommitted working-tree files; it can't undo a commit that's already in history.",
+            "`--soft` still rewrites the branch pointer, so publishing it demands a force-push — unsafe on shared `main`."
+          ],
+          "interviewTip": "'Revert for shared history, reset for local history' is the crisp pairing. Add 'revert moves history forward, it never erases it' and you've explained *why* it's the safe choice."
+        },
+        {
+          "id": "g7-alt",
+          "question": "You just ran `git reset --soft HEAD~1`. What state are you in?",
+          "options": [
+            "The last commit is undone, but its changes are staged in the index, ready to re-commit",
+            "The last commit and every change it made are permanently gone from the repository",
+            "Nothing changed yet — `--soft` only previews the reset until you confirm it explicitly",
+            "The working directory is wiped back to match the commit before the one you removed"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`--soft` moves only the branch pointer back one commit and touches neither the index nor the working directory. The result: the commit is 'undone' as history, but everything it contained is sitting staged in the index, ready to be re-committed — which is exactly how you amend or split a commit. It's the least destructive reset mode.",
+          "optionExplanations": [
+            "Correct — `--soft` rewinds only the pointer; the commit's content stays staged in the index.",
+            "`--soft` discards nothing; the changes survive in the index. Only `--hard` would touch the working tree.",
+            "Reset isn't a preview or dry-run — it acts immediately; `--soft` just limits *what* it moves.",
+            "Wiping the working directory is `--hard` behavior; `--soft` leaves working files completely untouched."
+          ],
+          "interviewTip": "The clean summary: `--soft` moves the pointer, `--mixed` also resets the index, `--hard` also resets the working tree. Reciting which trees each mode touches is the answer interviewers want."
+        },
+        {
+          "id": "g7-c",
+          "question": "You edited a config file, saved it, but haven't staged or committed — and now you want the file back exactly as the last commit had it. Which command does that?",
+          "options": [
+            "`git revert HEAD`, since it reverses the change made to the config file",
+            "`git reset --hard HEAD~1`, moving the branch back before the config edit",
+            "`git restore config.ts`, discarding the unstaged edits to that one file",
+            "`git commit --amend`, folding the reverted config back into the last commit"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The edit is uncommitted, living only in the working directory, so this is a job for `git restore` — it overwrites the named file with the version from the index (or HEAD), throwing the local change away. Reset and revert both operate on committed history and are the wrong altitude for discarding a single uncommitted file.",
+          "optionExplanations": [
+            "`revert` undoes a *commit*; there's no commit here to reverse — the edit is still uncommitted.",
+            "`reset --hard HEAD~1` rewinds a whole commit and nukes more than the one file — wrong scope and destructive.",
+            "Correct — `git restore <file>` discards the uncommitted edit, restoring that file from the last commit.",
+            "`--amend` rewrites the previous commit; it does nothing to discard an unstaged working-directory edit."
+          ],
+          "interviewTip": "Modern git split the overloaded `git checkout` into `git restore` (files) and `git switch` (branches). Naming `restore` for discarding uncommitted file changes signals you know the current, less foot-gun-prone commands."
+        },
+        {
+          "id": "g7-d",
+          "question": "What is the fundamental difference between `git reset` and `git revert` when undoing a commit?",
+          "options": [
+            "`reset` only works on merge commits, whereas `revert` works on any ordinary commit",
+            "`reset` moves the branch pointer to rewrite history; `revert` adds a new inverse commit",
+            "`revert` deletes the target commit from history; `reset` merely hides it from the log view",
+            "They are aliases with identical effects; `revert` is simply the newer preferred spelling"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`reset` relocates the branch pointer, so commits after the target fall out of the branch's history — it rewrites, which is safe only locally. `revert` leaves all history in place and appends a new commit whose diff is the inverse of the target, so the undo is itself recorded. That's why revert is the shared-branch tool and reset is the local one.",
+          "optionExplanations": [
+            "Neither is restricted to merge commits; both operate on ordinary commits (reverting a merge just needs `-m`).",
+            "Correct — reset rewrites history by moving the pointer; revert preserves history by adding an inverse commit.",
+            "It's backwards: `revert` *keeps* the commit and adds an inverse; `reset` is the one that drops commits from the branch.",
+            "They are not aliases — one rewrites history and one appends to it, with opposite safety profiles on shared branches."
+          ],
+          "interviewTip": "'Reset rewrites, revert appends' is the one-liner. Tie it to sharedness — 'so I revert anything pushed and reset only local work' — to show the safety reasoning behind the choice."
+        }
+      ]
+    },
+    {
+      "heading": "Remotes and tracking branches",
+      "paragraphs": [
+        "A remote (`origin`, by convention) is a named URL for another copy of the repo. Your clone keeps remote-tracking branches like `origin/main` — read-only local bookmarks recording where the remote's branches were *as of your last sync*. They don't update live; they move only when you fetch.",
+        "`git fetch` downloads new commits and updates those `origin/*` bookmarks, changing nothing in your working branches — pure, safe information. `git pull` is `fetch` plus an immediate `merge` (or `rebase`) of the tracking branch into your current branch. `git push` uploads your commits and moves the remote's branch pointer to match yours, if it can fast-forward.",
+        "An 'upstream' link binds your local branch to a remote-tracking branch, which is how bare `git push`/`git pull` know where to go and how `git status` can say 'ahead 2, behind 1'. That ahead/behind count is computed by comparing your branch to its cached `origin/*` bookmark — so it's only as fresh as your last fetch."
+      ],
+      "summary": "Fetch just updates your read-only origin/* bookmarks; pull fetches then merges; push uploads and fast-forwards the remote.",
+      "variants": [
+        {
+          "id": "g8",
+          "question": "What is the practical difference between `git fetch` and `git pull`?",
+          "options": [
+            "`fetch` downloads commits but changes no working branch; `pull` fetches then merges",
+            "`fetch` retrieves only branch names as labels; `pull` retrieves the actual commit data",
+            "`fetch` works over SSH exclusively, whereas `pull` is the HTTPS equivalent command",
+            "`fetch` uploads your local commits to origin; `pull` downloads the remote's commits"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`fetch` is the safe half: it downloads new objects and advances your `origin/*` bookmarks, but your checked-out branch and working directory are untouched. `pull` chains a `merge` (or `rebase`) onto that fetch, immediately integrating the remote work into your current branch. Knowing pull = fetch + merge is what lets you fetch first, inspect, then integrate deliberately.",
+          "optionExplanations": [
+            "Correct — fetch updates tracking branches only; pull fetches and then merges into your current branch.",
+            "Fetch downloads real commit objects, not just names — it's a full content sync of the tracking refs.",
+            "Both work over any transport; the protocol has nothing to do with fetch-versus-pull semantics.",
+            "That reverses push and pull — fetch and pull both *download*; neither uploads your commits."
+          ],
+          "interviewTip": "'pull = fetch + merge' is the sentence to have ready. Add that you often 'fetch, review with `git log origin/main`, then merge' to show you integrate deliberately rather than blindly pulling."
+        },
+        {
+          "id": "g8-alt",
+          "question": "Your `git status` says 'Your branch is behind origin/main by 3 commits'. You know for a fact a teammate pushed 5 commits an hour ago. Why the mismatch?",
+          "options": [
+            "The remote silently rejected 2 of the teammate's 5 pushed commits as duplicates",
+            "`origin/main` is a cached bookmark reflecting your last fetch, not the live remote",
+            "`git status` always undercounts by two to leave a safety margin against races",
+            "Your branch has quietly diverged, so status can no longer count commits accurately"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The 'ahead/behind' numbers compare your branch to the local `origin/main` bookmark, which only advances when you fetch. If your last fetch predated 2 of the 5 pushes, your cached bookmark is stale and status reports what it knows — 3, not 5. A `git fetch` updates the bookmark and the count corrects itself. Tracking branches are snapshots, not live queries.",
+          "optionExplanations": [
+            "Nothing was rejected; the remote has all 5. Your local *view* of it is simply out of date.",
+            "Correct — status compares against the cached `origin/main`, which only updates on fetch, so it lags the live remote.",
+            "Status reports the true count against your tracking ref; there is no built-in 'safety margin' fudge.",
+            "Being behind isn't divergence — divergence means both sides have unique commits; here you've simply not fetched the latest."
+          ],
+          "interviewTip": "'origin/main is a snapshot from my last fetch, not a live view' is a subtle point that separates people who understand git's offline model from those who think of it like a live server query."
+        },
+        {
+          "id": "g8-c",
+          "question": "You want to see what a teammate pushed to `main` WITHOUT touching your own in-progress branch or merging anything. Which command is exactly right?",
+          "options": [
+            "`git pull origin main`, then just discard the merge if you don't like the changes",
+            "`git push origin main`, which syncs your view with the remote's latest commits",
+            "`git merge origin/main` to preview the incoming commits before deciding to keep them",
+            "`git fetch`, then inspect the updated `origin/main` with `git log`"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "`fetch` is the read-only sync: it advances your `origin/*` bookmarks without altering your current branch or working tree, so you can then `git log origin/main` or diff against it to review the incoming work in total safety. Pull would merge immediately, push would try to upload, and a bare merge would integrate the commits — all of which change your branch, which is exactly what you wanted to avoid.",
+          "optionExplanations": [
+            "Pull merges into your branch on the spot — 'discard it after' means untangling a merge you didn't need to make.",
+            "Push uploads *your* commits; it does nothing to show you a teammate's incoming work.",
+            "`merge origin/main` integrates those commits into your branch — that's the opposite of leaving it untouched.",
+            "Correct — fetch updates the bookmarks read-only; `git log origin/main` then shows the incoming commits safely."
+          ],
+          "interviewTip": "'Fetch is always safe' is worth stating outright — it never changes your working branch, so it's the right first move whenever you want to look before you leap."
+        },
+        {
+          "id": "g8-d",
+          "question": "You create a brand-new local branch and run `git push`, which errors with 'no upstream branch'. What does setting an upstream with `git push -u origin feature` accomplish?",
+          "options": [
+            "It force-pushes past the error by overwriting whatever origin currently holds",
+            "It links your branch to `origin/feature`, so bare `push`/`pull` know the target",
+            "It converts your local branch into a protected branch that cannot be deleted",
+            "It merges `origin/main` into your feature branch to resolve the missing upstream"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A new local branch has no upstream, so git doesn't know where a bare `git push` should send it. `-u` (`--set-upstream`) records the association between your branch and `origin/feature`; from then on plain `git push` and `git pull` resolve automatically, and `git status` can report ahead/behind against that tracking branch. It's a one-time bit of wiring, not a force or a merge.",
+          "optionExplanations": [
+            "`-u` sets tracking; it has nothing to do with force-pushing or overwriting remote content.",
+            "Correct — `-u` binds the branch to `origin/feature`, so future bare push/pull and ahead/behind counts just work.",
+            "Branch protection is a server-side (e.g. GitHub) setting, entirely unrelated to the upstream link.",
+            "Setting upstream performs no merge; it only records where this branch pushes and pulls."
+          ],
+          "interviewTip": "Explaining that `-u` wires the upstream so 'bare push/pull and the ahead/behind counter all resolve automatically afterward' shows you understand tracking branches, not just the command you paste after the error."
+        }
+      ]
+    },
+    {
+      "heading": "Resolving merge conflicts",
+      "paragraphs": [
+        "A conflict happens when two branches changed the same lines of the same file in incompatible ways — git can combine non-overlapping edits automatically, but overlapping ones it refuses to guess about. It pauses the merge and marks the file with `<<<<<<<`, `=======`, `>>>>>>>` fences: your side above the divider, theirs below.",
+        "Resolving means editing the file into the correct final state — which is often neither side verbatim but a hand-merged combination — then removing the conflict markers, `git add`-ing the file to mark it resolved, and running `git commit` (or `git merge --continue`) to seal the merge. `git status` lists exactly which files still need resolution.",
+        "Conflicts are a normal signal, not an error to fear: they mean two people evolved the same code and a human must decide intent. You reduce them by merging/rebasing from the main line often (small, frequent integrations conflict less than one giant merge) and by keeping changes narrowly scoped. `git merge --abort` always backs you out to the pre-merge state if you'd rather retreat and try again."
+      ],
+      "summary": "A conflict is git asking a human to reconcile overlapping edits — resolve the file, remove the markers, then add and commit.",
+      "variants": [
+        {
+          "id": "g9",
+          "question": "Git pauses a merge reporting a conflict in `utils.ts`. What has actually happened?",
+          "options": [
+            "The repository is now corrupted and must be re-cloned from origin to recover",
+            "Both branches edited overlapping lines, so git needs a human to reconcile them",
+            "Your local copy of `utils.ts` was deleted and git halted to avoid losing more",
+            "A network timeout interrupted the merge partway through and left it incomplete"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A conflict is git being honest, not broken: both branches changed the same region of `utils.ts` in ways it can't safely auto-combine, so it stops and hands you the decision. It marks the competing versions inside the file and waits. Nothing is corrupt or lost — the merge is simply paused until a human encodes the correct intent.",
+          "optionExplanations": [
+            "Nothing is corrupted — a conflict is a normal, recoverable pause, and `--abort` cleanly restores the pre-merge state.",
+            "Correct — overlapping edits to the same lines can't be auto-merged, so git asks a human to reconcile.",
+            "The file isn't deleted; it's present with conflict markers showing both competing versions.",
+            "Merges are local and don't time out over the network; the pause is intentional, not an interruption."
+          ],
+          "interviewTip": "Reframing conflicts as 'git asking a human to decide intent' rather than 'an error' signals maturity — juniors panic at conflicts, seniors treat them as routine and resolve them calmly."
+        },
+        {
+          "id": "g9-alt",
+          "question": "After editing a conflicted file down to the final correct code and deleting the `<<<`/`===`/`>>>` markers, what must you do to complete the merge?",
+          "options": [
+            "`git add` the file to mark it resolved, then commit to finish the merge",
+            "Nothing further — saving the cleaned-up file auto-completes the paused merge",
+            "Run `git merge --abort`, which now finalizes the resolution you just wrote",
+            "Force-push the branch immediately so origin records the resolved version first"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Editing the file fixes the content, but git still sees it as 'unmerged' until you `git add` it — that's the signal that you've resolved this path. Once every conflicted file is staged, `git commit` (or `git merge --continue`) writes the merge commit and the merge is done. Saving alone doesn't tell git you're finished; the `add` is the explicit 'resolved' marker.",
+          "optionExplanations": [
+            "Correct — `git add` marks the file resolved, then a commit seals the merge.",
+            "Saving doesn't clear the unmerged state — git still needs the `git add` to know you resolved it.",
+            "`--abort` throws your resolution away and rewinds to the pre-merge state — the opposite of finishing.",
+            "Nothing needs pushing to finish a merge; the merge commit is created locally by `add` + `commit`."
+          ],
+          "interviewTip": "The step people forget is that `git add` *is* the 'mark resolved' action. Saying 'edit, remove markers, add to mark resolved, commit' in that order shows you've actually driven a merge to completion."
+        },
+        {
+          "id": "g9-c",
+          "question": "Halfway through resolving a big, messy merge you decide you'd rather back out entirely and take a different approach. What returns you to the exact state from before the merge began?",
+          "options": [
+            "`git reset --hard HEAD~1`, which rewinds one commit past the merge you started",
+            "`git commit` with an empty message, which cancels the in-progress merge cleanly",
+            "`git checkout .`, discarding the conflict markers to end the merge attempt",
+            "`git merge --abort`, which unwinds the merge and restores the pre-merge state"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "`git merge --abort` is purpose-built for exactly this: it discards the in-progress merge, including all conflict markers and partial resolutions, and restores your branch and working tree to precisely where they were before you ran `git merge`. The other options either act on commits that don't exist yet (the merge isn't committed) or only touch files without unwinding the merge state.",
+          "optionExplanations": [
+            "There's no merge commit yet to rewind — the merge is still in progress, so `HEAD~1` targets the wrong thing.",
+            "Committing would *finish* the merge with a broken state, not cancel it; empty-message commits are also rejected by default.",
+            "`checkout .` only overwrites working files; it leaves git still mid-merge with the merge state intact.",
+            "Correct — `git merge --abort` cleanly unwinds the merge and restores the exact pre-merge state."
+          ],
+          "interviewTip": "Knowing `git merge --abort` (and its cousin `git rebase --abort`) exists is a confidence signal: you can start a risky integration knowing there's always a clean, single-command retreat."
+        },
+        {
+          "id": "g9-d",
+          "question": "Your team keeps hitting large, painful merge conflicts when long-lived feature branches finally merge. What's the most effective way to reduce them?",
+          "options": [
+            "Assign one person to own every merge so conflicts are handled consistently",
+            "Always pick 'accept theirs' on conflicts to resolve them in a fraction of the time",
+            "Integrate from the main line often, in small increments, instead of one giant merge",
+            "Switch the whole team from merge to rebase, which is incapable of producing conflicts"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Conflict size scales with how far two branches have drifted apart. A branch that merges or rebases from `main` daily reconciles a little at a time, so overlaps are tiny and rare; a branch that hides for three weeks reconciles all that divergence at once. Small, frequent integration is the structural fix — it attacks the cause (drift) rather than the symptom (the eventual painful merge).",
+          "optionExplanations": [
+            "A dedicated merger doesn't shrink the divergence — the giant conflict still exists, just always dumped on one person.",
+            "'Always accept theirs' silently discards your side's work; it's data loss dressed up as a resolution strategy.",
+            "Correct — frequent small integrations keep branches close to `main`, so conflicts stay tiny and infrequent.",
+            "Rebase still produces conflicts on overlapping edits — it replays commits, and each replay can conflict just like a merge."
+          ],
+          "interviewTip": "'Conflicts scale with divergence, so integrate early and often' is the systemic answer. It shows you prevent conflicts through workflow rather than just grinding through them after the fact."
+        }
+      ]
+    },
+    {
+      "heading": "Test coverage and the test pyramid",
+      "paragraphs": [
+        "The test pyramid describes a healthy suite's *shape*: a broad base of fast, isolated unit tests, a smaller middle band of integration tests that check components working together, and a thin top of end-to-end tests over the critical user journeys. The shape follows from cost — unit tests are cheap and stable, E2E tests are slow and flakier, so you want many of the former and few of the latter.",
+        "Coverage measures which lines/branches your tests execute, expressed as a percentage. It's a useful *floor detector* — 20% coverage tells you most code is untested — but a treacherous *target*: 100% coverage can still miss every bug if the tests assert nothing meaningful. Coverage tells you what was *run*, never whether the right things were *checked*.",
+        "The classic anti-pattern is the 'ice-cream cone' — a fat layer of slow E2E tests propping up a suite with few units — which is slow, flaky, and expensive to maintain. Chasing a coverage number also warps behavior: teams write trivial getter tests to hit a quota while real edge cases go unexercised. Aim for confidence on the paths that matter, not a round number on a dashboard."
+      ],
+      "summary": "Favor many fast unit tests over few slow E2E ones, and treat coverage as a floor to notice gaps, never a target to hit.",
+      "variants": [
+        {
+          "id": "g10",
+          "question": "A module reports 100% line coverage. Why might it still be effectively untested?",
+          "options": [
+            "Coverage above 90% disables the assertion engine, so nothing is actually verified",
+            "Line coverage only counts comments, not the executable statements around them",
+            "The tests run every line but may assert nothing meaningful about the results",
+            "100% coverage forces every test into a single file, hiding most real failures"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Coverage records which lines *executed* during the test run — not whether any assertion checked their output. A test that calls a function through all its branches but never asserts on the result paints the code green while verifying nothing. That's why coverage is a floor detector (low means gaps) but a poor target (high can be hollow).",
+          "optionExplanations": [
+            "There's no such mechanism — assertions run independently of the coverage percentage.",
+            "Line coverage measures executable lines, not comments; comments are ignored entirely.",
+            "Correct — coverage proves a line ran, not that any assertion meaningfully checked its behavior.",
+            "Coverage percentage has no bearing on file layout; tests can live anywhere regardless of the number."
+          ],
+          "interviewTip": "'Coverage tells you what ran, not what was checked' is the line to land. It shows you value assertion quality over a vanity metric — a distinction that separates thoughtful testers from quota-chasers."
+        },
+        {
+          "id": "g10-alt",
+          "question": "A suite is 80% end-to-end tests and 20% unit tests, runs for 40 minutes, and flakes constantly. What shape is this, and what's the fix?",
+          "options": [
+            "It's an ice-cream cone; push logic down into fast unit tests and keep E2E thin",
+            "It's a textbook pyramid already; the slowness is just an unavoidable cost of testing",
+            "It's a balanced diamond shape, so the only real fix available is faster CI hardware",
+            "It's under-tested overall; the fix is simply adding many more end-to-end tests on top"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "An E2E-heavy, unit-light suite is the inverted pyramid — the 'ice-cream cone' — and it's slow and flaky precisely because it leans on the most expensive, least stable layer. The fix is to move most verification down into fast, deterministic unit tests and keep only a thin E2E crust over the critical journeys, restoring the pyramid's cost-efficient shape.",
+          "optionExplanations": [
+            "Correct — this is the ice-cream cone; rebalance by driving logic into unit tests and keeping E2E thin.",
+            "A pyramid is unit-*heavy*; this is the inverse, and the slowness is a symptom of that bad shape, not inherent.",
+            "It's not a diamond — it's top-heavy; throwing hardware at it treats the symptom, not the inverted shape.",
+            "Adding more E2E makes the cone worse — slower and flakier; the missing layer is fast unit tests."
+          ],
+          "interviewTip": "Name the 'ice-cream cone' by name and prescribe 'push logic down to unit tests, keep E2E thin.' The vocabulary plus the fix shows you diagnose suite shape, not just individual tests."
+        },
+        {
+          "id": "g10-c",
+          "question": "Management mandates '90% coverage or the build fails'. Within a sprint, coverage hits 90% but bugs still ship. What most likely happened?",
+          "options": [
+            "The coverage tool miscounted, so the real figure never actually reached the 90% goal",
+            "Developers wrote trivial, assertion-light tests to hit the quota, not test behavior",
+            "90% is simply too low a bar; only a strict 100% mandate reliably prevents shipping bugs",
+            "Coverage and bug rate are unrelated, so no test strategy could have changed this outcome"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A coverage *target* becomes a metric to game: the fastest way to 90% is trivial tests that execute code without meaningfully asserting on it, inflating the number while real edge cases stay unchecked. The lines ran, so coverage rose; nothing was verified, so bugs shipped. This is why coverage works as a floor ('too low = gaps') but corrodes into theater when set as a goal.",
+          "optionExplanations": [
+            "Gaming the metric, not miscounting, is the usual cause — the tools count executed lines accurately.",
+            "Correct — a coverage quota incentivizes trivial tests that raise the number without verifying behavior.",
+            "Raising the target to 100% intensifies the gaming; the problem is targeting coverage at all, not the threshold.",
+            "They're correlated when tests assert well — the failure here is hollow tests, not an absence of any link."
+          ],
+          "interviewTip": "Cite Goodhart's law in spirit: 'when coverage becomes a target, it stops being a good measure.' Proposing coverage as a *floor with review of assertion quality* shows you'd design the incentive correctly."
+        },
+        {
+          "id": "g10-d",
+          "question": "Why does the test pyramid recommend MANY unit tests but only a FEW end-to-end tests?",
+          "options": [
+            "End-to-end tests are banned from CI environments, so their count must be kept minimal",
+            "Unit tests can only ever check one single line, so a great many are always required",
+            "Unit tests are fast and stable while E2E tests are slow and flaky, so cost sets the ratio",
+            "The two kinds test entirely different code, and units happen to cover far more of it"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The pyramid is an economics diagram. Unit tests are cheap to write, run in milliseconds, and rarely flake, so you can afford thousands. E2E tests spin up a real browser and full stack — slow and more prone to timing flakiness — so each one costs far more per unit of confidence. You get the best confidence-per-second by concentrating coverage in the cheap layer and reserving E2E for a few critical journeys.",
+          "optionExplanations": [
+            "E2E tests run in CI routinely; they're kept few for cost and stability reasons, not because they're forbidden.",
+            "A unit test can cover a whole function or module, not a single line — the count is about cost, not granularity.",
+            "Correct — the ratio follows cost: unit tests are fast and stable, E2E slow and flakier, so many-vs-few is optimal.",
+            "They overlap heavily — E2E exercises the same logic end-to-end; the ratio is about cost per test, not disjoint code."
+          ],
+          "interviewTip": "Frame the pyramid as 'confidence per second': cheap, stable units at the base, expensive, flaky E2E at the tip. Leading with the cost reasoning beats reciting the shape from memory."
         }
       ]
     }

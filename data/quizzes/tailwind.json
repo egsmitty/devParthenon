@@ -271,7 +271,7 @@
         "z-index looks global but isn't: it only applies to positioned elements (or flex/grid children), and it competes only *within its stacking context*.",
         "A new stacking context is created by more properties than people expect: position+z-index, `transform`, `opacity` below 1, `filter`, `will-change`, and others. Once a parent creates one, its children's z-indexes are trapped inside — they compare against each other, never against the outside world."
       ],
-      "summary": "A big z-index can't save you if a parent's `transform`, `opacity`, or `filter` traps your element in its own little stacking bubble.",
+      "summary": "z-index is a local rank, not a global one: a big number can't save you if a parent's `transform`, `opacity`, or `filter` traps your element in its own stacking bubble — fix the ancestor or portal the element out.",
       "variants": [
         {
           "id": "t4",
@@ -358,7 +358,7 @@
         "For variants (primary/secondary, sm/lg), keep a small map of complete class strings and select by prop — libraries like cva formalize this. This also stays inside the static-extraction rules from earlier: every class name exists verbatim in source.",
         "Conditional styling composes with template logic: a shared base string plus a selected variant string. Resist string-building fragments of class names; always assemble from whole ones."
       ],
-      "summary": "When class strings repeat, wrap them in a reusable component and pick variants from a map of whole class strings rather than gluing names together.",
+      "summary": "When class strings repeat, wrap them in a reusable component and pick variants from a map of whole class strings rather than gluing names together — the component is the reuse unit, not a stylesheet class.",
       "variants": [
         {
           "id": "t5",
@@ -435,6 +435,441 @@
             "No such deduplication pass exists — both rules ship in the stylesheet and both apply; the cascade, not the build, picks the survivor."
           ],
           "interviewTip": "'Why does tailwind-merge exist?' is a sharp interview probe. The answer — className order can't resolve utility conflicts because the cascade goes by stylesheet order at equal specificity — proves you understand the CSS underneath the component API."
+        }
+      ]
+    },
+    {
+      "heading": "The box model and box-sizing",
+      "paragraphs": [
+        "Every element is a box of four nested regions: content, then `padding`, then `border`, then `margin`. The question that trips people up is which of these count toward the `width` you set. Under the browser's original `content-box` model, `width` sizes only the content — so `width: 200px; padding: 20px; border: 2px` renders as a 244px-wide box. Padding and border are added *on top of* the declared width.",
+        "`box-sizing: border-box` redefines `width` to mean the whole visible box — content plus padding plus border — and lets the content shrink to fit. Now `width: 200px` is 200px on screen no matter how much padding or border you add. Because this is what almost everyone actually wants, Tailwind's Preflight sets `box-sizing: border-box` on every element by default, so `w-52 p-5 border-2` stays exactly `w-52` wide.",
+        "Margin stays outside the box in both models — it never counts toward `width`, and vertical margins between block siblings *collapse* (the larger of the two wins rather than summing). Tailwind's `p-*`, `m-*`, `border-*`, and `w-*`/`h-*` map straight onto these regions, so knowing which region a utility touches tells you instantly whether it changes the element's footprint or the gap around it."
+      ],
+      "summary": "With `border-box` (Tailwind's default) the `width` you set is the full visible box including padding and border, so those don't blow out your sizing — and margin always lives outside the box.",
+      "variants": [
+        {
+          "id": "t6",
+          "question": "An element is `w-52 p-4 border-2` (width 13rem, padding 1rem, border 2px). Under Tailwind's defaults, how wide does it render, and why?",
+          "options": [
+            "13rem plus 2rem plus 4px, because declared width sizes content and padding and border add on top",
+            "Exactly 13rem, because Preflight sets `border-box`, so padding and border eat into that width",
+            "13rem plus 2rem only, since border sits outside the box while padding is added to the width",
+            "It varies by browser, because box-sizing is left unset and each engine defaults it differently"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Tailwind's Preflight applies `box-sizing: border-box` globally, which makes `width` mean the entire visible box. The 1rem of padding and 2px of border are absorbed inside the 13rem, and the content area shrinks to make room. The element's footprint is exactly `w-52`.",
+          "optionExplanations": [
+            "That's the legacy `content-box` behavior, which Tailwind overrides — Preflight's global `border-box` means width already includes padding and border.",
+            "Correct — `border-box` makes the declared width the full box; padding and border shrink the content rather than expanding the element.",
+            "Border is inside the box under `border-box`, and padding does not add to the declared width — both are contained within the 13rem.",
+            "Box-sizing isn't unset — Tailwind explicitly normalizes it to `border-box` in Preflight, so the result is deterministic across browsers."
+          ],
+          "interviewTip": "Know that Tailwind's Preflight resets `box-sizing`, margins, and heading styles. Saying 'padding and border don't change my element's width because border-box is on by default' signals you understand the reset layer, not just the utilities."
+        },
+        {
+          "id": "t6-alt",
+          "question": "Two stacked `<p>` blocks have `mb-8` on the first and `mt-8` on the second. The measured gap between them is one `8`-unit of space, not two. What explains this?",
+          "options": [
+            "Tailwind quietly drops the second margin whenever two adjacent margin utilities would otherwise stack",
+            "`mt-*` is ignored on any element that directly follows a sibling carrying an `mb-*` utility",
+            "Adjacent vertical block margins collapse, so the larger of the two wins instead of the pair summing",
+            "The gap is really `16` units; a browser rounding quirk just reports it back to you as `8`"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Vertical margins between adjacent block-level siblings collapse: the browser uses the larger of the two touching margins rather than adding them. With equal `mb-8` and `mt-8`, the effective gap is a single `8`-unit. This is a CSS layout rule, not a Tailwind behavior — using `gap` on a flex/grid parent sidesteps it entirely.",
+          "optionExplanations": [
+            "Tailwind emits both margins verbatim; it never edits your class list — the collapsing happens in the browser's layout engine.",
+            "There's no such rule keyed to sibling classes; both margins exist and are applied — they simply collapse into one.",
+            "Correct — margin collapsing takes the larger of two adjacent vertical margins, so the gap is one unit, not the sum.",
+            "Nothing is rounded — the gap genuinely is `8` units because the two margins collapsed into the larger one."
+          ],
+          "interviewTip": "If a stack's spacing is smaller than the sum you expected, suspect margin collapsing. The senior move is switching the parent to `flex flex-col gap-8` — `gap` doesn't collapse, so vertical rhythm becomes predictable."
+        },
+        {
+          "id": "t6-c",
+          "question": "A card set to `w-64` overflows its `w-64` parent the moment you add `p-6`, but only in a legacy stylesheet that declares `box-sizing: content-box`. What is the underlying cause?",
+          "options": [
+            "The `p-6` utility silently widens `w-64` to a larger named width once padding is present on the element",
+            "Under `content-box`, padding adds to the declared width, so the card's footprint exceeds its parent",
+            "A `w-64` child can never fit a `w-64` parent, because child widths always resolve one scale-step larger",
+            "The parent's own padding, not the child's, is what pushes the child past the parent's content edge here"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`content-box` means `width` sizes only the content, so `w-64` (16rem) plus `p-6` (1.5rem each side) makes the card 19rem wide — 3rem past its 16rem parent. Tailwind's own Preflight would have set `border-box` and avoided this; the legacy override reintroduced the classic model where padding inflates the footprint.",
+          "optionExplanations": [
+            "`p-6` only sets padding — it never rewrites the width utility; the overflow comes from how `content-box` adds padding on top of `width`.",
+            "Correct — with `content-box`, padding is added outside the declared width, so `w-64 p-6` exceeds a `w-64` parent.",
+            "There's no scale-step inflation — a `w-64` child fits a `w-64` parent fine under `border-box`; the culprit is the box-sizing model.",
+            "The child's own `p-6` is what expands it here; the parent's padding isn't mentioned and isn't the mechanism."
+          ],
+          "interviewTip": "When Tailwind sizing behaves unexpectedly, check whether some global CSS overrode `box-sizing` back to `content-box`. Tailwind assumes `border-box` everywhere; a rogue reset breaks that assumption and every `w-*` starts leaking."
+        },
+        {
+          "id": "t6-d",
+          "question": "You want a button whose total on-screen width is exactly `w-40`, unchanged as you tune its padding and border. Which single fact makes this achievable with Tailwind's defaults?",
+          "options": [
+            "Preflight applies `box-sizing: border-box` globally, so `width` already includes padding and border",
+            "Tailwind's `w-*` utilities carry an implicit `!important`, freezing width against any padding you add",
+            "Padding utilities in Tailwind never affect layout width — they only add internal visual breathing room",
+            "Setting `w-40` automatically zeroes the element's padding and border so the width can't be exceeded"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Because Preflight sets `border-box` on everything, `w-40` defines the full visible box up front; adding `px-*` or `border-*` shrinks the content area instead of growing the element. The rendered footprint stays `w-40` regardless of how you adjust padding or border — exactly the guarantee `border-box` provides.",
+          "optionExplanations": [
+            "Correct — global `border-box` from Preflight means the declared width already contains padding and border, so the footprint is stable.",
+            "`w-*` utilities have normal specificity and no implicit `!important`; stability comes from box-sizing, not importance.",
+            "Padding absolutely affects layout — under `border-box` it shrinks content within the fixed width rather than being cosmetic.",
+            "`w-40` doesn't touch padding or border values; it's `border-box` that keeps them contained within the declared width."
+          ],
+          "interviewTip": "Frame `border-box` as 'the width I type is the width I get.' That one line explains why it became the universal default and why Tailwind bakes it into Preflight — interviewers hear a mental model, not a memorized fact."
+        }
+      ]
+    },
+    {
+      "heading": "Specificity and the cascade",
+      "paragraphs": [
+        "When two rules set the same property on one element, the cascade resolves the conflict in a fixed order: importance first (`!important` wins), then specificity, then source order. Specificity is a three-part score — inline styles beat IDs, IDs beat classes/attributes/pseudo-classes, and classes beat element/tag selectors. A single ID selector outranks any number of class selectors, which is why an `#sidebar` rule can quietly defeat a wall of utility classes no matter how many you pile on.",
+        "Tailwind leans hard on this by design: nearly every utility is a *single class selector*, so they all sit at the same low, flat specificity. That's a feature — utilities never accidentally outrank each other, so conflicts fall through to the final tiebreaker, source order. But it also means Tailwind can lose to any higher-specificity rule (an ID, a `.card .title` descendant selector, or an inline style) that some other stylesheet contributes.",
+        "When you genuinely need a utility to win a specificity fight, the tools are the `!` important modifier (`!text-red-500` compiles to `color: red !important`) and, spec-side, `@layer` / cascade layers, which order whole groups of rules regardless of their internal specificity. Reaching for `!important` routinely is a smell — it starts an importance arms race — but knowing *why* your class lost (it was out-specified, not mis-spelled) is what lets you pick the right fix instead of stacking more classes."
+      ],
+      "summary": "The cascade decides conflicts by importance, then specificity, then source order — and because Tailwind utilities are all flat single-class selectors, they lose to any ID or descendant rule, which is when `!important` or cascade layers earn their place.",
+      "variants": [
+        {
+          "id": "t7",
+          "question": "A `text-blue-500` utility refuses to apply because a global `#app p { color: black }` rule targets the same paragraph. Why does the ID rule win?",
+          "options": [
+            "Tailwind utilities are injected too early, so any rule written after them in any file overrides them",
+            "An ID selector outranks a single class selector on specificity, so it wins regardless of order",
+            "Color utilities are advisory in Tailwind and always defer to any hand-written global CSS rule",
+            "The `#app p` rule is more recent in the stylesheet, and later source order always beats specificity"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The cascade checks specificity before source order. `#app p` scores one ID plus one element; `text-blue-500` is a single class. IDs outrank classes outright, so the ID rule wins no matter where either sits in the file. The fix is to raise the utility's weight (`!text-blue-500`) or lower the global rule's specificity, not to add more utility classes.",
+          "optionExplanations": [
+            "Injection timing isn't the mechanism — even if the utility came last, the ID's higher specificity would still beat it; source order only matters at equal specificity.",
+            "Correct — ID beats class on specificity, and specificity is checked before source order, so the ID wins outright.",
+            "Utilities aren't 'advisory' — they're ordinary class rules; they lose here purely because a class is out-specified by an ID.",
+            "Source order is the *last* tiebreaker, used only when specificity ties — here specificity differs, so order never gets consulted."
+          ],
+          "interviewTip": "State the cascade order out loud — 'importance, then specificity, then source order.' Interviewers use the 'my class won't apply' scenario to check whether you reason about specificity or just add `!important` and hope."
+        },
+        {
+          "id": "t7-alt",
+          "question": "Two utilities that set the same property — `p-2` and `p-8` — land on one element. They're both single class selectors, so specificity ties. What actually decides which padding applies?",
+          "options": [
+            "Whichever rule sits later in Tailwind's generated stylesheet wins once specificity is tied",
+            "The order the two class names appear inside the element's `class` attribute settles it",
+            "Tailwind resolves the conflict at build time and emits only the last-declared padding utility",
+            "The larger numeric value always wins, so `p-8` reliably beats `p-2` on any element"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "With equal specificity, the cascade falls through to its final tiebreaker: source order in the stylesheet. Whichever of `p-2`/`p-8` Tailwind emits later wins — and that ordering is an implementation detail you don't control from the `class` attribute. This is exactly why conflicting utilities are unreliable and why `tailwind-merge` exists to strip the loser before render.",
+          "optionExplanations": [
+            "Correct — at equal specificity the later rule in the generated CSS wins, and that order isn't controlled by attribute order.",
+            "The class attribute is an unordered set — rearranging `p-2 p-8` vs. `p-8 p-2` changes nothing; only stylesheet order counts.",
+            "Tailwind has no conflict-dedup pass — both utilities ship in the CSS and both apply; the cascade, not the build, picks a winner.",
+            "There's no 'larger value wins' rule — the cascade is order-based here, so a smaller value can win if its rule is emitted later."
+          ],
+          "interviewTip": "Connect this to `tailwind-merge`: since the cascade can't be steered by className order, conflicting utilities are a coin flip frozen at build time. Merging conflicts in JS before render is the robust fix — say that and you've explained a whole ecosystem library from first principles."
+        },
+        {
+          "id": "t7-c",
+          "question": "A design system needs its utility layer to reliably override a third-party component library's baked-in styles without sprinkling `!important` everywhere. Which mechanism is purpose-built for this?",
+          "options": [
+            "Cascade layers (`@layer`), which order whole groups of rules ahead of specificity comparisons",
+            "Raising every utility's specificity by doubling each class selector so it outranks the library",
+            "Attaching inline `style` attributes to each component so the library's classes are bypassed",
+            "Increasing the utility file's load priority so it is parsed after the library's stylesheet"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Cascade layers let you declare an explicit priority order between groups of rules; a later layer beats an earlier one *regardless of the selectors' internal specificity*. Putting the third-party styles in an earlier layer and your utilities in a later one makes utilities win without any `!important`. It's the spec-level answer to cross-library override wars.",
+          "optionExplanations": [
+            "Correct — `@layer` orders rule groups independent of specificity, so a later layer's utilities beat earlier-layer library rules cleanly.",
+            "Doubling selectors is a hack that inflates specificity globally and fights every other rule too; layers solve it without touching selectors.",
+            "Inline styles win individually but must be applied per-element by hand — unmaintainable across a component library, unlike a single layer ordering.",
+            "Load/parse order only breaks ties at equal specificity; a higher-specificity library rule still wins no matter when your file loads."
+          ],
+          "interviewTip": "Cascade layers are a strong senior signal — they solve override wars structurally instead of with `!important` escalation. Even a one-line mention ('later layers beat earlier ones regardless of specificity') shows you track modern CSS, not just Tailwind."
+        },
+        {
+          "id": "t7-d",
+          "question": "Conceptually, why are Tailwind utilities described as having flat, low specificity, and what practical consequence follows from that choice?",
+          "options": [
+            "Each utility is a single class selector, so they all tie — conflicts resolve by source order, and any ID rule beats them",
+            "Utilities compile without any selector at all, so specificity simply doesn't apply to them in the cascade",
+            "Utilities are emitted as `!important` by default, so their specificity is effectively the highest possible",
+            "Utilities are scoped to elements by tag name, giving them the lowest specificity so tags always override them"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Almost every utility is exactly one class selector — the same low rung on the specificity ladder. Because they all tie, no utility accidentally out-specifies another (conflicts fall through to source order), which keeps the system predictable. The flip side is the practical consequence: any ID selector, descendant selector, or inline style from other CSS outranks them, so utilities can silently lose to higher-specificity rules.",
+          "optionExplanations": [
+            "Correct — single-class selectors share one flat specificity, so utilities tie among themselves and lose to any higher-specificity rule like an ID.",
+            "Utilities absolutely have selectors (`.text-red-500 { … }`); specificity applies to them — it's just uniformly low, not absent.",
+            "Utilities are not `!important` by default — only the explicit `!` modifier adds importance; their normal state is ordinary low specificity.",
+            "Utilities are class selectors, not tag selectors, and classes outrank tags — so tag rules don't override utilities by default."
+          ],
+          "interviewTip": "The insight worth stating: Tailwind trades away specificity as a control lever on purpose, so the cascade stays flat and predictable. That's why override problems get solved with `tailwind-merge`, `@layer`, or the `!` modifier — not by stacking more classes."
+        }
+      ]
+    },
+    {
+      "heading": "Pseudo-classes and state variants",
+      "paragraphs": [
+        "Plain CSS reacts to element state with pseudo-classes — `:hover`, `:focus`, `:disabled`, `:first-child`. Tailwind exposes each as a variant *prefix* on any utility: `hover:bg-blue-600`, `focus:ring-2`, `disabled:opacity-50`, `first:pt-0`. Under the hood `hover:bg-blue-600` just compiles to `.hover\\:bg-blue-600:hover { … }`, so it's the same pseudo-class mechanism, written inline and composable with responsive prefixes (`md:hover:…`).",
+        "Styling an element based on *another* element's state is where `group` and `peer` come in. Mark an ancestor `group`, and any descendant can react to it with `group-hover:*` / `group-focus:*` — hover the card, reveal the button. Mark a *previous sibling* `peer`, and later siblings react with `peer-*` variants — the canonical trick is a `peer` checkbox or input plus `peer-checked:*` / `peer-focus:*` on a following label, letting you style based on form state with zero JavaScript.",
+        "Two rules save real debugging time. First, `group-hover`/`peer-*` only work if the *target* element you're reading (`group` or `peer`) actually carries that marker class — forgetting it is the most common reason the variant 'does nothing.' Second, `peer` only reaches *later* siblings in the DOM (it relies on the sibling combinator), so the peer must come *before* the element that styles off it; no CSS variant lets a sibling look backward."
+      ],
+      "summary": "Variant prefixes like `hover:`/`focus:`/`disabled:` are just pseudo-classes written inline, and `group-*`/`peer-*` let one element style off an ancestor's or an earlier sibling's state — as long as that other element carries the `group` or `peer` marker.",
+      "variants": [
+        {
+          "id": "t8",
+          "question": "You want a button inside a card to fade in only when the user hovers anywhere over the card. What's the correct Tailwind setup?",
+          "options": [
+            "Put `hover:opacity-100` on the button and `opacity-0` on the card, since child hover bubbles up",
+            "Add `group` to the card and `opacity-0 group-hover:opacity-100` to the button inside it",
+            "Add `peer` to the card and `peer-hover:opacity-100` to the button nested within that card",
+            "Set `hover:opacity-100` on the card itself and let the button inherit the hover state from it"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Cross-element hover is exactly what `group` is for: mark the ancestor `group`, then the descendant reacts with `group-hover:*`. The button starts at `opacity-0` and flips to `opacity-100` while the pointer is anywhere over the grouped card. `peer` wouldn't work here because the button is a *descendant*, not a following sibling, of the card.",
+          "optionExplanations": [
+            "A child's `hover:` only fires when *the child itself* is hovered — hover state doesn't bubble from parent to child in CSS.",
+            "Correct — `group` on the ancestor plus `group-hover:*` on the descendant is the canonical parent-hover pattern.",
+            "`peer` targets a *later sibling's* state, not an ancestor's — a button nested inside the card is a descendant, so `peer-hover` won't fire.",
+            "`hover:` on the card styles the card, and there's no CSS inheritance of hover state that would make the child react to it."
+          ],
+          "interviewTip": "`group` for ancestor→descendant, `peer` for earlier-sibling→later-sibling. Saying that distinction crisply — and noting the marker class must sit on the element whose state you're reading — heads off the most common 'my variant does nothing' bug."
+        },
+        {
+          "id": "t8-alt",
+          "question": "A custom checkbox uses a hidden `<input type=\"checkbox\">` followed by a styled `<label>`. You want the label to turn green when the box is checked, with no JavaScript. Which arrangement works?",
+          "options": [
+            "Give the input `peer` and the following label `peer-checked:text-green-600`",
+            "Give the label `peer` and add `peer-checked:text-green-600` on the input before it",
+            "Give the input `group` and put `group-checked:text-green-600` onto the following label",
+            "Put `checked:text-green-600` on the label so it reflects the sibling input's checked state"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`peer` reads a *previous sibling's* state, so the input (which owns the `:checked` state) must carry `peer` and must come *before* the label, which then styles itself with `peer-checked:*`. This is the classic JavaScript-free checkbox/toggle pattern — the input's state drives the label purely through the sibling combinator.",
+          "optionExplanations": [
+            "Correct — `peer` on the earlier input, `peer-checked:*` on the later label, matching the sibling-combinator direction.",
+            "Reversed — `peer` must sit on the element whose state is read (the input), and `peer-*` on the element that reacts (the label), not vice versa.",
+            "`group` is for ancestor→descendant relationships; these are siblings, so `group-checked` on a sibling label won't fire.",
+            "`checked:` on the label reads the *label's own* checked state, which a label doesn't have — it can't observe a sibling without `peer`."
+          ],
+          "interviewTip": "The `peer` + `peer-checked` toggle is a favorite 'can you do this without JS?' prompt. Remember the ordering constraint — `peer` must precede its reader in the DOM — because CSS sibling combinators only look forward."
+        },
+        {
+          "id": "t8-c",
+          "question": "A developer added `group-hover:opacity-100` to an icon but nothing happens on hover. The icon sits inside `<div class=\"card p-4\">`. What is almost certainly missing?",
+          "options": [
+            "A `transition` utility on the icon, without which the opacity change is blocked from ever taking effect",
+            "The `group` marker class on the ancestor `div`, which `group-hover:*` needs in order to have a target",
+            "A `relative` position on the parent, since group variants only resolve inside a positioned ancestor",
+            "An explicit `hover:` prefix on the parent div to arm the group before descendants may respond"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`group-hover:*` reacts to the hover state of an ancestor that carries the `group` class — and this card `div` has `card p-4` but no `group`. Without that marker there's nothing for the variant to key off, so the utility silently does nothing. Adding `group` to the `div` wires it up; the missing marker is the single most common cause of dead `group-*`/`peer-*` variants.",
+          "optionExplanations": [
+            "A missing `transition` would only make the change instant instead of animated — the opacity would still flip; it wouldn't stay dead.",
+            "Correct — `group-hover:*` requires the ancestor to carry the `group` marker class, which is absent here.",
+            "Group variants don't depend on positioning — no `relative` is required for `group-hover` to resolve.",
+            "The parent needs the `group` marker, not a `hover:` prefix — `group-hover` reads the ancestor's hover automatically once `group` is present."
+          ],
+          "interviewTip": "When any `group-*` or `peer-*` variant 'does nothing,' check the *other* element first: is the `group`/`peer` marker actually on it? Debugging the reacting element instead of the source element wastes the most time here."
+        },
+        {
+          "id": "t8-d",
+          "question": "In markup order `<label class=\"peer-focus:text-blue-600\">Email</label>` then `<input class=\"peer\">`, focusing the input never turns the label blue. Why, and what's the minimal fix?",
+          "options": [
+            "`peer-focus` only responds to keyboard focus, so the label stays unstyled whenever the input is clicked with a mouse",
+            "The `peer` marker belongs on the label and the `peer-focus:*` reader on the input; the two classes are simply swapped",
+            "`peer` reaches only *later* siblings, so the label before the input can't read it — put the input first, label after",
+            "Focus state can't be observed across siblings at all, so this label styling requires a small JavaScript handler"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "`peer` relies on the CSS subsequent-sibling combinator, which only looks *forward* — a peer can style siblings that come *after* it, never before. Here the label precedes the input, so it sits upstream of the `peer` and can't react. The minimal fix is DOM order: place the `peer` input first, then the label with `peer-focus:*` after it (the classic floating-label layout does exactly this).",
+          "optionExplanations": [
+            "`peer-focus` responds to `:focus` regardless of input method — mouse or keyboard both focus the field; input method isn't the issue.",
+            "The classes aren't swapped — `peer` correctly marks the input and `peer-focus` correctly reads it; the defect is their DOM ordering.",
+            "Correct — the sibling combinator only reaches later siblings, so the earlier label can't read the input; reorder so the input comes first.",
+            "Focus *is* observable across siblings via `peer-focus` — it just requires the peer to precede its reader; no JavaScript is needed."
+          ],
+          "interviewTip": "Remember `peer` is forward-only (subsequent-sibling combinator). If a `peer-*` style won't fire, check DOM order before anything else — the peer must physically come before the element reading it, which shapes how you order labels and inputs."
+        }
+      ]
+    },
+    {
+      "heading": "Dark mode and theming",
+      "paragraphs": [
+        "Tailwind ships a `dark:` variant so any utility can carry a dark-mode value: `bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100`. The light values are the baseline; the `dark:` ones override when dark mode is active. Which signal activates it is a config choice: the `media` strategy keys off the OS-level `prefers-color-scheme: dark` media query, while the `class` (now `selector`) strategy activates whenever a `dark` class is present on a high ancestor like `<html>` — the latter is what you need for a user-facing toggle, since a media query can't be flipped by a button.",
+        "The scalable way to theme isn't repeating `dark:` on every color utility — it's routing colors through CSS custom properties (design tokens). Define `--color-bg` / `--color-text` once, redefine them under `.dark` (or `[data-theme=\"…\"]`), and have utilities read the variable (`bg-[var(--color-bg)]`, or map the token into `tailwind.config` so `bg-surface` resolves to it). Now flipping a single class or attribute re-themes the whole app, and adding a third theme (high-contrast, brand-b) is a new block of variable values rather than a sweep through every component.",
+        "Two practical notes. To avoid a flash of the wrong theme, the `dark` class must be on `<html>` *before first paint* — typically set by a tiny inline script that reads the saved preference synchronously, not in a React effect that runs after hydration. And a robust toggle offers three states — light, dark, and 'follow system' — because hard-coding a choice throws away the OS preference the `media` strategy would have respected."
+      ],
+      "summary": "The `dark:` variant overrides your baseline colors when dark mode is active — via the OS media query or a toggleable `dark` class — and driving colors through CSS-variable tokens lets one class flip the whole theme instead of stamping `dark:` on every utility.",
+      "variants": [
+        {
+          "id": "t9",
+          "question": "You need a dark-mode toggle button that users click to switch themes and that persists their choice. Which Tailwind dark-mode strategy supports this?",
+          "options": [
+            "The `media` strategy, since `prefers-color-scheme` can be toggled directly by a button click",
+            "The `selector` (class) strategy: toggle a `dark` class on `<html>` and every `dark:` value flips",
+            "Neither — a user-controlled toggle needs a full CSS-in-JS runtime rather than a Tailwind strategy",
+            "The `media` strategy combined with an inline `style` override written onto each themed element"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A button can add or remove a class but cannot change the OS `prefers-color-scheme` media query, so the `media` strategy can't back a manual toggle. The `selector`/`class` strategy activates every `dark:` utility whenever a `dark` class sits on an ancestor like `<html>` — the toggle just adds/removes that class (and you persist the choice in `localStorage`). That's the standard user-controlled setup.",
+          "optionExplanations": [
+            "`prefers-color-scheme` reflects the OS setting and is read-only to the page — no button can flip it, so `media` can't drive a manual toggle.",
+            "Correct — the class/selector strategy keys off a `dark` class you control, so a button toggling that class switches themes.",
+            "No CSS-in-JS runtime is needed — Tailwind's `selector` strategy handles user toggles natively via a single ancestor class.",
+            "Layering inline styles onto every element is unmaintainable and unnecessary; the class strategy solves this with one ancestor class."
+          ],
+          "interviewTip": "The crisp distinction: `media` follows the OS and can't be overridden by the page; `class`/`selector` follows a class you control. Any 'let users pick a theme' requirement points at the class strategy — say why the media query can't be toggled."
+        },
+        {
+          "id": "t9-alt",
+          "question": "A large app repeats `dark:` on hundreds of color utilities, and adding a third 'high-contrast' theme now means editing every component. What's the scalable refactor?",
+          "options": [
+            "Route colors through CSS-variable tokens, redefined per theme, so one class swap re-themes everything",
+            "Write a codemod that appends a `contrast:` variant beside every existing `dark:` color utility in the app",
+            "Duplicate each component into a themed copy and render whichever variant matches the active theme",
+            "Move all the `dark:` color pairs into a global stylesheet and target them with `!important` overrides"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The `dark:`-on-every-utility approach doesn't scale past two themes because each new theme multiplies the variants. Routing colors through CSS custom properties (`--color-bg`, `--color-text`) that you redefine under each theme's selector means components reference semantic tokens (`bg-surface`) and a single class or `data-theme` swap re-themes the whole app. A third theme becomes one new block of variable values — no component edits.",
+          "optionExplanations": [
+            "Correct — semantic CSS-variable tokens redefined per theme let one selector swap re-theme everything, so new themes don't touch components.",
+            "A codemod that adds a `contrast:` variant everywhere doubles the maintenance again for the *next* theme — it scales linearly, exactly the problem.",
+            "Duplicating components per theme is a combinatorial explosion of markup and the least maintainable option of all.",
+            "Moving pairs into a global stylesheet with `!important` fights the cascade and still hard-codes two themes — it doesn't generalize to a third."
+          ],
+          "interviewTip": "When theming needs to scale past dark/light, the answer is design tokens via CSS variables, not more variants. 'Components reference semantic tokens; themes redefine the tokens' is the architecture line that separates senior from mid-level answers."
+        },
+        {
+          "id": "t9-c",
+          "question": "On first load the page briefly flashes light mode before snapping to the user's saved dark theme. Where does this flash come from, and what's the standard fix?",
+          "options": [
+            "Tailwind loads the light stylesheet before the dark one; reorder the imports so dark is parsed first",
+            "The `dark` class is applied in a React effect after paint; set it via a synchronous inline script in `<head>`",
+            "The browser caches the previous theme; disabling the HTTP cache for the stylesheet removes the flash",
+            "The `dark:` variant is slower to compute than the base; precompiling the CSS eliminates the delay"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The 'flash of incorrect theme' happens when the `dark` class is added by a React effect (or any script) that runs *after* the first paint — so the browser paints the light baseline, then corrects. The fix is a tiny blocking inline script in `<head>` that reads the saved preference from `localStorage` and sets the `dark` class on `<html>` synchronously, before the first paint, so the correct theme is applied from frame one.",
+          "optionExplanations": [
+            "Both light and dark values ship in one stylesheet keyed by the `dark` selector — there's no separate dark file to reorder; timing of the class is the issue.",
+            "Correct — the flash is a post-paint class application; a synchronous inline script sets `dark` on `<html>` before first paint and removes it.",
+            "HTTP caching of the stylesheet isn't the cause — the CSS is present; the class that activates dark mode arrives too late.",
+            "`dark:` variants aren't computed slowly — the CSS is static; the delay is purely when the activating class gets applied."
+          ],
+          "interviewTip": "Name it precisely: 'flash of incorrect theme,' caused by setting the theme in an effect that runs after paint. The fix — a synchronous inline script before first paint — is a classic SSR/hydration gotcha interviewers love to probe."
+        },
+        {
+          "id": "t9-d",
+          "question": "Conceptually, why does driving colors through CSS custom properties beat repeating `dark:` utilities once an app supports three or more themes?",
+          "options": [
+            "Because CSS variables render faster than utility classes, so more themes stay performant only with variables",
+            "Because `dark:` utilities are capped at two states, so a third theme is technically impossible without variables",
+            "Because a theme becomes one block of redefined variable values, instead of a new variant on every color utility",
+            "Because custom properties bypass the cascade entirely, letting theme values win without any specificity concerns"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "With per-utility variants, every color needs a value for every theme, so components grow a new variant on each color utility as themes multiply — linear cost per component per theme. Tokens invert this: components reference semantic variables once, and each theme is a single block redefining those variables under its selector. Adding a theme touches one place, not every component.",
+          "optionExplanations": [
+            "Performance isn't the reason — both approaches are fast; the win is maintainability, one redefinition block versus per-component edits.",
+            "A third theme is entirely possible with variants (just add another prefix) — it's just unmaintainable, not impossible; tokens solve the maintenance cost.",
+            "Correct — tokens make a theme a single block of redefined variable values rather than a new variant stamped on every utility.",
+            "Custom properties still resolve through the cascade like any value — they don't bypass specificity; the benefit is centralized redefinition."
+          ],
+          "interviewTip": "The one-liner: 'variants scale with components × themes; tokens scale with themes alone.' Framing it as where the cost lives shows you're reasoning about maintainability architecture, which is what theming questions are really testing."
+        }
+      ]
+    },
+    {
+      "heading": "Transitions and animations",
+      "paragraphs": [
+        "A CSS transition interpolates a property between two states over time — it needs a *starting* value, an *ending* value, and a `transition` declaration telling the browser which properties to animate and how long. Tailwind splits this across utilities: `transition` (or `transition-colors`, `transition-transform`, etc.) names what animates, `duration-300` sets the time, `ease-in-out` the timing curve, and `delay-*` an optional wait. The end state is a variant utility — `hover:scale-105`, `hover:bg-blue-600` — and the transition simply smooths the jump between baseline and that hovered value.",
+        "Only *animatable* properties transition smoothly, and this app's own invariant captures the important subset: animate `transform` and `opacity` (and `filter`) for 60fps, because those are composited on the GPU and don't trigger layout or paint. Transitioning layout properties like `width`, `height`, `top`, or `margin` forces the browser to recompute layout every frame — janky on weak hardware — which is why `hover:scale-105` (a transform) is smooth while animating `w-*` is not. For repeating or keyframed motion, `animate-spin` / `animate-pulse` / `animate-bounce` are built in, and `@keyframes` + a config entry cover custom sequences.",
+        "The professional obligation is `prefers-reduced-motion`: users who set it need a usable static end-state, not motion. Tailwind's `motion-reduce:*` and `motion-safe:*` variants gate animation on that preference (`motion-safe:animate-bounce`, `motion-reduce:transition-none`). Two more gotchas: a transition needs the animated property to have a defined baseline value to interpolate *from* (animating to/from `auto` height doesn't work — you need an explicit value or a different technique), and a transition fires on *state change*, so a bare `transition` with no changing target simply does nothing visible."
+      ],
+      "summary": "Transitions smooth the jump between a baseline utility and a state variant like `hover:scale-105`; stick to `transform`/`opacity`/`filter` for 60fps, avoid animating layout properties, and gate motion behind `motion-safe:`/`motion-reduce:` for accessibility.",
+      "variants": [
+        {
+          "id": "t10",
+          "question": "A card should smoothly grow slightly on hover. Which combination produces a 60fps-friendly effect?",
+          "options": [
+            "`transition-transform duration-200 hover:scale-105` on the card element",
+            "`transition-all duration-200 hover:w-[105%] hover:h-[105%]` on the card",
+            "`hover:scale-105` alone, relying on the browser to animate the scale by default",
+            "`transition duration-200 hover:mx-2 hover:my-2` to enlarge the card via margins"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`hover:scale-105` sets the end state (a `transform`), and `transition-transform duration-200` smooths the change. Transforms are GPU-composited and don't trigger layout or paint, so the growth animates at 60fps. Animating `w`/`h` or margins would recompute layout every frame (janky), and a bare `hover:scale-105` with no `transition` would snap instantly rather than animate.",
+          "optionExplanations": [
+            "Correct — a `transform` end-state plus `transition-transform` gives GPU-composited, layout-free 60fps growth.",
+            "`hover:w-*`/`hover:h-*` animate layout dimensions, forcing per-frame layout recomputation — the janky path this app's invariant forbids.",
+            "Without a `transition` utility the scale change applies instantly — there's no default animation, so it snaps rather than smoothly grows.",
+            "Animating margins is a layout change (reflows siblings every frame) and doesn't even scale the card — wrong mechanism and janky."
+          ],
+          "interviewTip": "Reach for `transform` and `opacity` for any hover motion. Saying 'transforms are composited so they don't trigger layout or paint' names the exact reason they hit 60fps while animating width doesn't — a performance answer with a mechanism behind it."
+        },
+        {
+          "id": "t10-alt",
+          "question": "A developer writes `transition-transform duration-300` on a button but sees no animation at all when interacting with it. What is the most likely reason?",
+          "options": [
+            "`transition-transform` must be paired with `transition-colors` before either declaration takes any effect",
+            "There's no changing target — no `hover:`/`focus:` variant alters a transform, so nothing interpolates",
+            "`duration-300` is below the browser's minimum animation threshold, so the transition is silently dropped",
+            "Transitions require an explicit `will-change: transform` utility or they never actually run on the element"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A transition only animates when a property actually *changes* value. `transition-transform duration-300` declares that transforms should animate over 300ms — but if no state variant (`hover:scale-105`, `focus:rotate-3`, etc.) ever changes the transform, there's nothing to interpolate and the button sits still. The fix is adding the end-state variant that the transition is meant to smooth.",
+          "optionExplanations": [
+            "Transition properties are independent — `transition-transform` works alone; it doesn't need `transition-colors` present to function.",
+            "Correct — a transition needs a value change to animate; with no variant altering the transform, there's nothing to interpolate.",
+            "300ms is a normal, well-above-threshold duration — there's no minimum that would silently drop it; the missing piece is a changing value.",
+            "`will-change` is a performance hint, not a requirement — transitions run without it; the real gap is the absent state change."
+          ],
+          "interviewTip": "Debug transitions by asking 'what value is actually changing?' A `transition-*` with no state variant to smooth is inert. Naming that the transition needs a start *and* a different end value shows you understand interpolation, not just the syntax."
+        },
+        {
+          "id": "t10-c",
+          "question": "An accessibility review flags a persistent `animate-bounce` icon for users who set 'reduce motion.' Which Tailwind approach correctly respects that preference?",
+          "options": [
+            "Wrap the icon in JavaScript that removes the class after a couple of seconds so the motion eventually stops",
+            "Gate it with `motion-safe:animate-bounce` so it animates only when the user hasn't requested reduced motion",
+            "Lower the animation to `animate-pulse`, which is exempt from the reduced-motion preference by design",
+            "Leave `animate-bounce` in place but add `duration-1000` so the slower motion satisfies the accessibility rule"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`motion-safe:*` applies a utility only when `prefers-reduced-motion` is *not* set, so `motion-safe:animate-bounce` animates for everyone else and stays completely still for users who requested reduced motion. It maps directly onto the media query the preference exposes — the correct, declarative way to honor it (the mirror variant `motion-reduce:*` applies rules only when reduction *is* requested).",
+          "optionExplanations": [
+            "Auto-stopping after a delay still plays motion the user asked to avoid — it doesn't respect the preference, it just shortens the violation.",
+            "Correct — `motion-safe:animate-bounce` runs the animation only when reduced motion is *not* requested, honoring the preference.",
+            "No animation utility is 'exempt' — `animate-pulse` is still motion and still needs gating; swapping the animation doesn't respect the preference.",
+            "Slowing motion isn't the same as removing it — a user who requested reduced motion should see none, so `duration-1000` still fails the check."
+          ],
+          "interviewTip": "`prefers-reduced-motion` is a real accessibility requirement, not a nicety. Knowing `motion-safe:` / `motion-reduce:` — and that the reduced-motion state needs a usable *static* end-state, not just slower motion — signals you build inclusive UI by default."
+        },
+        {
+          "id": "t10-d",
+          "question": "A panel with `transition-all duration-300` won't animate open when its height goes from `h-0` to `h-auto` on toggle. Why does the height transition fail, and what's the usual fix?",
+          "options": [
+            "`transition-all` excludes height by design; switch to an explicit `transition-[height]` to opt height in",
+            "The browser can't interpolate to `auto`, since it's not a resolvable numeric value to animate toward",
+            "`duration-300` is too short for a height change, so the panel jumps; a longer duration animates it",
+            "Height can't be transitioned at all; only `transform` and `opacity` are animatable properties in CSS"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A transition interpolates between two resolvable values, and `auto` isn't one — the browser has no numeric target to animate toward, so it snaps instead. The common fixes are transitioning to an explicit pixel height (often measured in JS), animating `max-height` between finite values, or using a `transform: scaleY()` / grid-rows technique instead. It's the same 'needs a defined value to interpolate' rule that also breaks animating from `auto`.",
+          "optionExplanations": [
+            "`transition-all` does include height — opting height in isn't the issue; the failure is that the `auto` target isn't interpolatable.",
+            "Correct — `auto` has no resolved numeric value, so the browser can't interpolate toward it and the height simply snaps.",
+            "Duration doesn't cause the snap — any duration fails because the endpoint is `auto`; the problem is the value, not the timing.",
+            "Height *is* animatable between explicit values — it's just layout-triggering and can't animate to `auto`; the blanket claim is false."
+          ],
+          "interviewTip": "'You can't transition to auto' is a classic gotcha. The mature answer names why (no resolvable endpoint) and the escape hatches — measured pixel height, `max-height`, or a `grid-template-rows: 0fr→1fr` trick — which shows real hands-on layout experience."
         }
       ]
     }

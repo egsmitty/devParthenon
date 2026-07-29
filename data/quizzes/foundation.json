@@ -7,8 +7,8 @@
       "heading": "Clients and servers: who does what",
       "paragraphs": [
         "The web is a conversation between two roles. A client (usually a browser) asks for things. A server listens on a network address, receives those requests, and answers. Neither side keeps a phone line open — every exchange is a discrete request followed by a discrete response.",
-        "This matters because HTTP is stateless: the server does not inherently remember your previous request. Anything that feels like memory — being logged in, a shopping cart — is rebuilt on every request from data the client sends along (cookies, tokens) or data the server looks up (a database).",
-        "When an interviewer asks 'what happens when you type a URL and press Enter', this request/response boundary is the backbone of the answer."
+        "This matters because HTTP is stateless: the server does not inherently remember your previous request. Anything that feels like memory — being logged in, a shopping cart, a half-filled form — is rebuilt on every request from data the client sends along (cookies, tokens) or data the server looks up (a database keyed by the identity in that cookie). The protocol carries no thread of continuity; the application weaves one.",
+        "This division of labor is the mental model everything else hangs on. When an interviewer asks 'what happens when you type a URL and press Enter', this request/response boundary is the backbone of the answer — and every later topic (caching, sessions, CORS, REST) is a rule about how one side asks or the other side answers."
       ],
       "summary": "The web forgets between requests, so anything that feels like memory is rebuilt each time from what the client sends along.",
       "variants": [
@@ -93,9 +93,9 @@
     {
       "heading": "Anatomy of an HTTP request",
       "paragraphs": [
-        "An HTTP request is plain structured text: a method and path (`GET /products/42 HTTP/1.1`), then headers (key-value metadata like `Accept: application/json` or `Cookie: session=abc`), then optionally a body — the payload.",
-        "The method declares intent. `GET` reads and should never change anything. `POST` creates or triggers. `PUT` replaces a resource entirely, `PATCH` updates part of it, and `DELETE` removes it.",
-        "A useful lens is idempotency: `GET`, `PUT`, and `DELETE` can be safely retried — doing them twice leaves the world in the same state. `POST` is not idempotent, which is why your bank warns you not to click 'Pay' twice."
+        "An HTTP request is plain structured text with three parts. First a request line — a method and path (`GET /products/42 HTTP/1.1`). Then headers: key-value metadata like `Accept: application/json` (what the client wants back), `Content-Type: application/json` (what the body is), or `Cookie: session=abc` (who the client is). Then, optionally, a body — the payload, present on `POST`/`PUT`/`PATCH` and empty on a plain `GET`.",
+        "The method declares intent, and picking the right one is a design decision, not a formality. `GET` reads and should never change anything. `POST` creates or triggers an action. `PUT` replaces a resource entirely, `PATCH` updates part of it, and `DELETE` removes it. Servers, proxies, and browsers all trust these meanings, so a method that lies about its intent invites subtle bugs.",
+        "Two properties sharpen the choice. A method is *safe* if it has no side effects (`GET`, `HEAD`) — the whole web assumes safe methods are free to fire speculatively. A method is *idempotent* if repeating it leaves the same final state: `GET`, `PUT`, and `DELETE` qualify, so they can be safely retried after a timeout. `POST` is neither, which is why your bank warns you not to click 'Pay' twice — real payment APIs add an idempotency key to make retries safe."
       ],
       "summary": "Each request states its intent through its method, and picking the right one decides whether a retry is safe or repeats the action.",
       "variants": [
@@ -180,9 +180,9 @@
     {
       "heading": "Response status codes: the server's verdict",
       "paragraphs": [
-        "Status codes are grouped by their first digit. 2xx: success (`200 OK`, `201 Created`, `204 No Content`). 3xx: redirection (`301` moved permanently, `302` moved temporarily, `304` not modified — use your cache). 4xx: the client did something wrong. 5xx: the server failed.",
-        "The 4xx family is the one interviewers probe. `400` malformed request, `401` not authenticated (who are you?), `403` authenticated but not allowed (I know who you are — no), `404` resource doesn't exist, `409` conflict, `429` too many requests.",
-        "The 401 vs 403 distinction trips people up constantly: 401 means 'log in first'; 403 means 'logging in won't help'."
+        "Every response opens with a three-digit status code, and its first digit tells you who to blame before you read another byte. 2xx: success (`200 OK`, `201 Created` after a `POST`, `204 No Content` when there's nothing to return). 3xx: redirection (`301` moved permanently, `302` moved temporarily, `304` not modified — your cached copy is still good). 4xx: the client did something wrong. 5xx: the server failed. This grouping is what lets monitoring dashboards and client interceptors react to whole families at once.",
+        "The 4xx family is the one interviewers probe. `400` malformed request, `401` not authenticated (who are you?), `403` authenticated but not allowed (I know who you are — no), `404` resource doesn't exist, `409` conflict (e.g. an edit collided with a newer version), `429` too many requests (rate limited).",
+        "The 401 vs 403 distinction trips people up constantly, partly because `401`'s official name is the misleading 'Unauthorized' when it actually means *unauthenticated*. The clean mnemonic: 401 means 'log in first'; 403 means 'logging in won't help — you're known and still not allowed.' Getting this right isn't pedantry: client code routinely keys `401` to a token-refresh or login redirect and `403` to a plain denial message, so the wrong code drives the wrong behavior."
       ],
       "summary": "The status code is the server's short verdict, and the number's first digit alone tells you who to blame and what to do next.",
       "variants": [
@@ -267,9 +267,9 @@
     {
       "heading": "DNS: from name to address",
       "paragraphs": [
-        "Computers route packets to IP addresses, not names. DNS translates `example.com` into `93.184.216.34`. Your machine first checks local caches, then asks a resolver, which walks the hierarchy: root servers point to the `.com` TLD servers, which point to example.com's authoritative nameserver, which returns the record.",
-        "Records have types: `A` maps a name to an IPv4 address, `AAAA` to IPv6, `CNAME` aliases one name to another, `MX` routes mail, `TXT` holds arbitrary text (often domain-ownership proofs).",
-        "Every record carries a TTL — how long resolvers may cache it. Low TTLs mean fast propagation of changes but more lookup traffic; high TTLs the reverse. 'DNS propagation delay' is mostly just caches waiting for TTLs to expire."
+        "Computers route packets to IP addresses, not names, so before any connection can open, the human-friendly name must be translated. DNS turns `example.com` into an address like `93.184.216.34`. Your machine first checks local caches (the browser's, the OS's), then asks a resolver — usually run by your ISP or a public provider like `1.1.1.1`. If the resolver doesn't already know, it walks the hierarchy: root servers point it to the `.com` TLD servers, which point to example.com's authoritative nameserver, which returns the actual record. That answer is then cached at every hop on the way back.",
+        "Records have types, and knowing a handful covers most real work: `A` maps a name to an IPv4 address, `AAAA` to an IPv6 address, `CNAME` aliases one name to another name (so you follow through to wherever *that* points), `MX` routes mail, and `TXT` holds arbitrary text — frequently domain-ownership proofs and email-authentication policies.",
+        "Every record carries a TTL — how many seconds resolvers are allowed to cache it. Low TTLs mean changes propagate fast but generate more lookup traffic; high TTLs are cheaper but slower to update. Crucially, the TTL is baked into the answer *when it's fetched*, so a resolver honors the value it saw, not the value you set later. That's why 'DNS propagation delay' is mostly just caches around the world waiting for their TTLs to expire — and why you lower the TTL well before a planned migration."
       ],
       "summary": "DNS turns a name into an address, and the delay you feel after a change is just old cached answers waiting for their TTL to expire.",
       "variants": [
@@ -354,9 +354,9 @@
     {
       "heading": "The DOM: the page as a living tree",
       "paragraphs": [
-        "When the browser parses HTML, it builds the DOM — a tree of node objects in memory. The HTML file is the blueprint; the DOM is the standing building. JavaScript never edits your HTML file; it mutates this tree, and the browser repaints to match.",
-        "Every DOM mutation can trigger style recalculation, layout (geometry), and paint. Touching the DOM is orders of magnitude more expensive than touching JavaScript objects — which is the entire reason virtual-DOM libraries like React exist: batch the changes, compute the minimal diff, touch the real DOM as little as possible.",
-        "The DOM is also live: `document.querySelector` hands you a reference into the tree itself, not a copy. Change it, and the page changes."
+        "When the browser parses HTML, it builds the DOM — a tree of node objects held in memory. The HTML file is the blueprint; the DOM is the standing building. This is the distinction that confuses beginners most: JavaScript never edits your `.html` file on disk. It mutates the in-memory tree, and the browser re-renders to match. View the page source and you see the original blueprint; open DevTools and you see the live tree, which may look completely different after scripts have run.",
+        "Every DOM mutation can trigger a chain of work: style recalculation, layout (computing geometry — this is *reflow*), and paint. Touching the DOM is orders of magnitude more expensive than touching plain JavaScript objects, because a single change can invalidate the layout of everything around it. That cost is the entire reason virtual-DOM libraries like React exist: hold a cheap copy of the tree, batch your intended changes, compute the minimal diff, and touch the real DOM as little as possible.",
+        "The DOM is also *live*: `document.querySelector` hands you a reference into the tree itself, not a snapshot. Change the node you got back and the page changes with it. Some older APIs go further and return live *collections* (`getElementsByTagName`) that keep updating as the tree changes — a subtlety that bites anyone who loops over one while mutating the page."
       ],
       "summary": "The DOM is a live tree the browser draws from, and touching it is slow, so change it as little as possible and batch your updates.",
       "variants": [
@@ -439,11 +439,446 @@
       ]
     },
     {
+      "heading": "Cookies, sessions, and tokens: giving HTTP a memory",
+      "paragraphs": [
+        "Because HTTP forgets between requests, continuity has to ride *inside* each request. The oldest mechanism is the cookie: the server sends a `Set-Cookie` header once, the browser stores that small string, and it automatically attaches it back as a `Cookie` header on every future request to that site. Cookies are how the browser 'remembers' who you are without the protocol doing so — the memory lives in a value the client keeps re-presenting.",
+        "There are two broad ways to use that cookie. In a *session* scheme, the cookie holds only an opaque session ID; the real data (your user record, your cart) sits in server-side storage keyed by that ID. The server is the source of truth and can revoke a session instantly by deleting it. In a *token* scheme — a JWT is the common example — the cookie or `Authorization: Bearer` header carries a signed, self-contained token that states who you are; the server trusts the signature without a lookup, which scales beautifully but makes instant revocation harder because the token is valid until it expires.",
+        "Since a cookie is just a client-held credential, protecting it is critical. `HttpOnly` hides it from JavaScript so a cross-site script can't steal it. `Secure` sends it only over HTTPS. `SameSite` limits when it's attached to cross-site requests, which is a key defense against CSRF. Get these flags wrong and 'remembering the user' quietly becomes 'letting an attacker impersonate the user.'"
+      ],
+      "summary": "Stateless HTTP gets a memory when the client re-sends a cookie or token every request, and auth is really just the server trusting and protecting that credential.",
+      "variants": [
+        {
+          "id": "f7",
+          "question": "After you log in, the server sends `Set-Cookie: session=abc123`. On your next request to the same site, how does that cookie get back to the server?",
+          "options": [
+            "The server opens a fresh connection back to your browser to pull the stored cookie out of it again",
+            "The browser stores it and attaches it as a `Cookie` header on matching requests to that site",
+            "Your app's JavaScript has to read the cookie and manually copy it onto every single outgoing request",
+            "The cookie travels only once at login and is thereafter cached server-side for the whole session"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Cookies are the browser's built-in continuity mechanism: once `Set-Cookie` stores a value, the browser resends it as a `Cookie` header on every subsequent request whose domain and path match — no application code required. That automatic re-presentation is exactly how a stateless protocol appears to 'remember' you.",
+          "optionExplanations": [
+            "Servers cannot reach into a browser and pull data out; the flow is client-driven, with the browser choosing to attach the cookie itself.",
+            "Correct — the browser stores the cookie and re-sends it automatically on every matching request, which is what gives HTTP its apparent memory.",
+            "Manual copying is only needed for tokens kept outside cookies; a real cookie is attached by the browser automatically, and an `HttpOnly` one isn't even readable by JavaScript.",
+            "The cookie is sent on the login response and then on every following request; it is not a one-time value cached only on the server."
+          ],
+          "interviewTip": "Say the loop out loud: 'server sets it once, browser resends it every request.' Then mention `HttpOnly`, `Secure`, and `SameSite` to show you know cookies are a security surface, not just a storage bucket."
+        },
+        {
+          "id": "f7-alt",
+          "question": "A team runs many stateless API servers behind a load balancer and wants each server to validate a caller's identity without any shared session lookup on every request. Which auth approach fits that goal most directly?",
+          "options": [
+            "A signed, self-contained token (like a JWT) that any server can verify from its signature alone",
+            "An opaque session ID that every server resolves by querying one central session store each time",
+            "Sticky sessions that pin each user to the single server that first authenticated their login",
+            "Basic auth, re-sending the raw username and password on every request for the server to re-check"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "A signed token carries the identity claims inside it, so any server holding the verification key can trust the token by checking its signature — no round trip to shared storage. That statelessness is precisely what makes tokens scale across a fleet, at the cost of harder instant revocation.",
+          "optionExplanations": [
+            "Correct — a self-contained signed token is verifiable locally on any server, avoiding a per-request central lookup entirely.",
+            "An opaque session ID means nothing on its own, so every server must hit the central store to resolve it — the exact lookup the goal rules out.",
+            "Sticky sessions avoid shared lookups by trapping the user on one server, but that reintroduces state and breaks if that server dies — the opposite of stateless scaling.",
+            "Basic auth re-checks credentials against the user store on every request, which is both a heavy per-request lookup and a serious security downgrade."
+          ],
+          "interviewTip": "State the trade-off unprompted: tokens scale without shared state but are hard to revoke before expiry; server sessions revoke instantly but need shared storage. Naming both sides is the senior signal."
+        },
+        {
+          "id": "f7-c",
+          "question": "A reviewer flags that a session cookie is set without the `HttpOnly` flag. What concrete risk does adding `HttpOnly` mitigate?",
+          "options": [
+            "It stops the cookie being sent over unencrypted HTTP connections",
+            "It blocks page JavaScript from reading the cookie, so injected XSS can't steal it",
+            "It prevents the browser from attaching the cookie to a different site's requests",
+            "It shrinks the cookie's lifetime so that it silently expires the very instant the browser tab is closed again"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`HttpOnly` makes a cookie invisible to `document.cookie` and all client-side scripting. Its purpose is to blunt cross-site scripting (XSS): even if an attacker injects a script into your page, that script cannot read the session cookie and exfiltrate it, because the value is simply not exposed to JavaScript.",
+          "optionExplanations": [
+            "Restricting a cookie to encrypted connections is the job of the `Secure` flag, not `HttpOnly`.",
+            "Correct — `HttpOnly` hides the cookie from JavaScript, so an XSS payload can't read and steal the session value.",
+            "Controlling whether a cookie rides along on cross-site requests is what `SameSite` governs; `HttpOnly` doesn't decide when the cookie is sent.",
+            "Cookie lifetime is set by `Expires`/`Max-Age`; `HttpOnly` says nothing about when a cookie expires."
+          ],
+          "interviewTip": "Keep the flag trio straight: `HttpOnly` (no JS access, anti-XSS), `Secure` (HTTPS only), `SameSite` (cross-site sending, anti-CSRF). Interviewers often ask you to map each flag to the attack it counters."
+        },
+        {
+          "id": "f7-d",
+          "question": "A colleague argues that stateless JWTs are strictly better than server-side sessions 'because there's nothing to store.' What is the most important caveat to raise?",
+          "options": [
+            "JWTs can't carry user identity, so you still need a session store",
+            "JWTs must be re-issued on every single request, which cancels out the entire performance benefit they offer",
+            "A self-contained JWT stays valid until it expires, making instant revocation hard",
+            "JWTs only work over HTTP/2, so older clients silently fall back to server-side sessions regardless anyway"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The very property that makes a JWT convenient — the server trusts it from its signature without any lookup — is what makes revocation awkward. Once issued, the token is accepted until it expires, so 'log this user out everywhere right now' or 'ban this compromised token' requires extra machinery like short lifetimes plus refresh tokens, or a denylist that reintroduces the state you were trying to avoid.",
+          "optionExplanations": [
+            "JWTs are designed to carry identity claims in their payload; that's their whole point, so this is backwards.",
+            "A JWT is issued once and presented on many requests; it is not re-minted per request, so no such cost exists.",
+            "Correct — a signed token is valid until expiry, so revoking it early requires extra mechanisms and is the key trade-off against server sessions.",
+            "JWTs are just signed strings carried in a header or cookie; they are independent of the HTTP version in use."
+          ],
+          "interviewTip": "When someone calls a design 'strictly better,' probe the trade-off. Here: statelessness buys scale but costs revocation. Mentioning short-lived access tokens plus refresh tokens shows you know the standard mitigation."
+        }
+      ]
+    },
+    {
+      "heading": "Caching: making the web fast (and stale)",
+      "paragraphs": [
+        "The fastest request is the one you never make. Caching lets a response be reused instead of re-fetched, and it happens at many layers: the browser's own cache, shared proxy or CDN caches near the user, and caches inside the server. The server steers all of this with response headers, chiefly `Cache-Control` — for example `Cache-Control: max-age=3600` tells caches a copy stays fresh for one hour, while `no-store` forbids caching entirely and `private` limits it to the end user's browser.",
+        "When a cached copy's freshness runs out, the client doesn't have to blindly re-download it — it can *revalidate*. The server can tag a response with an `ETag` (a fingerprint of the content) or a `Last-Modified` date. On the next request the client sends that value back in `If-None-Match` or `If-Modified-Since`; if nothing changed, the server replies `304 Not Modified` with an empty body, and the client reuses what it already has. You pay a round trip but skip the download.",
+        "This is also where 'why is my change not showing up?' bugs come from. A long `max-age` on an HTML file means users keep seeing the old page until the cache expires. The standard fix is a *cache-busting* filename: name built assets `app.9f2c.js` with a content hash, cache them for a year, and change the filename whenever the content changes — so a new deploy is a new URL that no cache has seen."
+      ],
+      "summary": "Caching reuses responses to skip work, `Cache-Control` and `ETag` govern how long and how it's revalidated, and stale content is the price you manage with expiry and hashed filenames.",
+      "variants": [
+        {
+          "id": "f8",
+          "question": "A response includes `Cache-Control: max-age=3600`. What does that instruct caches to do?",
+          "options": [
+            "Store this copy but revalidate it with the origin before every reuse",
+            "Keep this copy for exactly 3600 separate requests, after which it is discarded regardless of time",
+            "Reuse this copy as fresh, with no call to the server, for up to 3600 seconds",
+            "Refuse to store this response at all, as max-age disables caching"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "`max-age=3600` declares the response fresh for 3600 seconds. While it's fresh, a cache serves it directly with no call to the origin at all — that's the speed win. Only after it goes stale must the cache revalidate or re-fetch.",
+          "optionExplanations": [
+            "Revalidating before every reuse is what `no-cache` requires; `max-age` explicitly lets the cache skip the server while the copy is still fresh.",
+            "`max-age` counts seconds of freshness, not a number of requests; the unit is time, not hit count.",
+            "Correct — for 3600 seconds the copy is fresh and reused directly, with no request to the origin server.",
+            "Refusing to store the response is what `no-store` does; `max-age` does the opposite and enables reuse."
+          ],
+          "interviewTip": "Distinguish `no-cache` (store it, but revalidate every time before use) from `no-store` (never store it at all). The names are counterintuitive, and mixing them up is a classic tell."
+        },
+        {
+          "id": "f8-alt",
+          "question": "A cached CSS file has just gone stale. The browser sends its stored `ETag` back in an `If-None-Match` header, and the server replies `304 Not Modified`. What does the browser do next?",
+          "options": [
+            "Re-download the entire full CSS file, because a 304 signals that the cached copy is no longer usable",
+            "Reuse its existing cached copy, since a 304 confirms nothing changed and skips the download",
+            "Discard the cached copy and render the page with no styles at all until a fresh copy arrives later on",
+            "Send the request a second time without the `ETag` so the server returns the file body in full again"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A `304 Not Modified` is the server saying 'your `ETag` matches — nothing changed.' The response carries no body, so the browser keeps and reuses the copy it already has. You spend one small round trip to confirm freshness but avoid re-downloading the file's bytes.",
+          "optionExplanations": [
+            "A 304 means the opposite of unusable — it confirms the cached copy is still valid, so no re-download happens.",
+            "Correct — 304 confirms the content is unchanged, so the browser reuses its cached copy and skips downloading the body.",
+            "Nothing is discarded; the whole point of revalidation is to keep the existing copy when it's confirmed current.",
+            "Re-requesting without the `ETag` would waste the revalidation; the browser already got its answer and reuses the cache."
+          ],
+          "interviewTip": "Frame revalidation as 'pay a round trip, skip the download.' Mention that an `ETag` is a content fingerprint while `Last-Modified` is a timestamp — `ETag` is more precise when content can change without the clock advancing meaningfully."
+        },
+        {
+          "id": "f8-c",
+          "question": "You deploy a bug fix, but users keep running the old JavaScript for hours. The file is served as `app.js` with `Cache-Control: max-age=31536000` (one year). What's the standard fix so future deploys take effect immediately?",
+          "options": [
+            "Include a content hash in each asset's filename so a changed file ships as a brand-new URL",
+            "Drop the cache lifetime to zero on every asset so nothing is ever cached across page loads",
+            "Ask users to hard-refresh after each deploy, since long-lived caches can't be worked around",
+            "Move the JavaScript inline into the HTML so it can never be cached separately by the browser"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "A year-long cache on a stable filename means the browser won't even ask about `app.js` until 2027. The fix is cache-busting: build the file as `app.[hash].js` where the hash reflects its contents. When the code changes the hash changes, producing a new URL no cache has ever seen — so it downloads immediately — while unchanged files keep their old hashed URL and stay cached for a year.",
+          "optionExplanations": [
+            "Correct — hashing the filename turns a changed asset into a new URL, so caches fetch it fresh while unchanged assets stay cached long-term.",
+            "Zero-lifetime caching throws away the entire performance benefit; you'd re-download unchanged assets on every visit for no reason.",
+            "Relying on users to hard-refresh is not a fix — most never will, and the whole point is to make deploys automatic.",
+            "Inlining every script bloats the HTML and forfeits caching of code that rarely changes; it treats the symptom by making caching impossible."
+          ],
+          "interviewTip": "Name the pattern 'cache-busting via content-hashed filenames' and note the combo: long `max-age` plus `immutable` on hashed assets, but a short or revalidated cache on the HTML that references them, since the HTML is what points at the new hashes."
+        },
+        {
+          "id": "f8-d",
+          "question": "An API sends bank-balance JSON with `Cache-Control: private, no-store`. Why is `private` here not enough on its own, making `no-store` the important part?",
+          "options": [
+            "`private` blocks shared caches but still lets the user's own browser store the balance locally",
+            "`private` applies only to images, so JSON responses ignore it",
+            "`private` and `no-store` are exact synonyms here, so including both is purely redundant defensiveness anyway",
+            "`private` forces revalidation on every single request, which on its own already guarantees nothing is stored"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`private` only means 'shared caches like CDNs and proxies must not store this' — it explicitly permits the end user's own browser cache to keep a copy. For a sensitive balance that could linger on a shared machine, you want `no-store`, which forbids writing the response to *any* cache at all. `private` narrows who may cache; `no-store` says no one may.",
+          "optionExplanations": [
+            "Correct — `private` still allows the user's own browser to cache the response; `no-store` is what forbids storing it anywhere.",
+            "`private` is not media-type specific; it applies to any response, JSON included, so this reasoning is wrong.",
+            "They differ meaningfully: `private` restricts *which* caches may store it, `no-store` forbids storing entirely — not synonyms.",
+            "Forcing revalidation is `no-cache`'s behavior, not `private`'s, and revalidation still involves storing a copy to revalidate."
+          ],
+          "interviewTip": "Keep the axis clear: `private` vs `public` answers *who* may cache; `no-store` vs storable answers *whether* anyone may. For secrets you want `no-store`; `private` alone leaves a copy on the user's disk."
+        }
+      ]
+    },
+    {
+      "heading": "HTTPS and TLS: trust on an open wire",
+      "paragraphs": [
+        "Plain HTTP travels in the clear: anyone between you and the server — a café's Wi-Fi, an ISP, a compromised router — can read and even alter it. HTTPS is just HTTP running inside a TLS-encrypted channel, and it delivers three things at once: *confidentiality* (eavesdroppers see only ciphertext), *integrity* (tampering is detected), and *authentication* (you're really talking to the site you named, not an impostor).",
+        "That last guarantee comes from certificates. A server presents a certificate — its public key plus its domain name — signed by a Certificate Authority the browser already trusts. The browser checks the signature chains up to a trusted root, that the certificate covers the domain you asked for, and that it hasn't expired or been revoked. If any check fails you get the scary full-page warning, because a bad certificate is exactly what a man-in-the-middle attack looks like.",
+        "The TLS handshake sets this up before any HTTP is sent. Layered on an established TCP connection, the client and server agree on a cipher, the server proves it owns the certificate's private key, and they derive a shared symmetric key using asymmetric crypto — after which the fast symmetric key encrypts the actual traffic. TLS 1.3 trimmed this to a single round trip, which is why modern HTTPS adds far less latency than its reputation suggests."
+      ],
+      "summary": "HTTPS wraps HTTP in TLS to get confidentiality, integrity, and authenticity, and the certificate is what proves you're talking to the real site rather than an impostor.",
+      "variants": [
+        {
+          "id": "f9",
+          "question": "Beyond encrypting traffic, what critical guarantee does a valid TLS certificate provide?",
+          "options": [
+            "It authenticates the server, proving you're connected to the real domain and not an impostor",
+            "It compresses the response body so that encrypted pages will transfer faster than plain HTTP ones do",
+            "It guarantees the server's application code is free of bugs and vulnerabilities",
+            "It hides your IP from the server so the site can never tell who is connecting"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Encryption alone would be useless if you'd encrypted a conversation with an attacker. The certificate authenticates the server: because it's signed by a CA the browser trusts and it names the domain you requested, you gain confidence you're talking to the genuine site, not a man-in-the-middle. Confidentiality plus authenticity is the point.",
+          "optionExplanations": [
+            "Correct — the certificate proves the server's identity, so you know the encrypted channel is with the real site and not an impostor.",
+            "TLS does not compress bodies; that's an unrelated concern, and past TLS-level compression was actually removed for security reasons.",
+            "A certificate says nothing about code quality; a fully patched site and a buggy one can both hold valid certificates.",
+            "The server still sees your IP — it has to, to send packets back; certificates authenticate the server, not anonymize the client."
+          ],
+          "interviewTip": "List all three properties — confidentiality, integrity, authenticity — and stress that authenticity is what defeats a man-in-the-middle. Many candidates say 'HTTPS = encryption' and stop, missing the identity half."
+        },
+        {
+          "id": "f9-alt",
+          "question": "During a TLS connection setup, what is the browser fundamentally verifying when it validates the server's certificate?",
+          "options": [
+            "That the response body has not been modified by any proxy that sits between the client and server",
+            "That the certificate is signed by a trusted CA and actually covers the requested domain",
+            "That the server is geographically located in the very same country as the person connecting to it",
+            "That the user already has an account on the site and has previously entered valid login credentials"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Certificate validation is an identity check: the browser confirms the certificate chains up to a Certificate Authority in its trust store, that it lists the exact domain the user asked for, and that it's currently valid (not expired or revoked). Passing all three is what lets the browser believe the server is who it claims to be.",
+          "optionExplanations": [
+            "Body integrity is enforced continuously by TLS's per-record authentication, not by the one-time certificate check at handshake.",
+            "Correct — validation checks the CA signature chain, that the certificate covers the requested domain, and that it's still valid.",
+            "Certificates encode domain identity, not physical location; geography plays no role in validation.",
+            "User login is an application-layer step that happens after TLS; the certificate authenticates the server to the client, not the user to the server."
+          ],
+          "interviewTip": "Enumerate the checks — trusted signing chain, domain match, not expired/revoked — and note that a mismatch on any one triggers the browser warning. Interviewers use cert-warning scenarios to see if you know what's actually being validated."
+        },
+        {
+          "id": "f9-c",
+          "question": "Why can't a passive attacker who records an entire HTTPS session simply replay the captured bytes later to read the plaintext, given they saw the whole handshake?",
+          "options": [
+            "The handshake derives a per-session key the attacker never sees, so captured bytes stay ciphertext",
+            "HTTPS traffic is stored only within the browser's own memory and is wiped the instant the tab is closed",
+            "The server refuses to accept any connection at all that reuses an IP address it has seen before recently",
+            "Captured TLS bytes automatically self-destruct after just a few minutes and then become unreadable noise"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The handshake uses asymmetric cryptography to let both sides agree on a symmetric session key without ever transmitting it in a form the eavesdropper can use — modern key exchanges (ephemeral Diffie-Hellman) mean the secret is never sent on the wire at all. The attacker sees the negotiation but not the resulting key, so the recorded application data remains ciphertext they can't decrypt.",
+          "optionExplanations": [
+            "Correct — the session key is derived, never transmitted usably, so an eavesdropper who saw every byte still lacks the key to decrypt the traffic.",
+            "Where the browser stores plaintext is irrelevant to a wire attacker; the protection is the key the attacker never obtains, not memory hygiene.",
+            "TLS security doesn't rest on refusing repeated IPs; connections from the same address are entirely normal and still secure.",
+            "Captured bytes don't decay; they'd be perfectly readable if the attacker had the key — which is exactly what they lack."
+          ],
+          "interviewTip": "Drop the term 'forward secrecy': with ephemeral Diffie-Hellman, even stealing the server's long-term private key later won't decrypt past sessions. That's a strong signal you understand *why* the key exchange is designed the way it is."
+        },
+        {
+          "id": "f9-d",
+          "question": "A user visits `https://example.com` and gets a full-page 'Your connection is not private' warning. Which situation would legitimately trigger that certificate error?",
+          "options": [
+            "The certificate was issued for `example.net`, so it doesn't match the domain",
+            "The page loads slowly because the server is far away and overloaded",
+            "The site uses a `POST` form without any CSRF token protecting it",
+            "The server returned a `500` error for the one specific page the user happened to be attempting to open"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The certificate warning is about identity, not availability or app logic. A certificate that names `example.net` cannot vouch for `example.com`, so the browser can't confirm it's talking to the real site — which is indistinguishable from an impostor presenting the wrong certificate, hence the full-page block. Expiry, an untrusted issuer, or a revoked certificate trigger the same class of warning.",
+          "optionExplanations": [
+            "Correct — a domain mismatch means the certificate can't authenticate the requested site, which is exactly what the browser warning guards against.",
+            "Slowness and load are performance issues; they don't affect certificate validity and never produce this warning.",
+            "Missing CSRF protection is an application-security gap unrelated to TLS; it wouldn't trigger a certificate error.",
+            "A `500` is a server-side application error returned *over* a valid TLS connection; the certificate itself is still fine."
+          ],
+          "interviewTip": "Sort certificate errors (domain mismatch, expired, untrusted issuer, revoked) from HTTP errors (`4xx`/`5xx`). The former block before any HTTP flows; the latter arrive as normal responses over a working TLS channel."
+        }
+      ]
+    },
+    {
+      "heading": "CORS and the same-origin policy: why the browser says no",
+      "paragraphs": [
+        "By default the browser enforces the *same-origin policy*: JavaScript on `https://app.com` may freely read responses from `https://app.com`, but is blocked from reading responses fetched from a different origin. An origin is the exact triple of scheme, host, and port — `https://app.com` and `https://api.app.com` are different origins, as are `http` and `https` versions of the same host. This rule exists so a malicious page can't quietly use *your* logged-in cookies to read your email or bank data in the background.",
+        "CORS (Cross-Origin Resource Sharing) is the controlled exception. A server that *wants* to be called from another origin opts in with response headers, chiefly `Access-Control-Allow-Origin`. The crucial subtlety: CORS is enforced by the browser, for browser JavaScript, on the *response*. The request often still reaches the server and runs; the browser simply refuses to hand the response back to the page unless the origin is allowed. That's why tools like `curl` and your backend, which aren't browsers, never hit CORS at all.",
+        "For requests that could change data or carry unusual headers, the browser sends a *preflight* first — an `OPTIONS` request asking 'may I send a `PUT` with a `Content-Type: application/json` header from this origin?' Only if the server answers with the matching `Access-Control-Allow-*` headers does the browser send the real request. This is why a mysterious `OPTIONS` call appears in the network tab before your actual `POST`, and why a CORS misconfiguration often looks like a request that 'never fires.'"
+      ],
+      "summary": "The same-origin policy stops one site's JavaScript from reading another's responses, and CORS is the server's explicit opt-in — enforced by the browser on the response, with a preflight for anything risky.",
+      "variants": [
+        {
+          "id": "f10",
+          "question": "Your frontend on `https://app.com` calls an API on `https://api.other.com` and the browser console shows a CORS error, yet the server logs show the request arrived and succeeded. What is actually happening?",
+          "options": [
+            "The request failed to leave the browser, so that server log entry is from another client",
+            "CORS errors mean the server rejected the request before running any handler code",
+            "The request reached the server, but the browser blocked the page from reading the response",
+            "The browser corrupted the response body in transit, so the server's success log is just misleading"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "CORS is a browser-side gate on the *response*, not a server-side rejection. The cross-origin request was sent and the server handled it, but because the response lacked an `Access-Control-Allow-Origin` header permitting `https://app.com`, the browser refused to expose the response to your JavaScript — surfacing as a console error even though the server succeeded.",
+          "optionExplanations": [
+            "The server log proves the request left the browser and arrived; CORS blocks the response, not the outbound request.",
+            "CORS doesn't stop the server from running; the handler executed (that's your log), and the block happens afterward in the browser.",
+            "Correct — the request ran server-side, but the browser withheld the response from the page because the origin wasn't allowed.",
+            "Nothing was corrupted; the body was fine — the browser simply refused to hand it to the page for lacking CORS headers."
+          ],
+          "interviewTip": "Emphasize where enforcement lives: 'CORS is the browser protecting the user, applied to the response.' Add that `curl` or a server-to-server call sees no CORS at all, which explains why the same endpoint 'works in Postman' but not in the browser."
+        },
+        {
+          "id": "f10-alt",
+          "question": "What is the same-origin policy fundamentally designed to prevent?",
+          "options": [
+            "A server from accepting requests that originate from any domain at all other than its own registered one",
+            "One site's JavaScript from reading another origin's responses via the user's credentials",
+            "A page from ever loading images, scripts, or stylesheets hosted anywhere on a third-party domain at all",
+            "Two browser tabs open to two different sites from running their own JavaScript at the very same time"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The same-origin policy is a client-side protection for the user: it stops a page at one origin from scripting reads of another origin's responses while riding the user's automatically-sent cookies. Without it, any site you visited could silently fetch and read your logged-in bank or email pages in the background.",
+          "optionExplanations": [
+            "Servers can accept requests from anywhere; the policy constrains what browser JavaScript may *read*, not what servers may receive.",
+            "Correct — it blocks one origin's scripts from reading another origin's responses that ride the user's ambient credentials.",
+            "Cross-origin images, scripts, and stylesheets load freely; the policy restricts programmatic reading of responses, not embedding resources.",
+            "Tabs run their JavaScript concurrently without issue; the policy isolates data access between origins, not execution timing."
+          ],
+          "interviewTip": "Frame it as protecting the user, not the server, and note the loophole it closes: cookies are sent automatically cross-site, so without the policy any page could read your authenticated data. That framing explains why CORS is opt-in per response."
+        },
+        {
+          "id": "f10-c",
+          "question": "Before your app's cross-origin `PUT` request with a JSON body fires, the network tab shows an `OPTIONS` request to the same URL. What is that `OPTIONS` call doing?",
+          "options": [
+            "It's a CORS preflight asking the server whether this cross-origin PUT with these headers is allowed",
+            "It's the browser retrying the PUT a very first time using a safer method in case the PUT gets rejected",
+            "It's a health check that the browser runs against every single endpoint before sending any request to it",
+            "It's the server redirecting the PUT to OPTIONS because all JSON bodies must be negotiated well in advance"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "A `PUT` carrying `Content-Type: application/json` isn't a 'simple' request, so the browser sends a CORS preflight — an automatic `OPTIONS` request that asks the server, via `Access-Control-Request-Method` and `-Headers`, whether this origin may send that method with those headers. Only if the server responds with matching `Access-Control-Allow-*` headers does the browser send the real `PUT`.",
+          "optionExplanations": [
+            "Correct — the `OPTIONS` is a preflight checking whether the server permits this cross-origin method and headers before the real request goes out.",
+            "It's not a retry; the browser hasn't sent the `PUT` yet — the preflight is a permission check that must pass first.",
+            "There's no universal per-endpoint health check; the `OPTIONS` appears specifically because this is a non-simple cross-origin request.",
+            "The server isn't redirecting anything; the browser itself initiates the preflight before it will send the `PUT`."
+          ],
+          "interviewTip": "Know what makes a request 'non-simple' and thus preflighted: methods beyond GET/POST/HEAD, custom headers, or a `Content-Type` like `application/json`. Mentioning `Access-Control-Max-Age` to cache the preflight shows you've optimized this in practice."
+        },
+        {
+          "id": "f10-d",
+          "question": "A backend team 'fixes' CORS by reflecting any incoming `Origin` back in `Access-Control-Allow-Origin` and also setting `Access-Control-Allow-Credentials: true`. Why is that dangerous?",
+          "options": [
+            "It makes every response larger, so the CORS headers slow the API",
+            "It effectively lets any site make credentialed requests and read your users' responses",
+            "It disables the preflight entirely, so browsers stop sending OPTIONS and cross-origin caching then breaks",
+            "It only permits same-origin calls, so all legitimate cross-origin frontends will now be blocked instead"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Reflecting the caller's origin means *every* origin is allowed, and pairing that with `Allow-Credentials: true` tells the browser it may send the user's cookies and expose the response cross-origin. Together they dismantle the same-origin protection: any malicious site can now make authenticated requests as your logged-in user and read the results — precisely the attack the policy exists to stop.",
+          "optionExplanations": [
+            "A few extra header bytes are negligible; the danger is a security hole, not response size or speed.",
+            "Correct — reflecting any origin plus allowing credentials lets any site make authenticated requests and read responses as your logged-in users.",
+            "Preflight still happens for non-simple requests; the misconfiguration weakens security rather than turning `OPTIONS` off.",
+            "It does the opposite of restricting to same-origin — it opens the API to all origins, which is the whole problem."
+          ],
+          "interviewTip": "Call out the specific combination: wildcard/reflected origin *plus* `Allow-Credentials: true` is the dangerous pairing. Note the spec forbids a literal `*` with credentials for this reason, which is why teams reach for reflection — and reintroduce the hole."
+        }
+      ]
+    },
+    {
+      "heading": "REST and JSON APIs: resources, verbs, and payloads",
+      "paragraphs": [
+        "A REST API models your data as *resources* addressed by URLs, and uses HTTP methods as the verbs acting on them. The URL names the thing (a noun): `/users` is the collection, `/users/42` is one user. The method says what to do: `GET /users/42` reads it, `POST /users` creates a new one, `PUT`/`PATCH /users/42` updates it, and `DELETE /users/42` removes it. That mapping of methods to create-read-update-delete is why people say 'HTTP verbs are CRUD.'",
+        "The convention is to keep URLs as nouns and let the method carry the action, so `POST /users/42/deactivate` is more RESTful expressed as an action on a resource than an RPC-style `GET /deactivateUser?id=42`. Good APIs also lean on the status-code families you already know: `201 Created` after a successful `POST`, `204 No Content` after a `DELETE`, `404` for a missing resource, `400` for a malformed body. The HTTP semantics you learned earlier *are* the API contract.",
+        "The payload is almost always JSON — a compact, language-neutral format of objects, arrays, strings, numbers, and booleans. The client signals what it's sending with `Content-Type: application/json` and what it wants back with `Accept: application/json`. Because JSON maps cleanly onto the data structures of nearly every language, both a browser and a Python backend can serialize and parse the same `{ \"id\": 42, \"name\": \"Ada\" }` without agreeing on anything beyond the format itself."
+      ],
+      "summary": "REST addresses data as resources by URL and uses HTTP methods as CRUD verbs, and JSON is the neutral payload both sides serialize into and parse out of.",
+      "variants": [
+        {
+          "id": "f11",
+          "question": "In a REST API, which request best expresses 'create a new user'?",
+          "options": [
+            "`GET /users/create` with the new user's fields passed as query-string params",
+            "`PUT /createUser` with the user object attached, since PUT is the method for new records",
+            "`POST /users` with the new user's data sent as a JSON body in the request payload itself",
+            "`DELETE /users` with the new user's data, treating creation as removing an empty slot"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "REST names resources with nouns and lets the method carry the action. Creating a new member of the `/users` collection is a `POST` to that collection, with the new user's fields in a JSON body. The server assigns an ID and typically responds `201 Created` with a `Location` header pointing at the new resource.",
+          "optionExplanations": [
+            "`GET` must be safe and never create anything, and stuffing creation into a `/create` verb-URL abandons the resource model entirely.",
+            "`PUT` replaces a resource at a *known* URL; a brand-new user has no URL yet, and `/createUser` is an RPC verb, not a resource.",
+            "Correct — `POST /users` with a JSON body creates a new member of the collection, the canonical REST creation pattern.",
+            "`DELETE` removes a resource; framing creation as deletion inverts the method's meaning entirely."
+          ],
+          "interviewTip": "Recite the CRUD-to-verb map — POST create, GET read, PUT/PATCH update, DELETE remove — and note the follow-up: `POST` returns `201 Created` with a `Location` header. That detail shows you know the full request/response contract, not just the verb."
+        },
+        {
+          "id": "f11-alt",
+          "question": "A colleague proposes the endpoint `GET /getUserOrders?userId=42&action=fetch`. What's the core REST design problem with it?",
+          "options": [
+            "It should be a `POST`, because any endpoint at all that reads data from a database has to send a body",
+            "It puts an action verb in the URL rather than a resource; `GET /users/42/orders` is cleaner",
+            "It's perfectly fine as written; REST places no constraints on how any endpoint URLs may be named or built",
+            "It uses a query string, and REST strictly forbids query parameters anywhere at all within any request URL"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "REST wants URLs to identify resources (nouns) while the HTTP method supplies the verb. `getUserOrders` and `action=fetch` bake the verb into the path, duplicating what `GET` already says. The resource-oriented form is `GET /users/42/orders` — a `GET` on user 42's orders collection — which reads cleanly and leans on HTTP semantics instead of reinventing them.",
+          "optionExplanations": [
+            "Reads use `GET`, which has no body; requiring a body to read data misunderstands how `GET` works.",
+            "Correct — the URL encodes an action verb rather than naming a resource; `GET /users/42/orders` expresses the same thing the RESTful way.",
+            "REST is precisely a set of conventions about resource-oriented URLs; 'anything goes' is the opposite of the style.",
+            "Query strings are perfectly RESTful for filtering, sorting, and pagination; they're not forbidden — the verb-in-URL is the real issue."
+          ],
+          "interviewTip": "State the rule as 'nouns in the URL, verbs in the method.' Then note query strings are still fine for filtering and pagination (`/users/42/orders?status=open&page=2`) — so you distinguish a genuine REST smell from a false one."
+        },
+        {
+          "id": "f11-c",
+          "question": "A client `POST`s JSON to an API but the server rejects it with `415 Unsupported Media Type`. Which missing or wrong request detail most directly causes this?",
+          "options": [
+            "The `Content-Type` header doesn't declare `application/json`, so the body isn't parsed as JSON",
+            "The `Accept` header is entirely absent, so the server can't tell which format the client wants back in reply",
+            "The JSON body is syntactically invalid, which is exactly what a `415` status specifically reports to the client",
+            "The request omitted an authorization token, and `415` is the way the server signals missing credentials"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`415 Unsupported Media Type` is about the format of the *request body*. It fires when the `Content-Type` the client declares isn't one the endpoint accepts — typically because it's missing or set to something other than `application/json`, so the server declines to interpret the payload as JSON. The fix is to send `Content-Type: application/json`.",
+          "optionExplanations": [
+            "Correct — `415` means the declared request media type isn't supported, usually a missing or wrong `Content-Type` on a JSON body.",
+            "`Accept` describes the desired *response* format; a mismatch there yields `406 Not Acceptable`, not `415`.",
+            "Malformed JSON that the server tried to parse would surface as `400 Bad Request`, not a media-type error.",
+            "Missing credentials are `401`; `415` speaks only to the body's media type, not authentication."
+          ],
+          "interviewTip": "Separate the two content headers: `Content-Type` describes what you're sending (mismatch → `415`), `Accept` describes what you want back (mismatch → `406`). Nailing that pairing is a clean way to show you read HTTP as a contract."
+        },
+        {
+          "id": "f11-d",
+          "question": "Why is JSON such a common choice for API payloads exchanged between, say, a browser frontend and a Python backend?",
+          "options": [
+            "JSON is encrypted entirely by default, so payloads sent as JSON don't need HTTPS to stay confidential",
+            "It's a language-neutral text format that maps cleanly onto nearly every language's data structures",
+            "JSON payloads are always smaller than any other format at all, so they minimize bandwidth in every case",
+            "Only JavaScript can ever produce JSON, which guarantees both ends of the API must use the same runtime"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "JSON's value is neutrality: it's plain text describing objects, arrays, strings, numbers, and booleans — structures that virtually every language can serialize to and parse from. A browser's JavaScript and a Python backend never have to share a runtime or a schema library; they only have to agree on JSON, and each side maps it onto its own native types.",
+          "optionExplanations": [
+            "JSON is not encrypted at all; confidentiality comes from HTTPS wrapping the transfer, entirely independent of the payload format.",
+            "Correct — JSON is a neutral text format that both ends can serialize to and parse from using their own native data structures.",
+            "JSON isn't always smallest — binary formats like Protocol Buffers are more compact; JSON trades some size for human readability and ubiquity.",
+            "Despite the name, JSON is produced and consumed by essentially every language; it doesn't tie either end to a JavaScript runtime."
+          ],
+          "interviewTip": "Sell JSON as neutrality and ubiquity, not raw efficiency. If pushed on performance, mention that binary formats like Protocol Buffers or MessagePack are smaller and faster — a fair trade-off to raise when payload size actually matters."
+        }
+      ]
+    },
+    {
       "heading": "Putting it together: the life of a page load",
       "paragraphs": [
-        "Full circle: you press Enter. DNS resolves the name to an IP. The browser opens a TCP connection (plus a TLS handshake for HTTPS) and sends an HTTP GET. The server responds with a status code, headers, and an HTML payload.",
-        "The browser parses HTML into the DOM, discovers linked CSS and JS, fetches those (more HTTP requests), builds render information, and paints. JavaScript then hooks into the DOM to make the page interactive.",
-        "Every pillar above this foundation is a deepening of one step: React and CSS live in the render/DOM phase, Next.js decides where HTML gets generated, Node is the server answering, databases are where the server gets its facts."
+        "Full circle — and now every piece has a name. You press Enter. DNS resolves the name to an IP (checking caches first). The browser opens a TCP connection and, for HTTPS, runs a TLS handshake over it to encrypt the channel and verify the server's certificate. Then it sends an HTTP `GET`, carrying headers like `Cookie` and `Accept`. The server checks credentials, maybe consults a cache, and responds with a status code, headers (including `Cache-Control`), and an HTML payload.",
+        "The browser parses that HTML into the DOM, discovers linked CSS and JS, and fetches those as more HTTP requests — some served instantly from the local cache, the rest from the network. It combines styles with the DOM to compute layout, paints the pixels, and then JavaScript hooks into the tree to make the page interactive. A second visit is far faster because DNS is cached, the connection is reused, and shared assets come straight from the HTTP cache.",
+        "Every pillar above this foundation is a deepening of one step in that chain: HTTPS and CORS govern how the request is trusted, caching decides what's re-fetched, cookies and tokens carry identity, REST shapes the request and response, React and CSS live in the render/DOM phase, Next.js decides where the HTML gets generated, Node is the server answering, and databases are where the server gets its facts."
       ],
       "summary": "Loading a page is one clear chain — resolve, connect, request, parse, paint — and everything you'll learn later just deepens one of those steps.",
       "variants": [

@@ -8,9 +8,9 @@
       "paragraphs": [
         "Relational databases store rows in tables. Each row gets a primary key — a unique, stable identifier. Relationships are expressed with foreign keys: an `orders.user_id` column pointing at `users.id` says every order belongs to a user.",
         "Cardinality drives the shape: one-to-many is a foreign key on the 'many' side. Many-to-many needs a join table — `post_tags(post_id, tag_id)` — because neither side can hold a list of the other's keys in a single column cleanly.",
-        "Normalization means each fact lives in exactly one place. Storing the user's email on every order row means an email change must update thousands of rows — or, more realistically, quietly won't."
+        "Normalization means each fact lives in exactly one place. Storing the user's email on every order row means an email change must update thousands of rows — or, more realistically, quietly won't, leaving the same person with two different emails depending on which order you read. Keys also encode intent: a primary key promises identity and uniqueness, a foreign key promises the thing it points at actually exists, and the database enforces both so it rejects nonsense before it can rot the data."
       ],
-      "summary": "Link tables with keys, and when two things each have many of the other, connect them through a small `join table`.",
+      "summary": "Link tables with keys so every fact lives in one place, and when two things each have many of the other, connect them through a small `join table`.",
       "variants": [
         {
           "id": "db1",
@@ -184,7 +184,7 @@
         "Indexes aren't free: every INSERT/UPDATE/DELETE must also maintain each index, and they consume storage. You index the columns your queries actually filter, join, and sort on — driven by evidence like `EXPLAIN` output and slow-query logs, not by decoration.",
         "Composite indexes follow the leftmost-prefix rule: an index on `(user_id, created_at)` accelerates filters on `user_id` and on `user_id + created_at`, but does nothing for a filter on `created_at` alone."
       ],
-      "summary": "Indexes make reads fast but slow writes a little, so add them for the columns you actually search on.",
+      "summary": "Indexes make reads fast but slow writes a little, so add them for the columns you actually filter, join, and sort on — and put equality columns before range columns in composite ones.",
       "variants": [
         {
           "id": "db3",
@@ -271,7 +271,7 @@
         "ACID names the guarantees: Atomicity (all or nothing), Consistency (constraints hold), Isolation (concurrent transactions don't see each other's half-done work), Durability (committed means persisted).",
         "In Prisma this is `prisma.$transaction([...])` or the interactive `prisma.$transaction(async (tx) => {...})`; in Drizzle, `db.transaction(async (tx) => {...})`. Same contract: throw inside, and everything rolls back."
       ],
-      "summary": "Wrap related writes in a transaction so they all succeed together or all undo, never leaving things half-finished.",
+      "summary": "Wrap related writes in a transaction so they all commit together or all roll back, never leaving things half-finished — and remember it guards atomicity, not concurrency.",
       "variants": [
         {
           "id": "db4",
@@ -358,7 +358,7 @@
         "Migrations version your schema the way git versions code: each change (add column, create table) is a replayable script, so dev, staging, and prod evolve identically. Editing production schemas by hand is how environments drift apart irreversibly.",
         "The signature ORM performance bug is N+1: fetch 100 posts (1 query), then lazily fetch each post's author inside a loop (100 more). ORMs make the loop invisible — the fix is telling the ORM up front to include the relation (`include`/`with`), collapsing it into a join or two queries."
       ],
-      "summary": "When loading a list plus related data, ask for the related data up front (`include`/`with`) so you avoid hundreds of extra queries.",
+      "summary": "When loading a list plus related data, ask for every touched relation up front (`include`/`with`) so query count stays flat instead of growing one-per-row.",
       "variants": [
         {
           "id": "db5",
@@ -435,6 +435,441 @@
             "`customers.id` is the primary key and already index-backed; each lookup is fast — the problem is that there are `n` of them."
           ],
           "interviewTip": "Quote the scaling law, not the snapshot: 'queries grow as 1 + n with page size' diagnoses N+1 in one sentence and shows you measured before reaching for infrastructure."
+        }
+      ]
+    },
+    {
+      "heading": "SQL vs NoSQL: choosing the store",
+      "paragraphs": [
+        "Relational (SQL) databases give you a fixed schema, JOINs across tables, and ACID transactions — ideal when data is highly related and correctness matters, like orders, payments, and inventory. NoSQL is an umbrella: document stores (MongoDB) hold flexible JSON-ish records, key-value stores (Redis) do fast lookups, wide-column stores (Cassandra) spread writes across many nodes, and graph databases specialize in traversals.",
+        "The real trade is not 'SQL slow, NoSQL fast'. It's about the access pattern and consistency you need. A document store shines when each record is read and written as a self-contained blob and the shape varies per record; it struggles the moment you need to JOIN five collections or run an ad-hoc analytical query. SQL shines at exactly those relational and transactional workloads, and modern engines like Postgres also store JSON when you occasionally need it.",
+        "Interviews reward matching the tool to the workload, not picking a favorite. 'It depends on the access pattern' is the honest opener: relational when data is interconnected and you need transactions and flexible queries; a specialized NoSQL store when you have one dominant access pattern, extreme write volume, or a genuinely schemaless shape."
+      ],
+      "summary": "Reach for relational when data is interrelated and transactions matter; reach for a NoSQL store when one access pattern, huge write volume, or a truly variable shape dominates.",
+      "variants": [
+        {
+          "id": "db6",
+          "question": "A team is building an e-commerce backend: customers, orders, line items, inventory, and payments, all tightly related, with checkout requiring several writes to succeed or fail together. Which store fits best, and why?",
+          "options": [
+            "A key-value store, since fast point lookups by id are all any checkout flow will ever really need",
+            "A relational database, for its JOINs across related tables and ACID transactions at checkout",
+            "A document store, because embedding orders inside customer documents avoids every JOIN entirely",
+            "A graph database, as the many links between these entities make traversal the primary operation"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "This is the canonical relational workload: highly interconnected entities plus a multi-write operation (checkout) that must be atomic. JOINs answer 'orders with their line items and payment status' naturally, and ACID transactions make the several checkout writes all-or-nothing.",
+          "optionExplanations": [
+            "A key-value store handles id lookups but can't JOIN related entities or run the transactional multi-write checkout demands.",
+            "Correct — interrelated data plus atomic multi-write checkout is exactly what relational JOINs and ACID transactions are built for.",
+            "Embedding orders in customer documents duplicates inventory and payment facts and makes cross-entity queries and transactions painful.",
+            "Traversal isn't the dominant operation here; these are ordinary foreign-key relationships, not deep multi-hop graph walks."
+          ],
+          "interviewTip": "When entities are interrelated and writes must be atomic, say 'relational' and name the two reasons: JOINs and ACID. Volunteering that Postgres also stores JSON pre-empts the 'but what about flexibility' follow-up."
+        },
+        {
+          "id": "db6-alt",
+          "question": "A product logs billions of IoT sensor readings per day: each is a small self-contained record, writes vastly outnumber reads, and there are no cross-record JOINs. A single Postgres primary is buckling under the write rate. What's the sounder direction?",
+          "options": [
+            "Keep the single relational primary and simply add more indexes to make the heavy writes go faster",
+            "Switch to a graph database, whose traversal engine is optimized for very high-volume ingestion",
+            "Move to a wide-column store built to spread this write volume across many nodes horizontally",
+            "Adopt a pure in-memory key-value cache as the system of record for all the sensor readings"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The workload is write-dominated, schemaless-friendly, and JOIN-free — the profile a wide-column store (Cassandra, ScyllaDB) targets by partitioning writes across a cluster. A single relational primary has one write path that eventually caps out; horizontal write scaling is the missing capability.",
+          "optionExplanations": [
+            "More indexes make writes slower, not faster, since every insert must maintain each index — the opposite of what a write-bound system needs.",
+            "Graph databases optimize multi-hop traversals, not raw ingestion; there are no relationships to traverse in independent sensor readings.",
+            "Correct — a wide-column store partitions writes across many nodes, matching a JOIN-free, write-dominated, high-volume workload.",
+            "An in-memory cache loses data on restart and can't be the durable system of record for billions of readings."
+          ],
+          "interviewTip": "Separate 'schemaless' from 'scales writes' — people conflate them. The decisive facts here are write volume and no JOINs, which point at horizontal partitioning, not merely at dropping the schema."
+        },
+        {
+          "id": "db6-c",
+          "question": "A startup insists 'NoSQL is web-scale, so we'll never use SQL.' Their app is a social network with users, friendships, posts, and comments, and the product team keeps asking for new ad-hoc analytical reports across all of it. Which critique is most on point?",
+          "options": [
+            "They're right — a document store scales, so relational databases have no remaining place in modern apps",
+            "The only downside is cost, since NoSQL clusters are pricier to run than a single SQL server would be",
+            "Interrelated data plus unpredictable ad-hoc queries is where SQL's JOINs and flexible querying win",
+            "SQL simply cannot store social data at all, so their choice is forced regardless of the reporting needs"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Highly relational data (friendships, posts, comments) combined with unpredictable, evolving analytical queries is the worst case for a document store, which optimizes known access patterns. SQL's ad-hoc JOINs and declarative querying answer questions the schema designer didn't anticipate — exactly what the reporting requests demand.",
+          "optionExplanations": [
+            "'Scales' doesn't make it the right model; relational stores remain the best fit for interrelated, ad-hoc-queried data.",
+            "Cost isn't the core issue; the mismatch is that document stores serve known patterns, not open-ended analytical JOINs.",
+            "Correct — interrelated data plus ad-hoc queries is the sweet spot for relational JOINs and flexible SQL.",
+            "SQL stores social data perfectly well; the premise that it can't is simply false."
+          ],
+          "interviewTip": "Push back on 'always X' claims by anchoring to the workload. Name the two features that decide it here — JOINs and ad-hoc querying — rather than arguing SQL-versus-NoSQL as a religion."
+        },
+        {
+          "id": "db6-d",
+          "question": "A feature needs a leaderboard: read the top 100 scores by rank thousands of times per second, with strict sub-millisecond latency and no durability requirement (it's rebuilt from the source of truth hourly). Which store fits this one access pattern best?",
+          "options": [
+            "A relational database with a well-designed composite index over the score and rank columns",
+            "A document store, treating each player's score history as one flexible embedded document per user",
+            "An in-memory store like Redis, whose sorted sets serve ranked top-N reads in sub-millisecond time",
+            "A wide-column store, partitioning the score rows across a cluster of many separate write nodes"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "One dominant access pattern (ranked top-N), extreme read rate, sub-millisecond latency, and no durability need — that's the textbook case for an in-memory store. Redis sorted sets keep members ordered by score, so a top-100 read is a direct range operation with no scan or disk hit.",
+          "optionExplanations": [
+            "A relational index can serve this, but disk-backed round-trips rarely hit sub-millisecond at thousands of reads per second the way memory does.",
+            "A document store per user doesn't maintain a global ranking, so building a top-100 leaderboard means scanning and sorting on every read.",
+            "Correct — an in-memory sorted set is purpose-built for ranked top-N reads at extreme rates with no durability cost.",
+            "A wide-column store optimizes distributed writes, not the single-node ranked read this feature is entirely about."
+          ],
+          "interviewTip": "When one access pattern dominates and durability is disposable, name the specialized structure — 'Redis sorted set for ranked top-N' — instead of forcing the general-purpose database to do a job a data structure does better."
+        }
+      ]
+    },
+    {
+      "heading": "Normalization vs denormalization",
+      "paragraphs": [
+        "Normalization removes redundancy so each fact is stored once. Third normal form, the practical target, means every non-key column depends on the key, the whole key, and nothing but the key. The payoff is that updates touch one row: change a product's name in one place and every order referencing it reads the new name. The cost is that answering a question often requires JOINing several tables back together.",
+        "Denormalization deliberately duplicates data to make reads cheaper: storing a `comment_count` on each post so the homepage needn't COUNT comments per post, or copying the product name onto the order line so the invoice never JOINs. The price is that you now own consistency — every place the duplicated fact lives must be updated together, or the copies drift apart.",
+        "One subtlety trips people up: some duplication is correct, not denormalization. An order line SHOULD copy the price at purchase time, because the historical price is a genuinely different fact from today's price. Denormalization is copying a fact that's supposed to stay identical; snapshotting is recording a fact that's supposed to be frozen."
+      ],
+      "summary": "Normalize by default so each fact lives once; denormalize deliberately for read speed, accepting that you must now keep the copies in sync.",
+      "variants": [
+        {
+          "id": "db7",
+          "question": "A homepage renders 50 posts, each showing its comment count, and COUNTing comments per post on every load is too slow. A dev proposes a `comment_count` column on `posts`, updated whenever a comment is added or removed. What is this, and what's the main risk?",
+          "options": [
+            "It's normalization; the risk is that the extra column violates third normal form and must be removed",
+            "It's denormalization; the risk is the count drifting out of sync if any write path forgets to update it",
+            "It's a computed index; the database keeps it correct automatically, so there's no consistency risk at all",
+            "It's a schema anti-pattern with no upside, since the COUNT query is always the faster of the two options"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Storing a derived aggregate to avoid recomputing it is denormalization: the true count is redundant with the comments themselves. It trades cheap reads for a consistency burden — every path that inserts or deletes a comment must also adjust the count, or the stored number silently diverges from reality.",
+          "optionExplanations": [
+            "This adds redundancy rather than removing it, so it's denormalization, not normalization — and 3NF isn't a rule you're forced to obey.",
+            "Correct — it's denormalization, and the classic failure is a comment write path that skips updating the cached count.",
+            "A plain column isn't self-maintaining; unless you use a trigger or materialized view, application code must keep it correct.",
+            "There is a real upside — reads avoid a per-post COUNT — so the trade-off is genuine, not a pure anti-pattern."
+          ],
+          "interviewTip": "Name the trade explicitly: denormalization buys read speed with write-time consistency work. Mentioning triggers or a materialized view as ways to enforce the invariant shows you know how to make the copy trustworthy."
+        },
+        {
+          "id": "db7-alt",
+          "question": "An invoice line item stores `product_name` and `unit_price` copied from the `products` table at purchase time. A reviewer flags this as sloppy denormalization that should be replaced by a JOIN to `products`. Why is the reviewer wrong?",
+          "options": [
+            "A JOIN to `products` would be too slow at invoice scale, which is the sole reason to keep the copy",
+            "It isn't a copy at all, because invoices and products happen to share those column names by coincidence",
+            "Denormalization is always correct, so no copied column on any table ever warrants a reviewer's concern",
+            "The purchase-time price and name are historical facts; a live JOIN would rewrite past invoices"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The stored name and price record what was true when the sale happened. If the invoice JOINed to `products` instead, changing today's price or renaming a product would silently rewrite every historical invoice. This is snapshotting a fact meant to be frozen — categorically different from denormalizing a fact meant to stay in sync.",
+          "optionExplanations": [
+            "Performance is a side benefit at best; the decisive reason is correctness — historical prices must not change.",
+            "The columns are a deliberate copy taken at sale time, not a coincidence of naming.",
+            "Denormalization is a trade-off, not an unconditional good; the reviewer's instinct to scrutinize copies is generally healthy.",
+            "Correct — purchase-time price and name are frozen historical facts, so a live JOIN would corrupt past invoices."
+          ],
+          "interviewTip": "Draw the line between snapshotting and denormalization: one records a value meant to stay frozen, the other duplicates a value meant to stay identical. Recognizing purchase-time price as a snapshot is a senior-level distinction."
+        },
+        {
+          "id": "db7-c",
+          "question": "A read-heavy reporting dashboard JOINs eight normalized tables per page and has grown painfully slow, though the underlying data changes only a few times an hour. Which denormalization approach best fits this specific situation?",
+          "options": [
+            "Precompute the joined result into a materialized view and refresh it on the hourly data change",
+            "Abandon the relational database and move the entire reporting workload to a document store instead",
+            "Drop the foreign keys between the eight tables so the query planner has fewer constraints to check",
+            "Add one more index to each of the eight tables and rely on the planner to avoid the JOINs entirely"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Expensive JOINs over rarely-changing data is the ideal case for a materialized view: compute the eight-way join once, store the flattened result, and serve reads from it directly. Because the source updates only hourly, refreshing the view on that cadence keeps it fresh at negligible cost — read speed bought with a controlled, scheduled consistency lag.",
+          "optionExplanations": [
+            "Correct — a materialized view precomputes the costly JOIN and, with hourly refreshes, stays fresh enough for reporting.",
+            "Moving to a document store abandons the JOINs the reporting genuinely needs and rebuilds the same problem elsewhere.",
+            "Dropping foreign keys removes integrity guarantees without materially speeding the JOINs; the planner still joins the same rows.",
+            "Indexes speed lookups but don't eliminate an eight-way JOIN; the planner cannot skip joins the query explicitly requests."
+          ],
+          "interviewTip": "Match the denormalization tool to the change rate: materialized views win when reads are heavy and writes are rare, because a stale-by-an-hour precomputed result is perfectly acceptable there."
+        },
+        {
+          "id": "db7-d",
+          "question": "After denormalizing a user's display name onto every `post` they write (to skip a JOIN), users report their old name still shows on posts made before a rename. What's the underlying failure, and the right fix?",
+          "options": [
+            "The rename must propagate to every copied name column on the user's posts, ideally in one transaction",
+            "The posts table is missing an index on the user id, which is why the stale names fail to refresh on read",
+            "This is expected and correct, since a post should always show the name the user had at write time",
+            "The fix is to cache the user's current name in Redis so that stale post rows are bypassed on every read"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "A display name is meant to stay identical everywhere it's copied, so this is true denormalization — and the copies drifted because the rename updated the `users` row but not the duplicated columns on old posts. The fix is to propagate the change to every copy, atomically, so all of a user's posts show the new name.",
+          "optionExplanations": [
+            "Correct — the copied name must be updated on every post at rename time; a missed propagation is exactly why old posts show the stale value.",
+            "An index affects lookup speed, not whether stored copies were updated; the rows genuinely hold outdated names.",
+            "Unlike a purchase-time price, a display name is meant to be current everywhere, so showing the old one is a bug, not intended behavior.",
+            "A cache bypass papers over the drift instead of fixing the copies, adding a second source of truth to keep in sync."
+          ],
+          "interviewTip": "Contrast this with the invoice-price case in the same breath: a display name is denormalized (must stay in sync), a purchase price is snapshotted (must stay frozen). The fix differs because the intent differs."
+        }
+      ]
+    },
+    {
+      "heading": "Query optimization & EXPLAIN plans",
+      "paragraphs": [
+        "When a query is slow, the professional first move is `EXPLAIN` (or `EXPLAIN ANALYZE`, which actually runs it and reports real timings). The plan shows how the database intends to get your rows: a sequential scan reads every row, an index scan seeks via a B-tree, and the JOIN nodes show whether it chose a nested loop, hash join, or merge join. A sequential scan on a large table behind a selective filter is the usual smoking gun.",
+        "The planner is cost-based: it estimates row counts from table statistics and picks the cheapest plan. This means slowness often traces to bad estimates — stale statistics, or a filter the planner can't use an index for. A frequent culprit is a non-sargable predicate: wrapping the indexed column in a function, like `WHERE lower(email) = ?` or `WHERE date(created_at) = ?`, forces a scan because the index is on the raw column, not the function's output.",
+        "Read the plan bottom-up and watch two things: the node type (scan vs index) and the gap between estimated and actual rows in `EXPLAIN ANALYZE`. A huge estimate/actual mismatch means the planner is flying blind — often fixed by refreshing statistics (`ANALYZE`) — while a scan where you expected a seek means the index is missing, unusable for this predicate, or judged not worth it."
+      ],
+      "summary": "Diagnose slow queries with `EXPLAIN` before guessing: look for full scans behind selective filters and function-wrapped columns that quietly disable an index.",
+      "variants": [
+        {
+          "id": "db8",
+          "question": "A query `WHERE lower(email) = 'a@b.com'` is slow despite an index on the `email` column, and `EXPLAIN` shows a sequential scan. What's the most likely cause?",
+          "options": [
+            "The email index is corrupted and needs a REINDEX before the planner will ever consider using it",
+            "The planner ignores string indexes by default, so an integer surrogate key must be filtered on instead",
+            "Wrapping the column in `lower()` makes the predicate non-sargable, so the plain index can't be used",
+            "Sequential scans are always faster than index scans for text columns, so the planner made a good choice"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The index is built on the raw `email` values, but the filter compares `lower(email)` — a computed value the index knows nothing about. So the database must compute `lower()` for every row and scan the whole table. The fix is an expression index on `lower(email)`, or normalizing emails to lowercase before storing.",
+          "optionExplanations": [
+            "Nothing indicates corruption; the plan reflects that the index doesn't match the function-wrapped predicate, and REINDEX rebuilds the same unusable-for-this-query index.",
+            "The planner uses string indexes routinely; the problem is the function on the column, not the column's type.",
+            "Correct — `lower(email)` is a non-sargable predicate against a raw-column index, forcing a full scan.",
+            "A sequential scan here is a forced fallback, not a smart choice; it reads every row precisely because the index can't be used."
+          ],
+          "interviewTip": "Define 'sargable' in the interview: a predicate the index can seek on. Function-wrapped columns, leading wildcards (`LIKE '%x'`), and type mismatches are the three classic index-killers — name them and offer the expression-index fix."
+        },
+        {
+          "id": "db8-alt",
+          "question": "`EXPLAIN ANALYZE` on a slow query shows a node estimating 12 rows but actually returning 480,000, and a downstream nested-loop join that's crawling. What does this mismatch most likely indicate, and what's the first fix to try?",
+          "options": [
+            "The table statistics are stale, so the planner mis-estimated and chose a nested loop; run ANALYZE",
+            "The query is simply too large to optimize, so it should be split into several smaller separate queries",
+            "Nested-loop joins are always wrong at any scale and should be globally disabled on the server outright",
+            "The mismatch is normal noise in EXPLAIN ANALYZE output and can be disregarded when tuning the query"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "A 12-versus-480,000 estimate/actual gap means the planner's row-count statistics are badly out of date, so it costed a nested loop as cheap when it's actually iterating hundreds of thousands of times. Refreshing statistics with `ANALYZE` lets the planner see the real cardinality and likely switch to a hash join.",
+          "optionExplanations": [
+            "Correct — a large estimate/actual gap signals stale statistics; ANALYZE refreshes them so the planner picks a better join.",
+            "Splitting the query doesn't fix the root cause; the planner would still misestimate each piece with stale statistics.",
+            "Nested loops are excellent for small inner row counts; the issue is the bad estimate that made the planner choose one here.",
+            "A gap this large is a real signal, not noise — it's the primary clue that the planner is working from wrong numbers."
+          ],
+          "interviewTip": "Treat the estimate-versus-actual column of EXPLAIN ANALYZE as the planner's confidence meter. A large divergence almost always means stale stats or a correlation the planner can't model — reach for ANALYZE first."
+        },
+        {
+          "id": "db8-c",
+          "question": "Two developers debate a slow query. One insists on adding an index immediately; the other wants to run `EXPLAIN ANALYZE` first. Why is running the plan first the stronger engineering habit?",
+          "options": [
+            "Because EXPLAIN rewrites the query into a faster form automatically, so no index is ever actually needed",
+            "Because the plan reveals whether a scan, a bad estimate, or a non-sargable filter is the real cause first",
+            "Because adding indexes is impossible on a production table without first taking the whole database offline",
+            "Because indexes only ever help write-heavy workloads, and this query is presumably a read that they can't touch"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "An index is one possible fix among several. The plan tells you which problem you actually have: a full scan behind a selective filter (index may help), a function-wrapped predicate (an index on the raw column won't), or a stale-statistics misestimate (ANALYZE, not an index). Guessing at an index without the plan often adds write cost while missing the real cause.",
+          "optionExplanations": [
+            "EXPLAIN reports the plan; it does not rewrite or execute a faster version of your query for you.",
+            "Correct — the plan diagnoses the actual cause, so you fix the real problem instead of guessing at an index.",
+            "Indexes can be added concurrently on live tables; taking the database offline isn't required.",
+            "Indexes primarily speed reads; the claim they only help writes is backwards."
+          ],
+          "interviewTip": "Lead every 'this query is slow' answer with 'first I'd run EXPLAIN ANALYZE.' Evidence-before-action is the single clearest signal that you tune databases like an engineer, not by superstition."
+        },
+        {
+          "id": "db8-d",
+          "question": "A dashboard query filters `WHERE status = 'active'` on a table where 98% of rows are active, and `EXPLAIN` shows a sequential scan even though a `status` index exists. Why is the planner right to ignore the index here?",
+          "options": [
+            "The planner has a bug; an existing index should always be used whenever the query's filter references it",
+            "Because the filter matches almost every row, a scan beats an index seek plus 98% of the heap fetches",
+            "Because `status` is a text column, and the planner categorically refuses to use indexes on any text data",
+            "Because indexes work only when the table is small, and this dashboard table is presumably far too large"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "An index seek pays off when it eliminates most rows. Here the filter keeps 98% of them, so using the index means walking the B-tree and then doing a heap fetch for almost every row — more work than just reading the table sequentially once. The planner correctly judges the scan cheaper; low-selectivity filters don't benefit from indexes.",
+          "optionExplanations": [
+            "Using an index unconditionally would be a bug; a cost-based planner rightly skips it when the filter isn't selective.",
+            "Correct — with 98% of rows matching, a full scan beats an index seek plus near-total heap fetches.",
+            "The planner uses text-column indexes routinely; selectivity, not column type, drives this decision.",
+            "Table size alone doesn't disable indexes; it's the low selectivity of this particular filter that does."
+          ],
+          "interviewTip": "Explain selectivity: an index earns its keep by excluding most rows. When a predicate matches the majority, a sequential scan is genuinely faster — recognizing that the planner is right, not broken, signals real understanding."
+        }
+      ]
+    },
+    {
+      "heading": "Connection pooling & concurrency",
+      "paragraphs": [
+        "Opening a database connection is expensive — a TCP handshake, authentication, and per-connection server memory. A connection pool keeps a fixed set of open connections and hands them out to requests, returning each to the pool when done. Without pooling, a spike of traffic opens a connection per request; with pooling, requests share and reuse a bounded set, and the database is protected from being flooded.",
+        "The pool has a hard ceiling, and that ceiling is a feature: databases have their own `max_connections` limit (Postgres defaults to ~100), and each connection costs real memory. Size the pool to the database's capacity, not to your request rate. When every pooled connection is busy, new requests wait in a queue for one to free up — which is correct backpressure, though a too-small pool or a slow query holding a connection turns that wait into timeouts.",
+        "Serverless and high-fan-out architectures break the naive model: a thousand lambda instances each opening their own small pool can blow past the database's connection limit instantly. The standard fix is an external pooler like PgBouncer sitting between the app and the database, multiplexing thousands of client connections onto a small pool of real server ones."
+      ],
+      "summary": "A pool reuses a bounded set of open connections; size it to the database's limits, and put a pooler in front when many app instances would otherwise each open their own.",
+      "variants": [
+        {
+          "id": "db9",
+          "question": "Under load, an app throws 'too many connections' errors from Postgres, and each web request opens its own database connection on demand. What's the correct fix?",
+          "options": [
+            "Raise the operating system's file-descriptor limit so the server can open more sockets per request",
+            "Use a connection pool that reuses a bounded set of connections instead of opening one per request",
+            "Retry each failed query a few times with backoff until a connection happens to become available",
+            "Switch every query to open its connection lazily so fewer are held at any one single moment in time"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Opening a connection per request means concurrency directly equals open connections, which blows past the database's `max_connections` under load. A pool caps the number of real connections and shares them across requests, so a traffic spike queues for a free connection instead of demanding a new one.",
+          "optionExplanations": [
+            "File descriptors aren't the binding limit; the database's own `max_connections` and per-connection memory are, and a pool is what respects them.",
+            "Correct — a bounded, reused pool replaces the one-connection-per-request model that exhausts the database.",
+            "Retrying storms an already-overloaded database with more attempts; it treats the symptom and can worsen the pileup.",
+            "Lazy opening still creates one connection per concurrent request, so the ceiling is hit just the same under load."
+          ],
+          "interviewTip": "Tie pool size to the database's capacity, not the app's request rate: 'the pool exists to keep concurrency below max_connections.' That framing shows you understand the pool protects the database, not just the app."
+        },
+        {
+          "id": "db9-alt",
+          "question": "A Node service runs a serverless function that scales to 1,000 concurrent instances. Each instance creates its own pool of 10 connections. Postgres, with `max_connections = 100`, collapses under connection errors. What's the standard remedy?",
+          "options": [
+            "Raise the per-instance pool to 20, so each function retries its own connections more aggressively under load",
+            "Give every function instance its own dedicated read replica so the connection load is spread more widely",
+            "Put an external pooler like PgBouncer between the functions and Postgres to multiplex onto few connections",
+            "Increase `max_connections` to 10,000 on the single Postgres server to accommodate every function at once"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "1,000 instances × 10 connections is 10,000 attempted connections against a 100-connection server — the per-instance pool model doesn't compose across a large fan-out. PgBouncer sits in front and multiplexes thousands of short-lived client connections onto a small pool of real server connections, keeping the server within its limit.",
+          "optionExplanations": [
+            "Raising the per-instance pool multiplies the total further (20,000 attempts) and makes the exhaustion worse, not better.",
+            "Replicas add more servers to connect to but don't reduce the total client connection count each instance opens.",
+            "Correct — an external pooler multiplexes the fan-out down to a bounded set of real Postgres connections.",
+            "Each Postgres connection costs real memory; 10,000 would exhaust the server's RAM long before the workload fit."
+          ],
+          "interviewTip": "Serverless plus Postgres is a known trap because pools don't compose across instances. Naming PgBouncer (or a provider's data proxy) and the phrase 'multiplex many clients onto few server connections' lands the point."
+        },
+        {
+          "id": "db9-c",
+          "question": "An app's pool is sized at 20 connections. During a traffic spike, requests start timing out while acquiring a connection, yet the database's CPU sits nearly idle. What's the most likely cause?",
+          "options": [
+            "The database is out of disk space, so it refuses to grant any new connections until space is freed up",
+            "The pool is fundamentally broken and should be removed so each request opens its own connection again",
+            "Slow queries hold pooled connections too long, so the 20 are exhausted and requests queue for one",
+            "Twenty connections is always too few for any production system regardless of the actual query durations"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "An idle database with connection-acquisition timeouts points at pool starvation, not database load: some queries hold their connection long enough that all 20 stay checked out, so new requests wait past the timeout. The real fix is usually the slow query (or a leaked connection that's never returned), not blindly enlarging the pool.",
+          "optionExplanations": [
+            "Idle CPU and acquisition timeouts point at pool contention; nothing here indicates a disk-space failure.",
+            "Removing the pool reintroduces connection exhaustion under load — the opposite of a fix.",
+            "Correct — long-held connections starve the pool, so requests queue for one while the database itself stays idle.",
+            "Twenty can be plenty; the symptom is connections held too long, not an inherently undersized pool."
+          ],
+          "interviewTip": "Distinguish 'database is busy' from 'pool is starved': idle CPU plus acquisition timeouts means connections are held too long. Hunt the slow query or the connection leak before you enlarge the pool."
+        },
+        {
+          "id": "db9-d",
+          "question": "A developer reasons: 'more concurrency is always better, so I'll set the pool to 500 connections against our single Postgres instance.' Why is this likely to hurt rather than help?",
+          "options": [
+            "Each connection consumes server memory and adds contention, so 500 can overwhelm the database itself",
+            "A larger pool has no effect whatsoever, because the pool size is capped internally to the CPU core count",
+            "500 connections is fine and strictly better; more open connections always translate into more throughput",
+            "The only downside is a slightly longer application startup while the 500 connections are being established"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Connections aren't free concurrency: each consumes server memory and adds scheduling and lock contention, and Postgres processes work best when active connections roughly track available cores. Far past that point, throughput drops as the server thrashes — a pool much larger than the database can usefully serve makes things worse, not faster.",
+          "optionExplanations": [
+            "Correct — each connection costs memory and contention, so an oversized pool can overwhelm the very database it targets.",
+            "Pools aren't silently capped to core count; the 500 would really be attempted, which is exactly the problem.",
+            "Throughput doesn't rise monotonically with connections; past the server's useful concurrency it falls off.",
+            "The cost isn't just startup — the 500 live connections tax the server continuously under load."
+          ],
+          "interviewTip": "State the counterintuitive truth: past a point, more connections reduce throughput. A pool a bit larger than the database's useful concurrency (often near its core count) beats an enormous one — cite contention and per-connection memory as the reasons."
+        }
+      ]
+    },
+    {
+      "heading": "Constraints & data integrity",
+      "paragraphs": [
+        "Constraints let the database itself reject invalid data, so bad rows can't exist regardless of which service or script writes them. The core set: `NOT NULL` (a value is required), `UNIQUE` (no duplicates in a column or combination), `PRIMARY KEY` (unique plus not-null identity), `FOREIGN KEY` (a referenced row must exist), and `CHECK` (an arbitrary boolean, like `price >= 0`). Each is a rule the engine enforces on every write, forever.",
+        "The key insight is where integrity belongs. Application-level validation is necessary but not sufficient: it can be bypassed by a second service, a migration script, a manual `psql` session, or a bug in one code path. A database constraint is the last line of defense that no writer can skip — which is why 'validate in the app AND constrain in the database' is the professional stance, not an either/or.",
+        "Foreign keys also decide what happens when the referenced row is deleted, via the referential action: `ON DELETE RESTRICT` blocks the delete while children exist, `CASCADE` deletes the children too, and `SET NULL` orphans them by nulling the reference. Choosing this deliberately prevents both accidents (cascading away data you meant to keep) and dangling references (children pointing at a parent that's gone)."
+      ],
+      "summary": "Enforce integrity in the database with NOT NULL, UNIQUE, FOREIGN KEY, and CHECK constraints — app validation can be bypassed, a constraint cannot.",
+      "variants": [
+        {
+          "id": "db10",
+          "question": "A signup form validates in the app that no two users share an email, yet duplicate-email rows keep appearing in production. What's the robust fix?",
+          "options": [
+            "Add more thorough email validation in the frontend so two identical addresses can't be submitted at all",
+            "Add a UNIQUE constraint on the email column so the database itself rejects any duplicate write",
+            "Run a nightly job that finds duplicate emails and merges the offending accounts back together again",
+            "Route every signup through a single server instance to be certain the checks never run concurrently"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "App-level uniqueness checks race: two concurrent signups both check, both see no existing row, and both insert. A `UNIQUE` constraint makes the database the single arbiter — the second insert fails atomically no matter how many services or requests write concurrently. It's the only place the guarantee actually holds.",
+          "optionExplanations": [
+            "Frontend validation is trivially bypassed by any other client, API caller, or script, and doesn't address the concurrent-insert race at all.",
+            "Correct — a `UNIQUE` constraint enforces the rule at the one point every writer must pass through.",
+            "A cleanup job reacts after corruption already happened and can't prevent the duplicates from appearing in the first place.",
+            "Funneling through one instance cripples scalability and still races between concurrent requests on that instance."
+          ],
+          "interviewTip": "Frame uniqueness as a race the app can't win: two requests both pass the check before either inserts. The database `UNIQUE` constraint is the only serialization point — say that and you've shown you think about concurrency, not just validation."
+        },
+        {
+          "id": "db10-alt",
+          "question": "A team argues that since their API layer already validates every field, database constraints are redundant overhead worth dropping for write performance. Which counterargument is strongest?",
+          "options": [
+            "Constraints run faster than app validation, so dropping them would actually make every write slower overall",
+            "Database constraints are the only place any validation can happen, so the API checks are the redundant ones",
+            "Dropping constraints is fine as long as the team writes a comprehensive integration test suite for the API",
+            "App validation is skipped by migrations, other services, and manual edits; the constraint catches those"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The API is one of several write paths. Migration scripts, background jobs, a second microservice, a data-fix run in `psql`, or a bug in one endpoint can all insert rows the API never saw. A database constraint sits below every one of those paths, so it's the guarantee that holds when app validation is bypassed — which is exactly when you need it.",
+          "optionExplanations": [
+            "Constraints do add a small write cost; the case for keeping them is coverage of all write paths, not raw speed.",
+            "App validation isn't redundant — it gives fast, friendly feedback; the point is to have both layers, not to drop either.",
+            "Tests cover the API's code paths but not the migrations, scripts, and manual edits that also write to the database.",
+            "Correct — constraints enforce the rule beneath every writer, including the ones that skip the API entirely."
+          ],
+          "interviewTip": "Answer 'app validation vs database constraints' with 'both, at different layers.' The app gives friendly errors; the constraint is the last line no writer can skip. Naming migrations and manual edits as the bypass paths seals it."
+        },
+        {
+          "id": "db10-c",
+          "question": "A `comments` table has a foreign key to `posts`. When a post is deleted, its comments must vanish with it. Which referential action expresses this correctly, and what's the risk of getting it wrong?",
+          "options": [
+            "`ON DELETE CASCADE`, deleting the comments with the post; wrong choices risk orphans or blocked deletes",
+            "`ON DELETE RESTRICT`, which quietly removes the child comments once the parent post has been deleted",
+            "No action is needed, because deleting a parent row always removes its child rows automatically by default",
+            "`ON DELETE SET NULL`, which is the only way to make dependent comment rows disappear along with the post"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`ON DELETE CASCADE` tells the database to delete the child comments when their post is deleted — exactly the stated requirement. Pick `RESTRICT` and the post delete is blocked while comments exist; pick `SET NULL` and the comments survive with a null post reference, becoming orphans that point at nothing.",
+          "optionExplanations": [
+            "Correct — `CASCADE` removes the comments with the post, and a wrong action yields blocked deletes or orphaned rows.",
+            "`RESTRICT` blocks the parent delete while children exist; it does not remove the comments.",
+            "There is no automatic cascade by default — without a specified action, deleting a referenced parent is typically rejected.",
+            "`SET NULL` keeps the comments and nulls their reference, which is the opposite of making them disappear."
+          ],
+          "interviewTip": "Recite the three referential actions and their intent: CASCADE (delete children), RESTRICT (block the delete), SET NULL (orphan them). Stress that CASCADE is powerful and dangerous — an accidental cascade can delete far more than you meant."
+        },
+        {
+          "id": "db10-d",
+          "question": "A `products` table lets rows be saved with a negative `price` and a `discount_percent` above 100 because of scattered bugs across several services. What database-level mechanism prevents these invalid values regardless of the writer?",
+          "options": [
+            "A UNIQUE constraint on the price column, which blocks any value that falls outside the valid range",
+            "A NOT NULL constraint on both columns, which rejects the negative and out-of-range values on write",
+            "A CHECK constraint like `price >= 0` and `discount_percent BETWEEN 0 AND 100` enforced on every write",
+            "A foreign key from price to a lookup table, ensuring only pre-approved price values can ever be inserted"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A `CHECK` constraint encodes an arbitrary boolean rule the database evaluates on every insert and update, so `price >= 0` and `discount_percent BETWEEN 0 AND 100` make the invalid rows literally unstorable no matter which buggy service attempts the write. It's the right tool for range and domain rules that `UNIQUE`, `NOT NULL`, and foreign keys can't express.",
+          "optionExplanations": [
+            "`UNIQUE` prevents duplicates, not out-of-range values; a negative price could still be unique and thus accepted.",
+            "`NOT NULL` only requires a value to be present; -5 and 150 are both non-null and would pass it.",
+            "Correct — a `CHECK` constraint enforces the range rules on every write, blocking negatives and over-100 discounts.",
+            "A foreign key to a lookup table forces an impractical enumeration of every legal price and still can't express a range."
+          ],
+          "interviewTip": "Match the constraint to the rule: uniqueness → UNIQUE, presence → NOT NULL, existence of a reference → FOREIGN KEY, arbitrary predicate/range → CHECK. Reaching for CHECK on a range question shows you know the full toolkit."
         }
       ]
     }

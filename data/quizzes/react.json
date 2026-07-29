@@ -8,9 +8,9 @@
       "paragraphs": [
         "A React component is a function that takes props and returns a description of UI. Props flow down from parent to child and are read-only. State is a component's own memory, created with `useState`, and changing it is what triggers a re-render.",
         "The golden rule: never mutate state directly. `items.push(x)` changes the array in place — React compares references, sees the same array, and skips the re-render. `setItems([...items, x])` creates a new reference React can detect.",
-        "Think of every render as a photograph: the component function runs top to bottom with that moment's props and state, producing a fresh snapshot of the UI."
+        "Think of every render as a photograph: the component function runs top to bottom with that moment's props and state, producing a fresh snapshot of the UI. Each render's props and state are frozen for that render — a value you read won't change out from under you mid-function, which is why closures inside a render 'see' that render's values."
       ],
-      "summary": "To update state, make a fresh copy instead of changing it in place, or React won't notice and won't re-render.",
+      "summary": "To update state, make a fresh copy instead of changing it in place, or React won't notice and won't re-render. Props flow down and are read-only; state is local and immutable-by-convention.",
       "variants": [
         {
           "id": "r1",
@@ -97,7 +97,7 @@
         "`useEffect(fn, deps)` runs `fn` after render, and again whenever a value in `deps` changes. Return a cleanup function and React runs it before the next effect and on unmount — that's where you clear intervals, abort fetches, and unsubscribe.",
         "In development, `<StrictMode>` deliberately mounts, unmounts, and remounts each component, so effects run twice. That's not a bug to suppress — it's a stress test that exposes effects missing proper cleanup."
       ],
-      "summary": "Always call hooks at the top level, and give every effect a cleanup function to undo whatever it started.",
+      "summary": "Always call hooks at the top level in a fixed order, and give every effect a cleanup function to undo whatever it started — subscriptions, timers, and in-flight requests all need an off-switch.",
       "variants": [
         {
           "id": "r2",
@@ -184,7 +184,7 @@
         "Using the array index as a key works only for lists that never reorder, insert, or delete. If you delete item 0 from an index-keyed list, every remaining item shifts to a new key — React matches old item 1 to new key 0, and any DOM state (checkbox checks, input text, focus) attaches to the wrong rows.",
         "A key should be a stable identity from the data itself — a database id — so a reordered item keeps its component instance and its state."
       ],
-      "summary": "Give each list item a stable `key` from your data, like an id, so its state follows it when the list changes.",
+      "summary": "Give each list item a stable `key` from your data, like an id, so its state follows it when the list changes. Keys must be unique among siblings and stable across renders — never the array index for a list that reorders, and never a value minted during render.",
       "variants": [
         {
           "id": "r3",
@@ -358,7 +358,7 @@
         "`React.memo(Child)` skips re-rendering Child if its props are shallowly equal to last time. But props created inline — `onClick={() => ...}`, `style={{...}}` — are new objects every render, so they defeat memo. `useCallback` and `useMemo` stabilize those references.",
         "This trio is a package deal: memo on the child does nothing useful if the parent passes a fresh callback each render, and useCallback without a memoized child mostly adds overhead."
       ],
-      "summary": "Don't optimize until profiling shows you need to, and when you do, keep prop references stable so `memo` can actually skip renders.",
+      "summary": "Don't optimize until profiling shows you need to, and when you do, keep prop references stable — with `useCallback` for functions and `useMemo` for objects/arrays — so `memo` can actually skip renders.",
       "variants": [
         {
           "id": "r5",
@@ -435,6 +435,441 @@
             "Consumers re-render on value *change* (`Object.is`), not on every provider render — with a memoized value they correctly skip. Context splitting is a real optimization for unrelated values, but it's not the only or primary fix here."
           ],
           "interviewTip": "State the exception crisply: '`React.memo` guards props, not context — a context consumer re-renders whenever the provider value fails `Object.is`, so provider values must be memoized like any other non-primitive.'"
+        }
+      ]
+    },
+    {
+      "heading": "useContext and prop drilling",
+      "paragraphs": [
+        "Context lets a value skip the prop chain: a `<Provider value={x}>` high in the tree, and any descendant reads it with `useContext(TheContext)` without every layer in between forwarding a prop it doesn't care about. That's the cure for prop drilling — threading `user` or `theme` through ten components just so the eleventh can use it.",
+        "Context is a delivery mechanism, not a state manager. It doesn't store or update anything on its own; you still hold the state with `useState` or `useReducer` at the provider and put the value on the provider. A common, clean pattern is to pair a state context with a dispatch context so components that only trigger changes don't re-render when the data changes.",
+        "The cost to respect: every consumer re-renders when the provider `value` changes by `Object.is`, and `React.memo` can't stop it. So don't reach for context for values that change every keystroke, memoize the `value` object, and split unrelated concerns into separate contexts rather than bundling them into one."
+      ],
+      "summary": "Context delivers a value straight to deep consumers so you skip prop drilling, but it's a pipe, not a store — keep the state elsewhere and memoize the provider value.",
+      "variants": [
+        {
+          "id": "r6",
+          "question": "A `theme` prop is forwarded through six intermediate components that never use it, just to reach a deep `Button`. What's the idiomatic fix?",
+          "options": [
+            "Store the theme on a `window` global so that any component anywhere can read it without passing props",
+            "Put `theme` in context and read it in `Button` with `useContext`, skipping the middle layers",
+            "Duplicate the theme into each component's own state so nothing has to be forwarded at all",
+            "Merge the six components into one so there's no chain left for the prop to travel through"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Threading a prop through components that don't use it is textbook prop drilling. Context solves exactly this: a provider near the top and a `useContext` read in `Button`, with the six middle layers left untouched. They no longer need to know the theme exists.",
+          "optionExplanations": [
+            "A `window` global sits outside React, so changing it won't trigger re-renders and you lose SSR safety and testability.",
+            "Correct — context delivers the value directly to the consumer, so the indifferent middle layers stop forwarding a prop they never read.",
+            "Copying the theme into six states creates six sources of truth that drift; the whole point is one shared value.",
+            "Collapsing components to dodge drilling destroys your composition; context removes the drilling without flattening the tree."
+          ],
+          "interviewTip": "Name the smell first: 'this is prop drilling.' Then prescribe: 'context, or component composition — passing the element as `children` — depending on how deep and how dynamic the value is.'"
+        },
+        {
+          "id": "r6-alt",
+          "question": "A `SettingsProvider` holds `<Provider value={{ settings, updateSettings }}>` with the object literal inline. Consumers wrapped in `React.memo` still re-render on every unrelated `App` render. What's the fix?",
+          "options": [
+            "Memoize the provider's `value` object so its reference is stable between real changes",
+            "Wrap every consumer in a second `React.memo`, which finally lets them ignore the context",
+            "Move `settings` onto a `useRef` inside the provider so writing to it never causes a re-render",
+            "Replace `useContext` with a custom hook, since `useContext` subscribes far too eagerly by design"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The inline `{ settings, updateSettings }` is a new object every render, so the provider's `value` fails `Object.is` on every `App` render and notifies all consumers — a check `React.memo` has no power over. Wrapping the object in `useMemo(() => ({ settings, updateSettings }), [settings])` gives it a stable reference, so consumers only wake up when `settings` actually changes.",
+          "optionExplanations": [
+            "Correct — a memoized `value` object keeps its reference between genuine changes, so unrelated parent renders no longer trip the context's `Object.is` check.",
+            "`React.memo` guards props, not context subscriptions; stacking more of it does nothing to stop a changed provider value.",
+            "A ref doesn't trigger re-renders at all, so consumers would read stale settings — it trades the re-render bug for a staleness bug.",
+            "A custom hook wrapping `useContext` reads the same context identically; the subscription behavior is unchanged, so the object churn remains."
+          ],
+          "interviewTip": "Say it as a rule: 'inline provider values re-render every consumer — memoize the value, and split dispatch from data so setters-only consumers don't wake for data changes.'"
+        },
+        {
+          "id": "r6-c",
+          "question": "A component calls `useContext(AuthContext)` but always reads `null` instead of the logged-in user. The provider clearly wraps the page. What's the most likely cause?",
+          "options": [
+            "`useContext` can only be called from the same file where `createContext` was originally declared",
+            "The component sits above the provider in the tree, so it falls back to the default value",
+            "Context values are asynchronous, so the first read is always `null` until a later effect resolves",
+            "Two React copies are bundled, so the context instance the reader sees differs from the one provided"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`useContext` reads from the nearest matching provider *above* the calling component. If the reader is rendered outside (above, or in a sibling branch of) the provider, there's no provider on its path and it gets the default passed to `createContext` — often `null`. Move the provider up so it wraps the reader, or move the reader inside it.",
+          "optionExplanations": [
+            "You can call `useContext` anywhere the context object is imported; file location is irrelevant to how it resolves.",
+            "Correct — context resolves to the nearest provider above the reader, so a reader outside the provider's subtree falls back to the default value.",
+            "Context reads are synchronous and return the current value immediately; there's no async first-null behavior.",
+            "Duplicate-React bundling can break context, but it's a rare tooling edge case, not the likely cause when a single app simply nests the reader wrong."
+          ],
+          "interviewTip": "Debug it out loud: 'the reader must be a descendant of the provider — I'd check the tree position first, then confirm the default I passed to `createContext` explains the value I'm seeing.'"
+        },
+        {
+          "id": "r6-d",
+          "question": "A team puts *all* app state — user, theme, cart, notifications — into one giant context. The app feels sluggish; typing in a search box re-renders the whole tree. What's the core problem?",
+          "options": [
+            "One context per app is a hard React limit, so bundling state is the only supported approach here",
+            "Context is inherently slow, so any nontrivial app must adopt an external store like Redux instead",
+            "Every consumer re-renders when any field changes, since they all share one `value` reference",
+            "The context wasn't wrapped in `React.memo`, which would have let unaffected consumers skip renders"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Context notifies every consumer whenever the provider `value` changes by reference. Bundling unrelated state into one object means a search-box keystroke changes that object, so components that only read `theme` or `cart` re-render too. Split into focused contexts (or separate state/dispatch contexts) so a change touches only the consumers that read that slice.",
+          "optionExplanations": [
+            "You can create as many contexts as you like; splitting them is the standard fix, not a workaround for a limit.",
+            "Context isn't inherently slow — it's fine when scoped; the sluggishness comes from bundling unrelated state, and an external store isn't required.",
+            "Correct — a single shared `value` means any field's change re-renders all consumers, so unrelated state must be split into separate contexts.",
+            "`React.memo` can't intercept context updates at all; the fix is narrower contexts, not memoizing consumers."
+          ],
+          "interviewTip": "Show you know the granularity trade-off: 'context has no selector, so a consumer subscribes to the whole value — I split by concern, or reach for a store with selectors when slices get fine-grained.'"
+        }
+      ]
+    },
+    {
+      "heading": "useRef and reaching the DOM",
+      "paragraphs": [
+        "`useRef` gives you a mutable box — `{ current: ... }` — that persists across renders and, crucially, does *not* trigger a re-render when you change `.current`. That makes it the right tool for two distinct jobs: getting a handle to a DOM node (`<input ref={inputRef}>`, then `inputRef.current.focus()`), and stashing a mutable value that shouldn't drive the UI, like an interval id or the latest value for a callback.",
+        "The dividing line against state is visibility: if changing a value should update what the user sees, it's state; if it's bookkeeping the render doesn't depend on, it's a ref. Writing to a ref during render is a code smell (renders should be pure); read and write refs in effects and event handlers instead, where side effects belong.",
+        "A DOM ref is only populated *after* the DOM is committed, so `ref.current` is `null` during the first render and available by the time effects run. To expose a ref to a parent through a custom component, pass it as an ordinary prop (React 19) or use `forwardRef` (earlier versions)."
+      ],
+      "summary": "Use a ref for a value that persists across renders without causing one — a DOM node handle or mutable bookkeeping — and read it in effects or handlers, never as a substitute for state the UI depends on.",
+      "variants": [
+        {
+          "id": "r7",
+          "question": "You need to move keyboard focus to an `<input>` right after the component mounts. What's the standard approach?",
+          "options": [
+            "Query the input with `document.getElementById` inside the component's render function",
+            "Attach a `ref` to the input and call `ref.current.focus()` inside a mount effect",
+            "Store the input's value in state and re-render until the browser gives it focus on its own",
+            "Set the HTML `autofocus` attribute and trust it to fire reliably across every route change"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A ref is React's supported handle to a DOM node. Attach `ref={inputRef}` to the input, then in a `useEffect(() => inputRef.current?.focus(), [])` — which runs after the DOM is committed — call `.focus()`. The ref is guaranteed populated by the time the effect runs.",
+          "optionExplanations": [
+            "Reaching into the DOM with `getElementById` during render bypasses React's model and runs before the node may even exist.",
+            "Correct — a ref gives you the committed DOM node, and a mount effect is the right moment to imperatively focus it.",
+            "State drives rendering, not focus; no amount of re-rendering will move the caret into an input.",
+            "The `autofocus` attribute is unreliable across client-side navigation and doesn't re-fire when a component remounts on the same page."
+          ],
+          "interviewTip": "Frame it as 'imperative escape hatch': 'React is declarative, but focus, scroll, media playback, and measurement are imperative — I reach for a ref and do it in an effect.'"
+        },
+        {
+          "id": "r7-alt",
+          "question": "A developer stores a running counter in `useRef(0)`, increments `ref.current++` in the click handler, and renders `{ref.current}`. The number on screen never updates until something else re-renders. Why?",
+          "options": [
+            "Mutating a ref's `.current` doesn't schedule a re-render, so the UI won't reflect the new value",
+            "Refs hold only DOM nodes, so storing a number in one silently coerces it back to `null`",
+            "The increment ran during render, and React discards any ref writes that happen mid-render",
+            "The `ref` needs to be listed in some dependency array before React will ever show its current value"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Refs are deliberately render-invisible: writing `.current` is a side effect that doesn't tell React anything changed, so the component doesn't re-render and the displayed number goes stale. A counter the UI displays is state, not a ref — use `useState` so each increment schedules a render.",
+          "optionExplanations": [
+            "Correct — a ref write doesn't schedule a render, so a value the UI depends on belongs in state, not a ref.",
+            "Refs hold any value — numbers, objects, functions; there's no coercion to `null` for non-DOM values.",
+            "The write happened in a click handler, not during render; even so, React doesn't 'discard' ref writes — it just doesn't react to them.",
+            "Refs aren't reactive dependencies; listing one changes nothing, because ref changes don't participate in rendering at all."
+          ],
+          "interviewTip": "The one-liner: 'if the UI reads it, it's state; if it's bookkeeping the render ignores, it's a ref.' Displaying a ref's value is the classic misuse."
+        },
+        {
+          "id": "r7-c",
+          "question": "A parent component wants to call a `focus()` method on a child input, but `<TextField ref={ref} />` gives `ref.current === null` even after mount. What's the missing piece (pre-React-19)?",
+          "options": [
+            "`ref` is a reserved word on components, so the prop must be renamed to `inputRef` to pass through",
+            "Refs can only point at native DOM elements and never at a custom component, so this can't work",
+            "The child must forward the ref to a real DOM node, e.g. via `forwardRef`, to be reachable",
+            "The parent has to wrap the child in `React.memo` before a ref will attach to it correctly"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "By default a `ref` on a custom component isn't forwarded to any DOM node — there's nothing for `.current` to point at, so it stays `null`. Wrapping the child in `forwardRef` (React 18 and earlier) and attaching the forwarded ref to its inner `<input>` connects the parent's ref to the real node; in React 19 `ref` is a normal prop and can be passed straight through.",
+          "optionExplanations": [
+            "Renaming to `inputRef` is one manual workaround, but the actual mechanism the question wants is forwarding the ref to a DOM node.",
+            "Refs can absolutely point at custom components' internals — that's exactly what ref forwarding enables.",
+            "Correct — a custom component must forward the ref down to a real DOM node (via `forwardRef` pre-19) for the parent's ref to resolve.",
+            "`React.memo` controls re-render skipping and has nothing to do with whether a ref reaches a DOM node."
+          ],
+          "interviewTip": "Mention the version split: 'pre-19 I'd use `forwardRef`; in React 19 `ref` is just a prop. Either way I expose an imperative handle deliberately, not by default.'"
+        },
+        {
+          "id": "r7-d",
+          "question": "Inside render, a component writes `renderCountRef.current = someProp` and later an effect reads it. A reviewer flags the render-time write. Why is writing a ref during render discouraged?",
+          "options": [
+            "Ref writes during render throw an exception in Strict Mode, so the whole component crashes hard on the second render pass",
+            "Renders must be pure; a render-time side effect breaks under bail-outs, StrictMode, and concurrent features",
+            "Refs are frozen until the commit phase, so any assignment during render is silently ignored anyway",
+            "Writing a ref in render permanently disables that ref's ability to hold a DOM node later on"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "React treats rendering as a pure calculation it may run extra times, bail out of, or throw away (StrictMode double-invoke, concurrent rendering). A ref write is a mutation — a side effect — so doing it in render means the value depends on how many times React happened to render, which is unpredictable. Move the write into an effect or event handler, where side effects are expected.",
+          "optionExplanations": [
+            "StrictMode double-invokes render to *expose* impurity, but it doesn't throw on a ref write; the problem is unpredictability, not a crash.",
+            "Correct — renders must be pure, and a render-time ref mutation is a side effect that misbehaves under double-invocation, bail-outs, and concurrent rendering.",
+            "Refs aren't frozen during render; the assignment does take effect, which is exactly why an accidental extra render corrupts it.",
+            "A ref that held a value can still receive a DOM node later; render-time writes don't disable that."
+          ],
+          "interviewTip": "Tie it to purity: 'render is a pure function React can call any number of times, so I keep side effects — including ref writes — out of it and inside effects or handlers.'"
+        }
+      ]
+    },
+    {
+      "heading": "Controlled and uncontrolled forms",
+      "paragraphs": [
+        "A controlled input hands its value to React: `value={x}` plus `onChange={e => setX(e.target.value)}`. React state is the single source of truth, the DOM only ever displays it, and you can validate, format, or disable on every keystroke. An uncontrolled input keeps its own value in the DOM; you read it when needed via a ref or on submit, and optionally seed it with `defaultValue`.",
+        "The classic bug is going halfway: passing `value` *without* an `onChange` makes a read-only field the user can't type into (React keeps resetting the DOM to the fixed state value). React warns about this. The fix is either to add the `onChange` (making it controlled) or to switch `value` to `defaultValue` (making it uncontrolled).",
+        "Reach for controlled when you need live interaction — instant validation, conditional formatting, or enabling submit as the user types. Reach for uncontrolled (or a form library) for simple forms where you only need values at submit time and want to avoid a re-render per keystroke. A single input should be one or the other for its whole life; switching between them mid-flight triggers a warning."
+      ],
+      "summary": "A controlled input mirrors React state with `value` + `onChange` and gives you per-keystroke control; an uncontrolled input owns its value in the DOM and you read it with a ref — pick one per field and don't pass `value` without `onChange`.",
+      "variants": [
+        {
+          "id": "r8",
+          "question": "A developer renders `<input value={name} />` with no `onChange`. The field displays the initial name but the user can't type into it. Why?",
+          "options": [
+            "The input is disabled by default until an `onChange` handler is explicitly attached to it",
+            "`value` binds the field to state, so with no `onChange` React resets each keystroke away",
+            "React inputs need a `name` attribute before the browser will accept any typed keystrokes",
+            "Text inputs require a surrounding `<form>` element or they silently reject user typing"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Passing `value` makes the input controlled: React forces the DOM to match the state on every render. With no `onChange`, the state never updates, so each keystroke is immediately overwritten back to the fixed `name`. Add `onChange={e => setName(e.target.value)}`, or use `defaultValue` if you meant it to be uncontrolled.",
+          "optionExplanations": [
+            "The input isn't disabled — it's controlled; React actively resets it, which looks like disabling but is a different mechanism.",
+            "Correct — a `value` prop with no `onChange` locks the field to unchanging state, so React reverts every keystroke.",
+            "A `name` attribute affects form submission, not whether typing registers; it isn't required to accept input.",
+            "Inputs work outside a `<form>` just fine; the wrapping element isn't why typing is rejected."
+          ],
+          "interviewTip": "This is a rite-of-passage React warning. Say: 'value without onChange is a read-only controlled input — either add the handler or switch to defaultValue.'"
+        },
+        {
+          "id": "r8-alt",
+          "question": "A form needs to enable its Submit button only once both fields are non-empty, and highlight invalid fields as the user types. Controlled or uncontrolled, and why?",
+          "options": [
+            "Controlled — React state per field lets you validate and toggle Submit on every keystroke",
+            "Uncontrolled — reading the fields via refs on submit keeps typing fast and avoids re-renders",
+            "Uncontrolled — the `required` attribute handles both the disabling and the highlighting for free",
+            "Either works identically, so the choice here is purely a matter of personal preference"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "The requirement is live, per-keystroke behavior: re-validate and re-evaluate the Submit button as the user types. That's exactly what controlled inputs give you — the value lives in React state, so every change re-renders with the new validity. Uncontrolled inputs only surface their value on demand, so you'd have no natural moment to react keystroke-by-keystroke.",
+          "optionExplanations": [
+            "Correct — controlled state re-renders on each keystroke, which is what live validation and a dynamically enabled Submit require.",
+            "Refs-on-submit reads values only when you ask, so there's no per-keystroke hook to drive live validation and button state.",
+            "`required` blocks native submission but doesn't give you live per-keystroke highlighting or a React-controlled disabled state.",
+            "They differ precisely on live interaction; the need to react on every keystroke makes controlled the fit here."
+          ],
+          "interviewTip": "Decide by interactivity: 'need live validation, formatting, or conditional UI as they type? Controlled. Just need values at submit? Uncontrolled is lighter.'"
+        },
+        {
+          "id": "r8-c",
+          "question": "A component renders `<input value={value} onChange={handle} />` but initializes `useState(props.initial)` which is sometimes `undefined`. The console warns about switching from uncontrolled to controlled. What's the cause?",
+          "options": [
+            "React bans deriving any initial state value from incoming props, which triggers this exact warning",
+            "The input started with an `undefined` value (uncontrolled), then became a defined string (controlled)",
+            "`onChange` must be wrapped in `useCallback`, or React treats the input as uncontrolled by default",
+            "Mixing `value` and `defaultValue` on one single input is what actually produces this controlled/uncontrolled warning"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "React decides controlled-ness from whether `value` is defined. When `props.initial` is `undefined`, `value={undefined}` on the first render means React sees no value and treats the input as uncontrolled; once the user types (or props arrive) and `value` becomes a string, it flips to controlled — hence the warning. Fix by defaulting: `useState(props.initial ?? '')`, so `value` is always a defined string.",
+          "optionExplanations": [
+            "Initializing state from props is perfectly allowed; the warning is about the value going from undefined to defined, not about the prop source.",
+            "Correct — `value={undefined}` reads as uncontrolled, and later becoming a defined string flips it to controlled, which triggers the warning.",
+            "`useCallback` affects reference stability, not controlled-ness; the input is controlled as long as `value` is defined.",
+            "There's no `defaultValue` here — the single `value` prop transitioning from undefined to defined is the actual trigger."
+          ],
+          "interviewTip": "Prevent it at the source: 'I default controlled values to an empty string — `value={x ?? \"\"}` — so an input is controlled from its very first render and never flips.'"
+        },
+        {
+          "id": "r8-d",
+          "question": "A large form re-renders visibly on every keystroke because all 20 fields are controlled in one component's state. A teammate wants to keep live validation only on the email field. What's a reasonable approach?",
+          "options": [
+            "Make every field uncontrolled and read all 20 values from refs on submit for maximum speed",
+            "Keep email controlled for live validation and let simpler fields be uncontrolled or locally isolated",
+            "Wrap the entire form component in `React.memo`, which reliably prevents the keystroke re-renders across all fields",
+            "Move all 20 field values into a single `useRef` object and mutate it as the user types along"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "The re-render cost comes from every keystroke updating shared state that the whole form subtree reads. You only need live behavior on email, so keep just that field controlled and let the rest be uncontrolled (read at submit) or move each field's state into its own small component so a keystroke re-renders only that field. Match the tool to each field's actual interactivity need.",
+          "optionExplanations": [
+            "All-uncontrolled is fast but drops the live email validation the requirement explicitly keeps.",
+            "Correct — control only the field that needs live behavior and isolate or uncontrol the rest, so keystrokes don't re-render the whole form.",
+            "`React.memo` on the form itself can't stop re-renders caused by the form's own state changing; the state lives inside it.",
+            "Refs don't re-render, so a controlled email field reading from a ref couldn't validate live — this defeats the one requirement kept."
+          ],
+          "interviewTip": "Show you can mix strategies: 'controlled isn't all-or-nothing per form — I control the fields that need live behavior and isolate state so a keystroke re-renders one field, not twenty.'"
+        }
+      ]
+    },
+    {
+      "heading": "Data fetching in effects: races and cleanup",
+      "paragraphs": [
+        "When you fetch inside `useEffect(fn, [id])`, changing `id` starts a new request without cancelling the old one. Two requests are now in flight, and the network doesn't promise order — the slower, older one can resolve *after* the newer one and overwrite fresh data with stale. This is a race condition, and it's the most common effect-based bug in real apps.",
+        "The cleanup function is the fix. Capture a per-run flag — `let ignore = false` — and set `ignore = true` in cleanup; in the `.then`, bail if `ignore` is set so a superseded response can't call `setState`. Or use an `AbortController`: create one per run, pass its signal to `fetch`, and call `controller.abort()` in cleanup to actually cancel the request. Both guarantee only the latest run's result reaches state.",
+        "Don't forget the other states around the happy path: set a loading flag before the request, handle errors in a `.catch` (aborts throw an `AbortError` you should ignore), and remember StrictMode double-invokes the effect in development precisely to surface missing cleanup. For anything beyond trivial fetching, a data library (React Query, SWR) handles caching, dedup, and cancellation for you."
+      ],
+      "summary": "Async effects can race: a slow old request may resolve after a fast new one and clobber it — cancel or disown the previous run in cleanup with an `AbortController` or an `ignore` flag so only the latest response reaches state.",
+      "variants": [
+        {
+          "id": "r9",
+          "question": "A detail page fetches `/api/item/{id}` in an effect keyed on `id`. Clicking quickly through items sometimes leaves an older item's data on screen. What's the root cause?",
+          "options": [
+            "Two fetches overlap and the slower older one resolves last, overwriting the newer response",
+            "The effect's dependency array is missing `id`, so it never refetches when the item changes",
+            "React caches the first fetch response and reuses it for every subsequent item id after that",
+            "`fetch` returns synchronously, so the second call blocks until the first has fully finished"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "It's a race condition. Each `id` change fires a new request while the previous one is still in flight, and responses can arrive out of order — if the older request resolves last, its `setState` wins and shows stale data. The cleanup function must invalidate the prior run (an `ignore` flag or `AbortController`) so only the newest response commits.",
+          "optionExplanations": [
+            "Correct — overlapping in-flight requests can resolve out of order, and the older one landing last overwrites the newer data.",
+            "The effect is keyed on `id`, so it does refetch; the problem is uncancelled overlap, not a missing dependency.",
+            "React doesn't cache `fetch` results on its own; each render's effect makes a real request.",
+            "`fetch` is asynchronous and returns a promise immediately, so calls overlap rather than blocking."
+          ],
+          "interviewTip": "Say 'race condition' explicitly, then the mechanism: 'responses aren't ordered, so a stale one can win — I disown the previous run in cleanup.' Naming the class of bug is half the credit."
+        },
+        {
+          "id": "r9-alt",
+          "question": "Which cleanup correctly prevents a superseded fetch from updating state in `useEffect(() => { fetch(url).then(r => r.json()).then(setData) }, [url])`?",
+          "options": [
+            "Call `setData(null)` in the cleanup function so the stale response has nothing to overwrite",
+            "Set `let ignore = false`, flip it in cleanup, and skip `setData` when `ignore` is true",
+            "Add `data` to the dependency array so the effect re-runs until the response finally matches",
+            "Wrap `setData` in `useCallback` so only the newest handler identity is allowed to run"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A closure-scoped `let ignore = false`, set to `true` in the effect's cleanup, is captured by that run's `.then`; when `url` changes, cleanup fires, the old run's `ignore` becomes `true`, and its resolved `.then` sees the flag and skips `setData`. Only the current run's flag stays `false`, so only its response commits. (An `AbortController` is the alternative that also cancels the network work.)",
+          "optionExplanations": [
+            "Clearing to `null` in cleanup doesn't stop the old request's `.then`, which still runs later and overwrites with stale data.",
+            "Correct — a per-run `ignore` flag flipped in cleanup lets the resolved-but-superseded request check the flag and decline to call `setData`.",
+            "Depending on `data` makes the effect loop after its own `setData` and does nothing to order the responses.",
+            "`setData` is already stable from `useState`; `useCallback` doesn't gate which response is allowed to land."
+          ],
+          "interviewTip": "Know both tools: 'the `ignore` flag prevents the stale `setState`; `AbortController` also cancels the request. Mentioning both — and that aborts throw `AbortError` to ignore — reads as senior.'"
+        },
+        {
+          "id": "r9-c",
+          "question": "A search box fires a fetch in an effect keyed on `query` — one request per keystroke. The server gets hammered and results flicker as responses land out of order. What's the best-practice combination?",
+          "options": [
+            "Move the fetch out of the effect and into the `onChange` handler so React stops re-running it",
+            "Debounce the input and cancel the prior request in cleanup, so only the latest query resolves",
+            "Cache every response in a ref so repeated queries never actually hit the network again at all",
+            "Switch the effect to `useLayoutEffect` so each fetch finishes before the next keystroke fires"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Two problems stack here: too many requests, and out-of-order results. Debouncing the `query` (fire the effect only after typing pauses) cuts the request volume, and cleaning up each run — abort or `ignore` — ensures a late older response can't overwrite the newest. Together they give one settled result per intended query. A data library bakes both in.",
+          "optionExplanations": [
+            "Moving the fetch to `onChange` doesn't reduce request count or fix ordering; you'd reimplement cleanup by hand and lose the effect's tie to `query`.",
+            "Correct — debouncing throttles the request volume and cleanup cancels or disowns superseded runs, so only the latest query's result lands.",
+            "A ref cache helps repeat queries but does nothing for the flood of new distinct queries or the out-of-order race.",
+            "`useLayoutEffect` changes timing relative to paint, not the ordering of async network responses, so the race remains."
+          ],
+          "interviewTip": "Layer the fixes: 'debounce to reduce requests, cleanup to defeat the race, and cache/dedup on top — which is exactly what React Query or SWR give you out of the box.'"
+        },
+        {
+          "id": "r9-d",
+          "question": "A developer uses `useEffect(async () => { const r = await fetch(url); setData(await r.json()) }, [url])` and gets a warning that an effect must not return a Promise. What's the correct structure?",
+          "options": [
+            "Just return the async function's promise anyway; React will happily unwrap it and await the resolved result for you",
+            "Define an async function inside the effect and call it, so the effect itself returns cleanup or nothing",
+            "Replace `useEffect` with `useMemo`, which is the hook actually designed for asynchronous work",
+            "Mark the whole component `async` so its effects are permitted to await network calls directly"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "An `async` function always returns a promise, but React expects an effect to return either nothing or a cleanup function — a returned promise would be mistaken for cleanup. Declare an async helper *inside* the effect and invoke it: `useEffect(() => { const load = async () => { ... }; load(); return () => {/* cleanup */}; }, [url])`. Now the effect returns a real cleanup, and the async work runs within it.",
+          "optionExplanations": [
+            "React doesn't await effect return values — it calls them as cleanup, so returning a promise breaks the cleanup contract.",
+            "Correct — nesting the async function and calling it lets the effect return proper cleanup instead of a promise.",
+            "`useMemo` is for memoizing computed values during render, not for side effects or async fetching.",
+            "Components can't be `async`; rendering must be synchronous, so this doesn't address the effect's return type."
+          ],
+          "interviewTip": "State the contract: 'an effect returns cleanup or undefined, never a promise — so I put the `async` function inside and invoke it, keeping the return slot free for cleanup.'"
+        }
+      ]
+    },
+    {
+      "heading": "useReducer for complex state",
+      "paragraphs": [
+        "`useReducer` centralizes state transitions in one pure function: `(state, action) => newState`. Instead of scattering many `setX` calls across handlers, components `dispatch({ type: 'submit' })` and the reducer decides how the state changes. It shines when the next state depends on the previous one, when several values change together, or when the same transition fires from many places.",
+        "The signals to switch from `useState`: you have a cluster of related fields (form + validity + submission status), updates involve conditional logic ('if pending, ignore this action'), or you're passing five setters down through props. A reducer collapses those into a single `dispatch`, which is also referentially stable — handy to pass through context without re-creating callbacks.",
+        "Reducers must stay pure: compute and return a new state object, never mutate the argument, and don't do side effects (no fetches, no logging to a server) inside them — those belong in effects or event handlers. Because a reducer is a plain function of state and action, it's trivially unit-testable in isolation, without rendering anything."
+      ],
+      "summary": "Reach for `useReducer` when state transitions get complex or interrelated — it centralizes the logic in one pure, testable `(state, action) => newState` function and gives you a single stable `dispatch` instead of a fistful of setters.",
+      "variants": [
+        {
+          "id": "r10",
+          "question": "A component juggles `data`, `isLoading`, `error`, and `retryCount`, with handlers that update several of these together in coordinated ways. Which refactor fits best?",
+          "options": [
+            "Model the transitions with `useReducer` so related fields update together in one place",
+            "Keep four separate `useState` calls and carefully update each one in every handler by hand",
+            "Store all four fields in a single `useRef` object and mutate them as events come in",
+            "Put the four fields on a global singleton so any component can update them from anywhere"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "These four fields move together — starting a fetch sets `isLoading` true and clears `error`; success sets `data` and clears loading; failure sets `error` and bumps `retryCount`. A reducer expresses each transition as one atomic action, keeping the interrelated fields consistent and the logic in a single testable place, rather than remembering to update four independent states in every handler.",
+          "optionExplanations": [
+            "Correct — coordinated multi-field transitions are exactly what a reducer centralizes into single atomic actions.",
+            "Four independent setters per handler is the error-prone status quo the reducer is meant to replace; it's easy to update one and forget another.",
+            "A ref doesn't trigger re-renders, so a loading/error UI built on it wouldn't update — wrong tool for view state.",
+            "A global singleton adds shared mutable state and re-render problems without solving the coordination; it's overkill and outside React's model."
+          ],
+          "interviewTip": "Name the trigger: 'when several pieces of state change together or the next state depends on the last, I reach for a reducer so transitions are atomic and testable.'"
+        },
+        {
+          "id": "r10-alt",
+          "question": "A reducer case runs `state.items.push(action.item); return state;`. The list doesn't update on screen. What's wrong?",
+          "options": [
+            "Reducers can't manage array state, so `items` must be lifted into its own separate `useState`",
+            "The action needs a unique `id` field, or React can't tell which dispatched action to apply",
+            "It mutated and returned the same state object, so React sees an unchanged reference and skips",
+            "`dispatch` has to be awaited before the pushed item will actually appear in the rendered list"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The same referential-equality rule that governs `useState` applies here: `push` mutates the existing array and the case returns the very same `state` object, so React's `Object.is` check sees no change and skips the render. A reducer must return a *new* state: `return { ...state, items: [...state.items, action.item] }`.",
+          "optionExplanations": [
+            "Reducers handle arrays fine; the issue is mutation, not the state shape.",
+            "Actions don't need ids; the reducer runs synchronously for the dispatched action regardless.",
+            "Correct — mutating and returning the same object keeps the reference identical, so React bails out just as it does with `useState`.",
+            "`dispatch` isn't awaitable; the update is synchronous and would show immediately if a new reference were returned."
+          ],
+          "interviewTip": "Reinforce the through-line: 'immutability isn't a `useState` quirk — reducers must return new references too, or the `Object.is` bailout eats your update.'"
+        },
+        {
+          "id": "r10-c",
+          "question": "A `useState`-based form has grown to seven `setX` calls threaded down through three prop layers. Why is `useReducer` an appealing migration here beyond just tidiness?",
+          "options": [
+            "A reducer runs its state updates on a background thread, so deep forms feel measurably faster",
+            "`dispatch` is stable across renders, so passing one function down beats threading seven changing setters",
+            "`useReducer` automatically persists form state to storage, which seven `useState` calls cannot do",
+            "Reducers re-render only the single changed field, whereas plain `useState` always re-renders the entire whole form tree"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`useReducer` returns a `dispatch` function that React guarantees is stable for the component's lifetime. Passing that single stable function down replaces threading seven separate setters (each a prop that can defeat memoization), and children just `dispatch` typed actions. That's a real structural win — fewer, more stable props and one place that owns the transition logic — not merely cosmetic.",
+          "optionExplanations": [
+            "There's no background thread; reducers run synchronously on the main thread just like setters.",
+            "Correct — `dispatch` is referentially stable, so passing one function down is cleaner and more memo-friendly than seven changing setters.",
+            "`useReducer` has no built-in persistence; you'd still wire storage yourself in an effect.",
+            "Both hooks re-render the component that holds the state the same way; reducers don't grant per-field rendering."
+          ],
+          "interviewTip": "Highlight the stable dispatch: 'a reducer gives me one referentially-stable `dispatch` to pass through context or props, instead of a bundle of setters that churn references.'"
+        },
+        {
+          "id": "r10-d",
+          "question": "A developer puts `fetch('/log', ...)` and `analytics.track(...)` directly inside a reducer case so it 'runs on every action'. Why is this a problem?",
+          "options": [
+            "Reducers execute only once at mount, so the side effects would never fire on later actions",
+            "Side effects belong in effects or handlers; reducers must stay pure and may be called twice",
+            "React throws a runtime error the moment any network call appears inside a reducer function",
+            "The `fetch` would block the reducer, freezing the UI until the network request came back"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Reducers must be pure functions of `(state, action)` — same inputs, same output, no side effects. React may call a reducer more than once for a single dispatch (StrictMode double-invokes it to catch impurity), so a `fetch` or analytics call inside it can fire twice or at unexpected times. Put side effects in event handlers or in an effect that responds to the resulting state change.",
+          "optionExplanations": [
+            "Reducers run on every dispatched action, not just at mount; the frequency isn't the issue — the impurity is.",
+            "Correct — reducers must be pure and can be invoked twice (e.g. StrictMode), so side effects must live in handlers or effects instead.",
+            "React doesn't throw on a network call in a reducer; it just misbehaves silently, which is more dangerous than an error.",
+            "`fetch` is async and returns immediately, so it wouldn't block the reducer — the real problem is that it's an impure side effect."
+          ],
+          "interviewTip": "Keep the purity line bright: 'reducers compute the next state and nothing else — side effects go in handlers or effects, partly because StrictMode double-invokes reducers to catch exactly this.'"
         }
       ]
     }

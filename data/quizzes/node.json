@@ -10,7 +10,7 @@
         "The event loop is the dispatcher: when the call stack is empty, it pulls completed callbacks from the queues and runs them. Microtasks (resolved promises) run before macrotasks (timers, I/O callbacks) — which is why `Promise.resolve().then(...)` beats `setTimeout(..., 0)`.",
         "The corollary: CPU-heavy synchronous code is poison. While your JavaScript runs, nothing else runs — every pending request waits behind your loop."
       ],
-      "summary": "Node juggles many requests on one thread, so any slow number-crunching code freezes everything until it finishes.",
+      "summary": "Node juggles many requests on one thread, so any slow number-crunching code freezes everything until it finishes — keep CPU work off the loop.",
       "variants": [
         {
           "id": "d1",
@@ -95,9 +95,9 @@
       "paragraphs": [
         "A promise is a placeholder for a value that isn't ready: pending, then either fulfilled or rejected. `async/await` is syntax over promises — `await` pauses that async function (not the thread!) until the promise settles.",
         "The classic performance mistake is sequential awaiting of independent work: `const a = await getA(); const b = await getB();` takes the sum of both latencies. Independent operations should start together: `const [a, b] = await Promise.all([getA(), getB()]);` — now you pay only the slower one.",
-        "Know the combinators: `Promise.all` fails fast on the first rejection; `Promise.allSettled` waits for every result, success or failure; `Promise.race` settles with whichever finishes first."
+        "Know the combinators: `Promise.all` fails fast on the first rejection; `Promise.allSettled` waits for every result, success or failure; `Promise.race` settles with whichever finishes first; `Promise.any` returns the first fulfilment and ignores rejections until all fail. Pick by what you need: all-or-nothing, every-outcome, first-done, or first-success."
       ],
-      "summary": "When tasks don't depend on each other, start them together with `Promise.all` so you wait once, not one after another.",
+      "summary": "When tasks don't depend on each other, start them together with `Promise.all` so you wait once, not one after another — and match the combinator to whether you need all results, every outcome, or just the first.",
       "variants": [
         {
           "id": "d2",
@@ -182,9 +182,9 @@
       "paragraphs": [
         "REST URLs name resources with nouns; HTTP methods supply the verbs. `GET /users/42/orders` reads orders for user 42. `POST /orders` creates. Verbs in URLs (`/getUser`, `/createOrder`) are the RPC habit REST replaces.",
         "Respond with codes that match what happened: `201 Created` (with a `Location` header) for creation, `204 No Content` for a successful delete, `400` for malformed input, `422` for well-formed input that fails validation, `404` for a missing resource.",
-        "Version your API (`/v1/...`) from day one, and never break the contract of a shipped version — clients you don't control are relying on the shape of your responses."
+        "Version your API (`/v1/...`) from day one, and never break the contract of a shipped version — clients you don't control are relying on the shape of your responses. Adding fields is safe; renaming or removing them, or tightening validation, breaks callers silently, so those changes belong in a new version."
       ],
-      "summary": "Name things (nouns) in the URL, let the HTTP method be the action, and send back the status code that fits what happened.",
+      "summary": "Name things (nouns) in the URL, let the HTTP method be the action, send back the status code that fits what happened, and version so you never break shipped clients.",
       "variants": [
         {
           "id": "d3",
@@ -271,7 +271,7 @@
         "This is where cross-cutting concerns live: body parsing, logging, rate limiting, authentication, authorization. An auth middleware that finds no valid token responds 401 and simply never calls next() — short-circuiting the pipeline.",
         "Error handling gets its own shape: a four-argument middleware `(err, req, res, next)` registered last. Async route errors must reach it — in Express 4 that means catching and calling `next(err)` (Express 5 forwards rejected promises automatically)."
       ],
-      "summary": "Requests pass through your middleware in the order you register them, so put things like auth and body parsing before the routes they support.",
+      "summary": "Requests pass through your middleware in the order you register them, so put things like auth and body parsing before the routes they support — and give error handling its own four-argument handler at the end.",
       "variants": [
         {
           "id": "d4",
@@ -358,7 +358,7 @@
         "Never trust an external call to return promptly — attach timeouts (AbortController) so a hung upstream doesn't pin your requests forever. Retry transient failures with exponential backoff, and only retry operations that are idempotent or de-duplicated.",
         "Separate expected failures (validation, not-found — clean 4xx responses) from unexpected ones (bugs, upstream outages — 5xx, logged loudly with a correlation id, message kept vague to the client)."
       ],
-      "summary": "Assume outside calls can hang or fail: set timeouts, retry gently (with backoff), and only retry when doing it twice is safe.",
+      "summary": "Assume outside calls can hang or fail: set timeouts, retry gently (with backoff and jitter), and only retry when doing it twice is safe — and keep expected 4xx failures separate from logged-loudly 5xx ones.",
       "variants": [
         {
           "id": "d5",
@@ -435,6 +435,441 @@
             "Correct — generate the key once per logical operation, outside the retry loop, and reuse it on every attempt so the server can recognize the repeat."
           ],
           "interviewTip": "The one-liner that shows mastery: 'the idempotency key's scope is the operation, not the attempt.' Follow with where it's generated — once, before the retry loop — and you've answered the implementation follow-up preemptively."
+        }
+      ]
+    },
+    {
+      "heading": "Streams and backpressure",
+      "paragraphs": [
+        "Streams process data in chunks instead of loading it all into memory. Reading a 2GB file with `fs.readFile` buffers the whole thing into RAM before you touch a byte; `fs.createReadStream` hands you chunks as they arrive, so memory stays flat regardless of file size. This is why `pipe` (or `stream.pipeline`) is the idiom for moving bytes from a file, socket, or HTTP body to a destination.",
+        "Backpressure is the flow-control mechanism that keeps a fast source from overwhelming a slow destination. When you `pipe` a readable into a writable, `write()` returns `false` once the destination's internal buffer is full; a well-behaved pipeline pauses the source until the writable emits `drain`. Skip this — for example by ignoring `write()`'s return value in a hand-rolled loop — and the buffer grows without bound until the process runs out of memory.",
+        "Use `stream.pipeline` (or `pipeline` from `node:stream/promises`) rather than raw `.pipe()`: it wires backpressure and, crucially, propagates errors and destroys every stream in the chain on failure. A bare `.pipe()` leaks the source stream if the destination errors, because it doesn't clean up for you."
+      ],
+      "summary": "Streams move data in chunks so memory stays flat, and backpressure pauses a fast source when the slow destination can't keep up — use `pipeline` so errors and cleanup are handled for you.",
+      "variants": [
+        {
+          "id": "d6",
+          "question": "A service reads uploaded CSVs by calling `fs.readFile` then parsing the whole string. It works in testing but the process is OOM-killed in production on large files. What's the core fix?",
+          "options": [
+            "Raise the container's memory limit so the largest expected upload fits comfortably into the process heap",
+            "Stream the file with `createReadStream` and parse chunks, so memory stays flat regardless of size",
+            "Call `global.gc()` right after each parse so the buffered file string is reclaimed sooner",
+            "Wrap the `readFile` call in a `try/catch` so the out-of-memory error is caught and retried"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`fs.readFile` buffers the entire file into a single Buffer/string before your code runs, so peak memory scales with file size — a large upload blows the heap. Streaming with `createReadStream` delivers chunks as they arrive and lets you parse incrementally, keeping memory bounded no matter how big the input grows.",
+          "optionExplanations": [
+            "Raising the limit just moves the cliff; the next larger file OOMs again because buffering is O(file size) by design.",
+            "Correct — streaming processes the file in bounded chunks, so peak memory no longer scales with input size.",
+            "You can't reclaim memory that's still referenced mid-parse, and forcing GC is a smell that hides the real O(size) buffering problem.",
+            "An OOM often kills the process outright, and even when catchable, retrying the same buffering call reproduces the same blowup."
+          ],
+          "interviewTip": "When a bug is 'fine in tests, dies in prod on big inputs,' say 'buffered the whole thing into memory' before anything else — streaming is the expected fix, and it signals you think about resource bounds, not just correctness."
+        },
+        {
+          "id": "d6-alt",
+          "question": "In a custom pipe, a developer writes `src.on('data', c => dest.write(c))` and ignores what `write()` returns. Under a fast source and slow destination, memory climbs steadily. What did they skip?",
+          "options": [
+            "Backpressure: `write()` returns `false` when the buffer is full and they must pause until `drain`",
+            "They forgot to JSON-encode each chunk before writing, so the buffer stores oversized objects",
+            "They never called `dest.end()`, so Node keeps every chunk pinned in memory until the stream closes",
+            "The `data` event fires twice per chunk, so each write silently duplicates the payload in the buffer"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`writable.write()` returns `false` when the destination's internal buffer has passed its high-water mark, signaling the producer to stop. Ignoring that return value means the source keeps pushing chunks into a buffer the destination can't drain fast enough, so the queued data grows without bound. The fix is to pause the source on `false` and resume on the writable's `drain` event — which is exactly what `pipe`/`pipeline` do automatically.",
+          "optionExplanations": [
+            "Correct — the ignored `write()` return value is the backpressure signal; without pausing on `false`, the buffer grows unbounded.",
+            "Encoding format doesn't cause the growth; an unbounded write queue does, regardless of what the chunks contain.",
+            "Missing `end()` leaves the stream open but doesn't itself cause memory to climb under load — the unheeded backpressure does.",
+            "The `data` event fires once per chunk; there's no duplication, just a producer outrunning the consumer."
+          ],
+          "interviewTip": "Say the mechanism precisely: '`write()` returns false at the high-water mark; pause the readable and resume on drain.' Then add that `pipe`/`pipeline` handle this for you — reaching for them is the senior instinct."
+        },
+        {
+          "id": "d6-c",
+          "question": "You replace `readable.pipe(writable)` with `stream.pipeline(readable, transform, writable, cb)`. Beyond readability, what concrete robustness problem does `pipeline` solve that bare `.pipe()` does not?",
+          "options": [
+            "It compresses each chunk in transit automatically, cutting the bytes the destination must buffer",
+            "It disables backpressure so the transform stage can run at full speed without waiting on drain",
+            "It propagates errors across the chain and destroys every stream, preventing leaks on failure",
+            "It retries the whole pipeline from the start whenever any one stage emits an `error` event"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A bare `.pipe()` forwards data but does not forward errors: if the destination errors, the source is not destroyed and leaks (open file descriptors, sockets). `stream.pipeline` centralizes error handling — one callback (or a rejected promise with the promises variant) receives the first error, and it destroys every stream in the chain, so nothing is left dangling.",
+          "optionExplanations": [
+            "`pipeline` does no compression; you'd insert a `zlib` transform yourself if you wanted that.",
+            "`pipeline` preserves backpressure just like `pipe` — it doesn't disable flow control, which would reintroduce the memory blowup.",
+            "Correct — `pipeline` propagates the first error to its callback and destroys the whole chain, closing the leaks `.pipe()` leaves open.",
+            "`pipeline` reports the error and tears down; it does not automatically retry — retry logic is yours to add around it."
+          ],
+          "interviewTip": "'Why prefer `pipeline` over `.pipe()`?' has a crisp answer: error propagation and guaranteed cleanup. Bare `.pipe()` leaking the source on a destination error is a real production footgun worth naming."
+        },
+        {
+          "id": "d6-d",
+          "question": "An HTTP handler pipes a huge database result to the response, but you also want to gzip it on the way out. Where does the compression belong, and what stream type is it?",
+          "options": [
+            "Buffer the full result, gzip the buffer with `zlib.gzipSync`, then send it as one response body",
+            "A Transform stream (`zlib.createGzip`) placed between source and response inside the pipeline",
+            "A Writable stream at the very end that gzips only after every chunk has been fully collected",
+            "A Readable stream ahead of the query that pre-compresses rows before the database returns them"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Compression is a chunk-in, chunk-out operation, which is exactly a Transform stream. `zlib.createGzip()` returns one, and you place it mid-pipeline — `pipeline(dbStream, gzip, res)` — so each chunk is compressed as it flows, preserving the streaming and backpressure benefits end to end. Buffering to gzip the whole thing reintroduces the memory problem streaming was meant to avoid.",
+          "optionExplanations": [
+            "Buffering the full result to gzip it defeats streaming: peak memory scales with the response size again, the exact problem you're avoiding.",
+            "Correct — gzip is a Transform (chunk-in, chunk-out); `zlib.createGzip()` sits between source and response and compresses as data flows.",
+            "A terminal Writable that waits for all chunks is just buffering in disguise; it can't emit compressed output incrementally.",
+            "You can't compress rows before the database has produced them, and a source Readable is the wrong place for a mid-stream transform."
+          ],
+          "interviewTip": "Map the three stream roles fast: Readable = source, Writable = sink, Transform = both (compression, encryption, parsing). Naming `createGzip` as a Transform in a pipeline shows you compose streams rather than buffer."
+        }
+      ]
+    },
+    {
+      "heading": "CommonJS vs ES modules",
+      "paragraphs": [
+        "Node grew up on CommonJS: `require()` loads a module synchronously and returns its `module.exports` object, resolved at the moment the call runs. ES modules (ESM) use `import`/`export`, are resolved and linked before any code executes, and their bindings are live — an imported name reflects later changes to the exporter's variable, whereas a CommonJS import is a snapshot of the value at require time.",
+        "How a `.js` file is interpreted depends on the nearest `package.json`: `\"type\": \"module\"` makes `.js` files ESM, its absence (or `\"type\": \"commonjs\"`) makes them CommonJS. You can always be explicit with the `.mjs` (ESM) and `.cjs` (CommonJS) extensions. ESM is async under the hood, which unlocks top-level `await` — you can `await` at module scope without wrapping it in an async function, something CommonJS cannot do.",
+        "Interop has sharp edges. ESM can `import` a CommonJS module (its `module.exports` becomes the default export), but CommonJS cannot `require()` a true ESM module synchronously — historically you needed dynamic `import()`, which returns a promise. Globals differ too: `__dirname` and `__filename` don't exist in ESM, where you reconstruct them from `import.meta.url`."
+      ],
+      "summary": "CommonJS `require` is synchronous and snapshots values; ESM `import`/`export` links up front with live bindings and top-level await — and how a `.js` file is read depends on the nearest `package.json` \"type\".",
+      "variants": [
+        {
+          "id": "d7",
+          "question": "You add `\"type\": \"module\"` to package.json and an existing `.js` file that uses `__dirname` immediately throws `__dirname is not defined`. Why?",
+          "options": [
+            "The file must be renamed to `.mjs` before Node will ever let it reference any path globals",
+            "`__dirname` is a CommonJS-only global; ESM has no such variable and derives paths from `import.meta.url`",
+            "Node caches `__dirname` once per process, and switching module type clears that cache until the next restart",
+            "The variable exists but is now read-only in strict mode, so touching it throws a reference error"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`__dirname` and `__filename` are injected by the CommonJS module wrapper — they simply don't exist in ES modules. Setting `\"type\": \"module\"` reinterprets your `.js` file as ESM, so those globals vanish. The ESM way to get the current directory is to derive it from `import.meta.url`, e.g. `path.dirname(fileURLToPath(import.meta.url))`.",
+          "optionExplanations": [
+            "Renaming to `.mjs` also makes it ESM, which removes `__dirname` too — the extension isn't the fix; reconstructing the path is.",
+            "Correct — `__dirname` belongs to the CommonJS wrapper; ESM omits it, so you rebuild it from `import.meta.url`.",
+            "There's no per-process `__dirname` cache; the variable is provided by the module system, and ESM doesn't provide it.",
+            "It's not a strict-mode read-only issue — the identifier is genuinely undefined in ESM scope."
+          ],
+          "interviewTip": "Keep the ESM path snippet ready: `import { fileURLToPath } from 'node:url'; const __dirname = path.dirname(fileURLToPath(import.meta.url));`. Knowing why the globals vanish (they were wrapper injections) reads as real migration experience."
+        },
+        {
+          "id": "d7-alt",
+          "question": "A CommonJS module does `const cfg = require('./config'); console.log(cfg.ready);` at load time, but `config.js` sets `module.exports.ready = true` asynchronously a tick later. `cfg.ready` logs `undefined`. What property of `require` explains this?",
+          "options": [
+            "`require` returns a snapshot of `module.exports` as it stands the instant the call resolves",
+            "`require` deep-clones the exported object, so later mutations on the original never propagate across",
+            "`require` always returns a Promise, so reading `.ready` synchronously observes the unresolved value",
+            "`require` re-runs the module's top-level code on every access, resetting `ready` back to undefined"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`require` executes the target module synchronously to completion and hands back whatever `module.exports` references at that moment. If `ready` is assigned later on a subsequent tick, it wasn't there when `require` returned, so the caller's reference reflects the earlier state. (Because objects are shared by reference, a later mutation would show up if you read the same object again later — but the synchronous read at load time sees the pre-assignment snapshot.)",
+          "optionExplanations": [
+            "Correct — `require` returns `module.exports` as it stands when the call completes; a later async assignment isn't visible to the synchronous read.",
+            "`require` shares the exports object by reference; it does not clone, deep or otherwise.",
+            "`require` is synchronous and returns the exports object directly, never a Promise — that's ESM `import()`.",
+            "Module top-level code runs once and is cached; `require` does not re-execute it per access."
+          ],
+          "interviewTip": "Contrast the two binding models: CommonJS gives you the exports object's value at require time; ESM gives live bindings that track the exporter. That distinction is the crux of most CJS-vs-ESM interview questions."
+        },
+        {
+          "id": "d7-c",
+          "question": "Your project is `\"type\": \"module\"`, but you depend on an old library that ships only CommonJS. You need one of its named exports. What's the reliable way to consume it?",
+          "options": [
+            "You cannot use CommonJS from ESM at all; the library has to be rewritten to native ESM first",
+            "Import the whole module's default export, then read the named export off that default object",
+            "Add `\"type\": \"commonjs\"` back so `require` works, which also converts your own files silently",
+            "Call `require()` directly inside the ESM file, since Node exposes it globally within every module"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "When ESM imports a CommonJS module, Node exposes the module's `module.exports` as the default export. Node's cjs-named-export detection often surfaces named imports too, but the always-reliable path is `import pkg from 'old-lib'` and then `pkg.thing` — because the CommonJS `exports` object becomes precisely that default. This lets a modern ESM codebase keep using legacy CJS dependencies without rewriting them.",
+          "optionExplanations": [
+            "ESM can import CommonJS fine — that direction of interop is supported; it's `require`-ing true ESM that's the hard direction.",
+            "Correct — a CommonJS module's `module.exports` arrives as the ESM default import, so read named members off that default object.",
+            "Flipping your package back to CommonJS reinterprets all your own `.js` files, breaking your ESM syntax — far too blunt a fix.",
+            "`require` is not defined in ESM scope; you'd have to build one via `createRequire(import.meta.url)`, not call a global."
+          ],
+          "interviewTip": "Know both interop directions: ESM importing CJS works (exports → default); CJS `require`-ing real ESM does not, historically needing dynamic `import()`. If you must `require` from ESM, `module.createRequire(import.meta.url)` is the escape hatch."
+        },
+        {
+          "id": "d7-d",
+          "question": "A module needs to `await` a config fetch before exporting a fully-built client. In ESM this is a few lines at module scope; the same thing is awkward in CommonJS. Which ESM capability makes the difference?",
+          "options": [
+            "CommonJS forbids `async` functions entirely, so the config fetch cannot even be expressed there",
+            "ESM `import` statements run faster, so the fetch completes before the module body needs it",
+            "Top-level `await`: ESM is async-linked, so you can `await` at module scope without an async wrapper",
+            "ESM auto-caches network responses, letting the config resolve synchronously on the very first import"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Because ESM is evaluated asynchronously as part of its link phase, it supports top-level `await` — you can pause a module's evaluation on a promise right at module scope, and importers wait for it to finish before their own code runs. CommonJS loads synchronously, so it has no such pause point; you'd have to export a promise or an async init function and make every consumer await it.",
+          "optionExplanations": [
+            "CommonJS supports `async` functions fine; what it lacks is a way to `await` at the top level of the module itself.",
+            "Import speed is irrelevant — the issue is being able to suspend module evaluation on a promise, which timing tricks can't provide.",
+            "Correct — ESM's async evaluation enables top-level `await`, letting the module pause on the fetch before it finishes exporting.",
+            "ESM does no automatic response caching, and a network fetch is inherently asynchronous — it can't resolve synchronously."
+          ],
+          "interviewTip": "Top-level await is the clean ESM answer to 'async work before exports.' Mention the ripple effect: importers of a top-level-awaiting module also wait on it, so use it deliberately — it can serialize your startup."
+        }
+      ]
+    },
+    {
+      "heading": "Authentication: sessions vs JWT",
+      "paragraphs": [
+        "Session-based auth keeps the source of truth on the server: after login the server creates a session record (in memory, Redis, or a database) and sends the client an opaque session id in a cookie. Every request carries the cookie, the server looks up the session, and you can revoke access instantly by deleting the record. The cost is that lookup and shared session storage across every server instance.",
+        "JWT (JSON Web Token) auth is stateless: the server signs a token containing the claims (user id, roles, expiry) and hands it to the client, which sends it back on each request. The server verifies the signature and trusts the payload without any lookup — great for horizontal scaling because any instance can validate a token alone. The catch is revocation: a signed token is valid until it expires, so you can't cleanly 'log someone out' server-side without extra machinery (a short expiry plus refresh tokens, or a denylist that reintroduces the state you were avoiding).",
+        "Two rules that trip people up. First, JWTs are signed, not encrypted — anyone can base64-decode and read the payload, so never put secrets in it. Second, cookies carrying either credential need protection: `HttpOnly` (blocks JavaScript/XSS theft), `Secure` (HTTPS only), and `SameSite` (mitigates CSRF). Storing a token in `localStorage` forfeits `HttpOnly` and exposes it to any XSS on the page."
+      ],
+      "summary": "Sessions keep state server-side so you can revoke instantly but must share session storage; JWTs are stateless and scale easily but are hard to revoke before expiry — and a JWT is signed, not encrypted, so it's readable by anyone.",
+      "variants": [
+        {
+          "id": "d8",
+          "question": "A team stores user roles inside a JWT and puts the user's plaintext email and an internal flag in the payload too, reasoning 'it's signed, so it's safe.' What's the security flaw?",
+          "options": [
+            "Signing uses a weak default algorithm, so an attacker can trivially forge a token with any roles",
+            "A JWT payload is only base64-encoded, not encrypted — anyone holding the token can read every claim",
+            "The token will exceed the cookie size limit once the roles are added, so the browser silently drops it",
+            "Roles belong in the header, not the payload, so the server will ignore them during verification"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A JWT's signature guarantees integrity — the payload can't be tampered with undetected — but it provides no confidentiality. The payload is just base64url-encoded JSON, trivially decoded by anyone who intercepts or holds the token. Putting a plaintext email or an internal flag there leaks it to the client and anyone in between; secrets and sensitive PII must never live in a JWT.",
+          "optionExplanations": [
+            "The default-algorithm/forgery concern is a different issue; here the payload is signed correctly — the flaw is that signing isn't encryption.",
+            "Correct — signing gives integrity, not confidentiality; the base64url payload is readable by anyone with the token.",
+            "Cookie size limits aren't the security problem, and roles alone rarely approach the ~4KB limit anyway.",
+            "Claims in the payload are exactly where roles belong; the header carries algorithm metadata, and nothing gets ignored on verify."
+          ],
+          "interviewTip": "State it flatly: 'signed, not encrypted.' Then the corollary — never store secrets or sensitive PII in a JWT. If confidentiality is required, you need JWE (encryption) or keep the data server-side behind an opaque token."
+        },
+        {
+          "id": "d8-alt",
+          "question": "Security asks you to immediately log out a compromised account across all its devices. Your auth is pure stateless JWT with a 24-hour expiry. Why is instant revocation hard here?",
+          "options": [
+            "The signing key is shared, so revoking one token would invalidate every other user's token as well",
+            "Deleting the user's server session ends it, but the browser keeps replaying the cached token anyway",
+            "A signed JWT stays valid until it expires; with no server lookup there's nothing to delete to revoke it",
+            "JWT logout requires the client itself to voluntarily discard the token, which a compromised device won't do"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Stateless JWT means the server verifies a token's signature and expiry without consulting any store — that's the scaling benefit. But it's also why revocation is hard: there's no server-side record to delete, so a valid, unexpired token keeps working until its 24-hour clock runs out. Practical fixes reintroduce some state: short access-token lifetimes plus revocable refresh tokens, or a token denylist checked on each request.",
+          "optionExplanations": [
+            "Revocation doesn't touch the signing key; rotating that key would indeed invalidate everyone, which is why it's not the revocation mechanism.",
+            "Pure stateless JWT has no server session to delete — that's precisely the point; the token itself carries the authority.",
+            "Correct — with no server-side record behind the token, there's nothing to remove, so it stays valid until expiry.",
+            "Revocation can't depend on a compromised device cooperating; the server needs a mechanism that doesn't trust the client."
+          ],
+          "interviewTip": "The revocation trade-off is the classic sessions-vs-JWT question. Best answer: short-lived access tokens plus a refresh token you can revoke server-side — you keep most of JWT's statelessness while regaining a revocation point."
+        },
+        {
+          "id": "d8-c",
+          "question": "A frontend stores its JWT in `localStorage` and attaches it via an `Authorization` header. A reviewer flags this as riskier than an `HttpOnly` cookie. What's the concrete threat?",
+          "options": [
+            "Any XSS on the page can read `localStorage` and exfiltrate the token, which `HttpOnly` would block",
+            "`localStorage` is cleared when the tab closes, so users are logged out and must re-authenticate constantly",
+            "Browsers never send `Authorization` headers cross-origin, so the token fails on any third-party API call",
+            "`localStorage` values are shared across every origin, leaking the token to unrelated sites the user visits"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`localStorage` is fully readable by any JavaScript running on the page, so a single XSS vulnerability lets an attacker script grab the token and send it anywhere. An `HttpOnly` cookie is invisible to JavaScript, so the same XSS can't read the credential (the browser still attaches it to requests). Cookies bring their own concern — CSRF — which `SameSite` and CSRF tokens address, but they close the XSS-token-theft door that `localStorage` leaves open.",
+          "optionExplanations": [
+            "Correct — `localStorage` is script-readable, so any XSS can steal the token; `HttpOnly` hides the credential from JavaScript entirely.",
+            "`localStorage` persists across sessions and tab closes (that's `sessionStorage`), so this isn't why it's risky.",
+            "`Authorization` headers work cross-origin fine (subject to CORS); header transport isn't the issue here.",
+            "`localStorage` is strictly per-origin and never shared across origins — the isolation model isn't the flaw."
+          ],
+          "interviewTip": "The crisp framing: `localStorage` token → exposed to XSS; `HttpOnly` cookie → exposed to CSRF (mitigated by `SameSite`). Name the threat each choice trades for the other, rather than declaring one universally 'secure.'"
+        },
+        {
+          "id": "d8-d",
+          "question": "An app runs behind a load balancer across five Node instances. Users report being randomly logged out. Auth uses in-memory server sessions. What's the root cause?",
+          "options": [
+            "The JWT expiry is set too low, so tokens lapse between requests and force frequent re-logins",
+            "Each instance holds its own in-memory sessions, so requests routed to another instance find none",
+            "The load balancer strips the session cookie on forwarding, so the id never reaches the app tier",
+            "Sessions expire on every deploy, and the five instances are simply restarting on a staggered schedule"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "In-memory sessions live in a single process's heap. Behind a load balancer, a user's requests fan out across all five instances, and only the instance that handled login knows about that session — the other four have no record and treat the user as unauthenticated. The fix is shared session storage (Redis, a database) so any instance can resolve any session, or sticky sessions as a weaker workaround.",
+          "optionExplanations": [
+            "The scenario uses server sessions, not JWTs, so token expiry isn't the mechanism; the randomness points to instance routing.",
+            "Correct — per-process in-memory sessions aren't shared, so requests hitting a different instance find no session and appear logged out.",
+            "A stripped cookie would log everyone out consistently, not randomly; the intermittent pattern is the load-balancer fan-out tell.",
+            "Staggered restarts would cause bursts tied to deploys, not the continuous random logouts users describe."
+          ],
+          "interviewTip": "'Random logouts behind a load balancer' is a scaling tell: session state stuck in one process's memory. Lead with 'externalize session storage (Redis)' — it's the same statelessness lesson JWTs solve differently."
+        }
+      ]
+    },
+    {
+      "heading": "Input validation and security",
+      "paragraphs": [
+        "The first law of server security is: never trust input. Every value from a client — body, query string, headers, path params — is attacker-controlled until you've validated it against an explicit schema (a library like Zod or Joi). Validate at the boundary, reject early with a `400`/`422`, and let the rest of your code assume clean, typed data. Blocklists ('strip these bad characters') lose; allowlists ('accept only this exact shape') win.",
+        "Injection happens when untrusted input is concatenated into an interpreter's syntax — SQL, a shell command, a NoSQL query, HTML. The universal defense is separation of code and data: parameterized queries / prepared statements for SQL (the driver sends the query and the values apart, so input can never become syntax), argument arrays instead of shell strings for subprocesses, and context-aware output encoding for HTML to stop XSS. String-building your queries with user input is the vulnerability, not the escaping you bolt on afterward.",
+        "Beyond correctness, protect availability and headers. Rate limiting caps how often a client can hit you, blunting brute-force and abuse; a body-size limit stops a giant payload from exhausting memory. Security headers via `helmet` (CSP, HSTS, `X-Content-Type-Options`) harden the browser side, and secrets belong in environment/secret stores, never in the request/response or the codebase."
+      ],
+      "summary": "Validate every input against an allowlist schema at the boundary, defeat injection by keeping code and data separate (parameterized queries, argument arrays, output encoding), and protect availability with rate limits and body-size caps.",
+      "variants": [
+        {
+          "id": "d9",
+          "question": "A login query is built as `\"SELECT * FROM users WHERE email = '\" + email + \"'\"`. What's the correct fix for the injection risk, and why does it actually work?",
+          "options": [
+            "Escape quotes in `email` with a regex before building the string, which neutralizes injection attempts",
+            "Validate that `email` merely contains an `@` sign, which is enough to block SQL injection payloads entirely",
+            "Use a parameterized query so the driver sends SQL and values apart and input can't become syntax",
+            "Wrap the query in a transaction so a malicious statement rolls back before it can affect any table row"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The vulnerability is that user input is concatenated into the SQL text, so a crafted value can alter the query's structure. Parameterized queries (prepared statements) send the query template and the parameter values over separate channels; the value is bound as data and never parsed as SQL, so no input — however crafted — can change the statement's meaning. That structural separation, not ad-hoc escaping, is what closes the hole.",
+          "optionExplanations": [
+            "Hand-rolled escaping is fragile — encodings, edge cases, and driver quirks slip through; separating code from data is the robust fix.",
+            "Checking for an `@` is input validation, not injection defense; a value like `a@b' OR '1'='1` passes and still injects.",
+            "Correct — parameterization binds input as data on a separate channel, so it can never be interpreted as SQL syntax.",
+            "A transaction controls atomicity, not parsing — an injected statement executes within it and can still read or damage data."
+          ],
+          "interviewTip": "The one sentence that nails it: 'parameterized queries separate code from data, so input is never parsed as SQL.' Add that escaping is the fragile fallback and validation is defense-in-depth, not the primary control."
+        },
+        {
+          "id": "d9-alt",
+          "question": "A public API endpoint accepts sign-up attempts with no throttling. Attackers run credential-stuffing and enumeration against it around the clock. Which control most directly addresses this?",
+          "options": [
+            "Add a strict allowlist schema so malformed sign-up bodies are rejected with a `400` before processing",
+            "Rate limiting per client/IP, so a single source can't hammer the endpoint with unlimited attempts",
+            "Return a generic `500` on every failed attempt so attackers can't distinguish valid from invalid input",
+            "Move the endpoint to HTTPS so the credentials in each attempt are encrypted while in transit to you"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Credential stuffing and enumeration are volume attacks: their power comes from making an enormous number of attempts cheaply. Rate limiting directly caps that volume per client/IP (with account-level limits and CAPTCHAs as complements), turning an unlimited automated attack into a slow, bounded one. Schema validation, generic errors, and HTTPS are all good hygiene but none of them bounds attempt frequency.",
+          "optionExplanations": [
+            "Schema validation rejects malformed bodies but does nothing about a flood of well-formed guesses — the attacker sends valid-shaped payloads.",
+            "Correct — rate limiting bounds attempts per source, directly defeating the high-volume nature of stuffing and enumeration.",
+            "Uniform error responses reduce information leakage but still let the attacker try unlimited times; they don't slow the flood.",
+            "HTTPS protects data in transit; it does nothing to limit how many attempts an attacker can make against the endpoint."
+          ],
+          "interviewTip": "Match the control to the attack's mechanism: volume attacks want rate limiting/CAPTCHA/lockouts; injection wants parameterization; leakage wants uniform errors. Interviewers reward picking the control that attacks the attack's actual leverage."
+        },
+        {
+          "id": "d9-c",
+          "question": "A service runs `exec('convert ' + userFilename + ' out.png')` to process uploads. A filename like `x.jpg; rm -rf /` is catastrophic. What's the root cause and the right fix?",
+          "options": [
+            "Untrusted input is parsed by a shell; use `execFile`/`spawn` with an argument array so it stays data",
+            "The `convert` binary is outdated; upgrading ImageMagick to the latest release closes the injection path",
+            "The filename wasn't URL-decoded first, so decoding it before the call removes the dangerous shell tokens",
+            "`exec` runs as root; dropping the process to an unprivileged user fully prevents the command from injecting"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`exec` runs its argument through a shell, so shell metacharacters (`;`, `|`, `` ` ``, `$()`) in user input are interpreted as command syntax — the same code-vs-data confusion as SQL injection. `execFile`/`spawn` with an argument array (`execFile('convert', [userFilename, 'out.png'])`) bypasses the shell entirely: the filename is passed as a single argument and can never be parsed as commands, regardless of what characters it contains.",
+          "optionExplanations": [
+            "Correct — the shell parsing is the hole; passing arguments as an array via `execFile`/`spawn` keeps user input as data, not command syntax.",
+            "The vulnerability is in how you invoke the shell, not in `convert`'s version; upgrading the tool leaves the injection wide open.",
+            "URL-decoding doesn't remove `;` or `$()`; if anything it can reveal more metacharacters — decoding is unrelated to the shell parse.",
+            "Least privilege limits blast radius but doesn't stop injection; the attacker still runs arbitrary commands as that unprivileged user."
+          ],
+          "interviewTip": "Command injection is SQL injection's cousin — same code/data confusion, different interpreter. 'Avoid the shell: `spawn`/`execFile` with an args array' is the reflex answer; mention least privilege as defense-in-depth, not the primary fix."
+        },
+        {
+          "id": "d9-d",
+          "question": "A team validates request bodies carefully but leaves query and path parameters unvalidated, assuming those are 'less dangerous.' Why is that assumption wrong?",
+          "options": [
+            "Query strings are always URL-encoded by browsers, so they arrive pre-sanitized and can't carry any payloads",
+            "All request parameters are client-controlled and equally attacker-supplied, so each must be validated",
+            "Path parameters are validated automatically by the router's pattern, making explicit checks fully redundant",
+            "Only `POST` bodies can reach the database layer, so `GET` parameters can't participate in any injection"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Every part of a request the client can set — body, query string, path params, headers, cookies — is attacker-controlled. A malicious value in `GET /items/:id` or `?sort=` reaches your query builder, file paths, or shell just as easily as a body field, so it can drive SQL injection, path traversal, or command injection all the same. Validation must cover the entire request surface, not just the JSON body.",
+          "optionExplanations": [
+            "URL-encoding is a transport format, not sanitization; the server decodes it back to the raw malicious value before your code sees it.",
+            "Correct — body, query, path, headers, and cookies are all client-supplied; every one is an untrusted input that needs validation.",
+            "A router pattern might match a shape (e.g. digits) but usually doesn't enforce full validity, and many params aren't constrained at all.",
+            "`GET` parameters flow into queries, file paths, and commands constantly; the HTTP method has no bearing on injectability."
+          ],
+          "interviewTip": "Say 'the entire request is the attack surface' — body, query, path, headers, cookies. Candidates who only think of the JSON body miss path traversal via a path param and injection via a query string; naming all the sources signals a threat-model mindset."
+        }
+      ]
+    },
+    {
+      "heading": "Config and the 12-factor app",
+      "paragraphs": [
+        "The 12-factor principle for config is: store anything that varies between deploys — database URLs, API keys, feature flags, ports — in the environment, not in the code. The same built artifact should run in dev, staging, and prod with only its environment differing. Hardcoding a connection string, or committing a `.env` file with real secrets, couples your build to one environment and leaks credentials into version control (and everyone's laptop).",
+        "Read config once at startup, validate it, and fail fast. A process that boots with a missing or malformed `DATABASE_URL` should crash immediately with a clear message — not limp along and throw a cryptic error on the first request an hour later. Centralize this: parse `process.env` into a typed, validated config object at boot, and let the rest of the app import that object instead of reaching into `process.env` scattered everywhere.",
+        "Keep dev/prod parity and treat backing services as attached resources. Config is what lets you swap a local Postgres for a managed one by changing a URL, with no code change. Secrets in real deployments come from a secret manager or the orchestrator's injected environment, `.env` files are a local convenience only (and belong in `.gitignore`), and you never log the resolved secret values."
+      ],
+      "summary": "Put anything that varies between deploys in the environment, not the code; validate config once at startup and fail fast if it's wrong; and keep secrets out of version control and out of your logs.",
+      "variants": [
+        {
+          "id": "d10",
+          "question": "A service hardcodes its production database URL in `db.js`. Following 12-factor config, why is that wrong and what should replace it?",
+          "options": [
+            "It slows startup because the file must be parsed each boot; inline the URL as a constant to speed it up",
+            "Config that varies per deploy belongs in the environment, so read the URL from `process.env` instead",
+            "Hardcoding is fine for the URL as long as the password portion is separately encrypted within the file",
+            "The URL should live in a JSON file committed beside the code so every environment shares one source"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A hardcoded production URL couples the single build artifact to one environment: you can't run the same code in staging without editing and rebuilding, and any credentials in that URL are now committed to version control. 12-factor says config that differs between deploys lives in the environment, so the value comes from `process.env` (validated at startup) and the identical artifact runs anywhere by changing only its environment.",
+          "optionExplanations": [
+            "Parsing cost is negligible and irrelevant; the real problem is environment coupling and committed credentials, which inlining makes worse.",
+            "Correct — per-deploy config belongs in the environment; read the URL from `process.env` so one artifact runs in any environment.",
+            "Encrypting a substring still commits environment-specific config into the code and complicates rotation — the value shouldn't be in the file at all.",
+            "A committed shared JSON file can't differ per environment and still checks secrets into version control — the same coupling problem."
+          ],
+          "interviewTip": "The phrase to use: 'one build artifact, config from the environment.' Then the corollary — the same image runs in every environment by changing only its env vars, which is what makes promotion (dev→staging→prod) clean."
+        },
+        {
+          "id": "d10-alt",
+          "question": "An app reads `process.env.STRIPE_KEY` lazily the first time a payment is made. When the variable is unset in a new environment, the failure surfaces as a confusing error during a customer's checkout. What practice would have prevented this?",
+          "options": [
+            "Retry the payment automatically a few times, since the key often loads in on a later attempt anyway",
+            "Default the key to an empty string at read time so the checkout code path never throws on it",
+            "Validate all required config at startup and fail fast, so a missing key crashes the boot immediately",
+            "Catch the error at the payment call site and show the customer a friendlier, more generic failure message"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Reading and validating config lazily means a missing value stays invisible until the exact code path that needs it runs — here, mid-checkout for a real customer. Validating all required config at boot and refusing to start on anything missing or malformed converts a late, user-facing failure into an immediate, obvious deploy-time crash with a clear message. Fail fast at startup is the 12-factor discipline that surfaces misconfiguration before traffic ever arrives.",
+          "optionExplanations": [
+            "An unset environment variable won't materialize on retry; retrying just repeats the same guaranteed failure against the customer.",
+            "Defaulting to an empty string hides the misconfiguration and pushes a broken (unauthenticated) call downstream — worse than crashing.",
+            "Correct — validate required config at startup and fail fast, so a missing key stops the deploy instead of a customer's checkout.",
+            "A friendlier message treats the symptom; the root issue is that the deploy started at all with required config missing."
+          ],
+          "interviewTip": "'Fail fast at startup' is the config discipline to name. Parse and validate `process.env` into a typed config object at boot; a bad config should break the deploy, never a live request — errors should surface far from the customer."
+        },
+        {
+          "id": "d10-c",
+          "question": "A developer commits a `.env` file containing the real production API keys so teammates 'have what they need.' Why is this a serious mistake?",
+          "options": [
+            "`.env` files are ignored by Node at runtime, so the committed keys wouldn't actually load into the process",
+            "The file format is non-portable across operating systems, so teammates on other platforms can't read it",
+            "Secrets now live in version-control history permanently and leak to everyone with repo access; git-ignore it",
+            "Environment files must be named `.env.production` exactly, so this one simply wouldn't be picked up in prod anyway"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "Committing real secrets writes them into git history, where they persist across every clone and branch even if you later delete the file — anyone with repo access (now or in the future) can recover them, so the keys must be rotated. `.env` belongs in `.gitignore`; secrets come from a secret manager or injected environment in real deployments, and the committed file should hold only non-sensitive defaults or a `.env.example` template.",
+          "optionExplanations": [
+            "`.env` files are loaded (via a loader like dotenv or the platform), so the keys very much do reach the process — that's not the issue.",
+            "The format is plain `KEY=value` and portable enough; portability isn't the problem, credential exposure is.",
+            "Correct — committing secrets embeds them in git history for anyone with repo access; git-ignore `.env` and rotate the exposed keys.",
+            "Any filename can hold secrets, and the naming convention is loader-specific; the danger is committing real credentials at all."
+          ],
+          "interviewTip": "Two beats: (1) secrets in git history persist even after deletion, so you must rotate them; (2) `.env` is a local convenience — git-ignore it and use a secret manager or injected env in real deploys. Mentioning rotation shows you've handled a real leak."
+        },
+        {
+          "id": "d10-d",
+          "question": "The same Docker image is promoted dev → staging → prod, each pointing at a different database purely via an injected `DATABASE_URL`. Which 12-factor idea does this most directly demonstrate?",
+          "options": [
+            "Backing services are attached resources, swappable by config with no change to the built artifact",
+            "Logs should be treated as event streams written to stdout rather than to managed local files",
+            "The build, release, and run stages must be kept strictly separate from one another in the pipeline",
+            "Processes should be stateless so any request can be handled by any instance behind the balancer"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Treating the database as an attached resource means the app reaches it only through a config value (`DATABASE_URL`), so pointing at a different database — local, staging, managed prod — is purely an environment change. The identical image runs everywhere; nothing in the code names a specific database. That swap-by-config behavior is exactly the 'backing services as attached resources' factor in action.",
+          "optionExplanations": [
+            "Correct — the database is an attached resource reached via config, so swapping it per environment needs no change to the image.",
+            "Log streaming to stdout is a real 12-factor point, but nothing here concerns logging — the scenario is about swapping databases.",
+            "Build/release/run separation is a different factor; the artifact promotion touches it, but the database-by-URL swap illustrates attached resources.",
+            "Statelessness matters for scaling, but this scenario is specifically about changing which backing service the app attaches to."
+          ],
+          "interviewTip": "'Backing services as attached resources' means your app never hardcodes which database/queue/cache it uses — only a URL. The payoff to state: one immutable image promoted across environments, differing only by injected config. That's the whole point of build-once-deploy-anywhere."
         }
       ]
     }

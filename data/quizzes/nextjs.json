@@ -8,7 +8,7 @@
       "paragraphs": [
         "Every rendering strategy answers one question: where and when is the HTML produced? CSR: in the browser, after a JS bundle loads. SSR: on the server, per request. SSG: on the server, once at build time. ISR: SSG plus scheduled regeneration.",
         "Next.js lets you choose per route. A marketing page wants SSG (fast, cacheable, content rarely changes). A personalized dashboard wants SSR or client fetching (data differs per user, per request). A product catalog updated hourly is the ISR sweet spot.",
-        "The trade axis is freshness versus latency versus server cost. Memorize the axis, not a table — interviewers reward reasoning from constraints."
+        "The trade axis is freshness versus latency versus server cost. Static wins on latency and cost but risks staleness; per-request rendering wins on freshness but pays compute on every hit. Memorize the axis, not a table — interviewers reward reasoning from constraints, and the constraints (per-user? how fresh? how much traffic?) point straight at the answer."
       ],
       "summary": "Pick a rendering strategy by asking how fresh the content must be, whether it differs per user, and how much traffic it gets.",
       "variants": [
@@ -95,9 +95,9 @@
       "paragraphs": [
         "Server-rendered HTML is a lifeless picture. Hydration is React running in the browser, re-rendering the same tree, and attaching listeners and state to the existing markup instead of rebuilding it.",
         "The contract: the client's first render must produce the same output as the server's. Anything that differs between the two environments breaks it — `Date.now()`, `Math.random()`, locale-dependent formatting, or reading `window` at render time.",
-        "That last one has an extra sting: `window` doesn't exist in Node at all, so a top-scope or render-time `window` reference doesn't just mismatch — it throws `window is not defined` during the server render and can take the whole route down."
+        "That last one has an extra sting, and it draws the line between two failure modes. Nondeterministic-but-present values (time, random, locale) render on both sides and only *differ*, so React warns and patches the DOM. Browser-only globals are worse: `window`, `document`, and `localStorage` don't exist in Node at all, so a render-time reference throws `is not defined` during SSR and can take the whole route down before any HTML ships. The fix for both is the same shape — defer the offending read until after mount, typically in `useEffect`."
       ],
-      "summary": "The server and browser must first render the same thing, so keep time, randomness, and `window` out of that first render.",
+      "summary": "The server and browser must first render the same thing, so keep time, randomness, and browser globals like `window` out of that first render.",
       "variants": [
         {
           "id": "n2",
@@ -182,9 +182,9 @@
       "paragraphs": [
         "In the App Router, components are Server Components by default: they run only on the server, can query a database or read files directly, and ship zero JavaScript to the browser. Their code never reaches the client bundle.",
         "Adding `'use client'` marks a component (and everything it imports) as a Client Component — it still gets server-rendered to HTML, but its code ships to the browser and hydrates. You need it for state, effects, event handlers, and browser APIs.",
-        "The composition rule: server can render client, but a Client Component cannot import a Server Component. It can, however, receive one as `children` — which is how you keep an interactive shell from dragging the whole subtree into the client bundle."
+        "The composition rule: a server component can render a client one, but a Client Component cannot *import* a Server Component — importing it pulls that code into the client bundle. It can, however, receive one as `children` (a slot), which is how you keep an interactive shell from dragging its whole subtree client-side. And `'use client'` is contagious downward through the import graph, so push it to the smallest leaf that truly needs interactivity rather than a page-level file."
       ],
-      "summary": "Components run on the server by default; add `'use client'` only where you truly need clicks, state, or browser features.",
+      "summary": "Components run on the server by default; add `'use client'` only where you truly need clicks, state, or browser features — and push it to the leaves.",
       "variants": [
         {
           "id": "n3",
@@ -269,7 +269,7 @@
       "paragraphs": [
         "In Server Components you fetch where you render: `const data = await db.query(...)` right inside the async component. No useEffect-plus-loading-spinner dance, no API round-trip from the browser for the initial view.",
         "Next.js layers caching on top: fetch results can be cached and tagged, routes can be static or dynamic, and `revalidatePath`/`revalidateTag` let a mutation surgically invalidate exactly the cached data it changed.",
-        "Server Actions close the write loop: a function marked `'use server'` can be passed to a form's `action`, runs on the server when submitted, mutates data, and revalidates — often with zero hand-written API endpoints."
+        "Server Actions close the write loop: a function marked `'use server'` can be passed to a form's `action`, runs on the server when submitted, mutates data, and revalidates — often with zero hand-written API endpoints. Learn the two invalidation knobs: `revalidatePath` targets a route, `revalidateTag` targets a piece of data wherever it appears. And prefer on-demand invalidation (the mutation tells the cache what changed) over interval-based `revalidate` whenever your own code is the writer."
       ],
       "summary": "Fetch data right inside server components, and after a change, tell Next.js exactly what to refresh instead of guessing on a timer.",
       "variants": [
@@ -356,9 +356,9 @@
       "paragraphs": [
         "The App Router maps folders to URLs: `app/blog/[slug]/page.tsx` handles `/blog/hello-world`, with `params.slug` as the dynamic segment. `page.tsx` is the routable leaf; `layout.tsx` wraps it.",
         "Layouts nest and — critically — persist: navigating between two blog posts re-renders the page, but the surrounding layout (nav bar, sidebar) keeps its DOM and state. State that must survive navigation belongs in a layout.",
-        "Special files fill out the contract: `loading.tsx` renders instantly (via Suspense) while the page's data streams in, `error.tsx` is a route-scoped error boundary, and `not-found.tsx` handles missing resources."
+        "Special files fill out the contract: `loading.tsx` renders instantly (via Suspense) while the page's data streams in, `error.tsx` is a route-scoped error boundary, and `not-found.tsx` handles missing resources. Layout has a deliberate opposite too: `template.tsx` wraps child routes like a layout but remounts a fresh instance on every navigation — the file to reach for when you need enter animations to replay or per-navigation effects to re-run."
       ],
-      "summary": "Folders become URLs, and anything wrapped in a `layout` keeps its state as you move between pages inside it.",
+      "summary": "Folders become URLs, and anything wrapped in a `layout` keeps its state as you move between pages inside it — while `template` is the remount-every-time counterpart.",
       "variants": [
         {
           "id": "n5",
@@ -435,6 +435,441 @@
             "Server Components can't hold `useState` at all — interactive state is exclusively a Client Component concern, and caching of server output is unrelated to it."
           ],
           "interviewTip": "Explain *why* layout state survives — 'the instance is never unmounted' — rather than just asserting that it does. Following up with 'and `template.tsx` is the opt-out when you want remounting' completes the pair in one breath."
+        }
+      ]
+    },
+    {
+      "heading": "Server Actions and mutations",
+      "paragraphs": [
+        "A Server Action is a function marked `'use server'` that runs only on the server yet can be called straight from the client — wired to a form's `action`, or invoked from an event handler. Next.js generates the RPC plumbing for you: no endpoint file, no `fetch`, no request/response typing. The action receives the submitted `FormData`, does its work (a database write, an auth-gated update), and can then revalidate the caches it touched.",
+        "Two things make the pattern shine. First, progressive enhancement: because the action is bound to a real `<form>`, the submission works even before JavaScript hydrates. Second, colocation: the mutation and its `revalidatePath`/`revalidateTag` call live in one function, so 'change the data, refresh what reads it' is a single unit. For pending and error UI, `useFormStatus` reads the enclosing form's submitting state and `useActionState` threads the action's return value back into the component.",
+        "The sharp caveat is trust. A Server Action is a public endpoint the moment it exists — anyone can invoke it with crafted input, exactly like a REST route. So you must re-check authentication and authorization and re-validate every argument *inside* the action; the fact that the calling UI only shows a button to admins is not a security boundary."
+      ],
+      "summary": "Server Actions let a form call a server-side function directly — no API route — but you must still authenticate and validate inside the action, because it's a public endpoint.",
+      "variants": [
+        {
+          "id": "n6",
+          "question": "You add a Server Action `deletePost(id)` and only render its delete button for admins in the UI. A reviewer flags a security hole. What's the actual risk?",
+          "options": [
+            "None — hiding the button in the client UI already prevents any non-admin from ever reaching the action",
+            "The action is callable by anyone directly, so it must re-check auth and validate its input server-side",
+            "Server Actions can't accept an `id` argument at all, so the function signature itself will fail to compile",
+            "The action leaks the database connection string into the client bundle whenever the form is submitted"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A Server Action compiles to a callable endpoint. Anyone can POST to it with any arguments, regardless of what the UI chooses to render. Client-side conditionals decide what's *shown*, never what's *reachable* — so the authorization check and argument validation must happen inside the action itself.",
+          "optionExplanations": [
+            "Hiding a button controls rendering, not reachability; the endpoint still exists and accepts crafted requests from anyone.",
+            "Correct — an action is a public endpoint, so auth and input validation belong inside it, exactly as they would in a REST handler.",
+            "Server Actions accept ordinary serializable arguments including an id; the signature is fine and this isn't the issue.",
+            "Action code and server env vars never ship to the browser; no connection string is exposed by submitting the form."
+          ],
+          "interviewTip": "Say it plainly: 'a Server Action is a public endpoint.' UI-level gating is UX, not security — auth and validation live in the action body."
+        },
+        {
+          "id": "n6-alt",
+          "question": "A teammate wants a form to create a comment. They scaffold `app/api/comment/route.ts`, a client `fetch` POST, and manual loading state. What's the more idiomatic App Router approach?",
+          "options": [
+            "A `'use server'` action passed to the form's `action`, which mutates and then revalidates in one place",
+            "Keep the Route Handler but switch its verb from POST over to GET so the browser can navigate to it",
+            "Store new comments in `localStorage` first and reconcile them against the server on the next full page load",
+            "A client-side `setInterval` that re-fetches the comment list every few seconds to notice the new row"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Server Actions exist to delete exactly this boilerplate. A `'use server'` function on the form's `action` replaces the endpoint file, the client fetch, and the serialization glue; the write and its revalidation live together, and the form submits even before hydration.",
+          "optionExplanations": [
+            "Correct — action-on-form is the canonical write path: server execution, colocated revalidation, and progressive enhancement in one function.",
+            "Mutating over GET violates HTTP semantics and gets triggered by prefetch and crawlers — a footgun, not a fix.",
+            "localStorage creates a divergent second source of truth on one device; other clients and the server still disagree.",
+            "Polling burns requests to rediscover a change your own code just made — you already know the exact moment it happened."
+          ],
+          "interviewTip": "List what a Server Action removes from the diff — endpoint file, fetch call, request typing, loading plumbing — then mention `useFormStatus`/`useActionState` for pending UI."
+        },
+        {
+          "id": "n6-c",
+          "question": "Inside a Server Action, after successfully inserting a row, you want the list page that reads that data to show the new row on its next render. What's the idiomatic call?",
+          "options": [
+            "Manually clear the browser's HTTP cache headers from within the action before it returns to the client",
+            "Return the full new list from the action and diff it against the old one on the client by hand",
+            "Do nothing — Server Actions automatically flush every route's cache after any successful mutation",
+            "`revalidatePath('/list')` (or `revalidateTag`) inside the action to invalidate the affected cache"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "The list was served from cache, and the action just changed the underlying data, so the action is the right place to declare the invalidation. `revalidatePath`/`revalidateTag` marks exactly the affected entries stale, and the next render is fresh — no manual diffing and no global cache surrender.",
+          "optionExplanations": [
+            "Editing HTTP cache headers by hand doesn't touch Next's Data/Router cache, which is what's actually serving the stale list.",
+            "Returning and diffing the list by hand rebuilds framework behavior manually and still leaves the server cache stale for other visitors.",
+            "There's no blanket auto-flush; you must name the paths or tags the mutation affected, which is what keeps it surgical.",
+            "Correct — mutate, then revalidate the exact paths or tags that read the changed data so the next render is fresh."
+          ],
+          "interviewTip": "Recite 'mutations own their invalidations': the function that writes the data is responsible for revalidating the caches that read it."
+        },
+        {
+          "id": "n6-d",
+          "question": "A form's submit button spins forever with no feedback while a Server Action runs, and if the action throws, the user sees nothing. Which client-side hooks give you pending and result state idiomatically?",
+          "options": [
+            "`useEffect` plus a manual `isLoading` boolean you toggle around a hand-written `fetch` to the action",
+            "`useFormStatus` for the form's pending state and `useActionState` for the action's returned result",
+            "There are no such hooks; Server Actions cannot report pending or error state back to the UI at all",
+            "`useState` seeded from `window.pending`, a global flag Next.js sets while any action is in flight"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "React and Next expose purpose-built hooks: `useFormStatus` reads whether the enclosing form is currently submitting (drive a spinner or disabled button off it), and `useActionState` threads the action's return value — including validation errors — back into the component so you can render messages without hand-rolled state.",
+          "optionExplanations": [
+            "Rolling your own `fetch` plus an `isLoading` flag abandons the action-on-form pattern and its progressive enhancement — the framework hooks exist precisely to avoid this.",
+            "Correct — `useFormStatus` surfaces submitting state and `useActionState` surfaces the action's returned value/errors, no manual plumbing.",
+            "Actions absolutely can report status; the two hooks are the sanctioned channel for pending and returned state.",
+            "There is no `window.pending` global; pending state comes from `useFormStatus`, not an invented flag."
+          ],
+          "interviewTip": "Pair them from memory: `useFormStatus` = 'is it submitting?', `useActionState` = 'what did it return?'. Knowing both signals you've shipped the full action pattern, not just the happy path."
+        }
+      ]
+    },
+    {
+      "heading": "Route Handlers — when you still need an API",
+      "paragraphs": [
+        "Route Handlers are the App Router's replacement for `pages/api`: an `app/**/route.ts` file exports functions named for HTTP verbs (`GET`, `POST`, `PATCH`…), each receiving a standard `Request` and returning a standard `Response`. They give you a real HTTP endpoint at that folder's URL — with headers, status codes, and streaming — using Web platform APIs rather than a bespoke `(req, res)` signature.",
+        "The judgment call is Route Handler versus Server Action. For *your own app's* form submissions and mutations, Server Actions are usually the better fit — less boilerplate, colocated revalidation, progressive enhancement. Reach for a Route Handler when the consumer isn't your React tree: a third-party webhook, a mobile client, an OAuth callback, an RSS or `sitemap.xml` feed, or anything that needs a stable, documented URL and full control over the raw response.",
+        "One rule catches people: a `page.tsx` and a `route.ts` cannot live in the same folder — they both claim that URL, so Next.js errors. And a `GET` handler with no dynamic inputs is cached by default like any other static data, so if it must be fresh per request you opt out explicitly (`export const dynamic = 'force-dynamic'`, or read the request in a way that marks the route dynamic)."
+      ],
+      "summary": "Use Route Handlers for endpoints consumed outside your own React tree — webhooks, feeds, mobile clients — and prefer Server Actions for your app's own forms and mutations.",
+      "variants": [
+        {
+          "id": "n7",
+          "question": "A payment provider needs to POST event notifications to a fixed, documented URL in your app. Which building block is the right home for that endpoint?",
+          "options": [
+            "A Server Action, since it's the App Router's default and preferred way to handle any incoming write",
+            "A Client Component `useEffect` that opens a long-poll connection to the provider on every page mount",
+            "A `POST` Route Handler in `app/webhooks/route.ts`, verifying the signature and returning a status",
+            "A `page.tsx` whose default export inspects `searchParams` and processes the event during rendering"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The consumer is an external system POSTing to a stable, documented URL — the textbook Route Handler case. You control the raw request and response, verify the provider's signature, and return an explicit status code, none of which a Server Action's RPC convention is designed to expose to outside callers.",
+          "optionExplanations": [
+            "Server Actions are tuned for your own React forms, not for exposing a documented URL an external provider calls with its own request shape.",
+            "A webhook is the provider pushing to you; a client-side poll is both the wrong direction and gone the moment the tab closes.",
+            "Correct — an external POST to a fixed URL is exactly what a Route Handler is for, with full control over signature verification and status.",
+            "A page renders HTML for humans; abusing it to process webhook side effects during render is fragile and semantically wrong."
+          ],
+          "interviewTip": "Anchor the choice on the consumer: 'is the caller my own React tree, or something external?' External and URL-shaped means Route Handler; internal form means Server Action."
+        },
+        {
+          "id": "n7-alt",
+          "question": "You add `app/reports/route.ts` to serve a CSV, but the folder also has `app/reports/page.tsx` showing the report UI. The build fails. Why?",
+          "options": [
+            "A `route.ts` and a `page.tsx` can't share a folder — both claim that URL, so the router conflicts",
+            "Route Handlers must live only under `app/api/`, so any `route.ts` outside that folder is rejected outright",
+            "A CSV can't be returned from a Route Handler because `Response` bodies are restricted to JSON payloads",
+            "`page.tsx` files are forbidden from existing anywhere alongside server-only code within the same route group"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Both `page.tsx` and `route.ts` register a handler for the same URL segment, so Next.js can't decide whether that path renders a page or runs the handler. The fix is to separate the URLs — e.g. put the CSV endpoint at `app/reports/download/route.ts` — so each path resolves unambiguously.",
+          "optionExplanations": [
+            "Correct — page and route both own the segment's URL, and Next.js errors rather than guess which one serves it.",
+            "Route Handlers can live at any path in `app/`; the `api/` folder is a convention, not a requirement.",
+            "A `Response` body can be a CSV string, a stream, or anything — it's not limited to JSON.",
+            "Pages coexist with server code freely; the specific collision here is page-versus-route on one URL, not route groups."
+          ],
+          "interviewTip": "State the collision rule crisply: one URL segment, one owner — a folder holds either a `page` or a `route`, never both. Put the endpoint under its own subpath."
+        },
+        {
+          "id": "n7-c",
+          "question": "A `GET` Route Handler returns a live scoreboard, but every visitor keeps seeing the same stale snapshot from the first request. What's happening, and the idiomatic fix?",
+          "options": [
+            "Route Handlers never cache anything, so the staleness must originate from an unrelated CDN misconfiguration",
+            "A static `GET` handler is cached by default; opt out with `export const dynamic = 'force-dynamic'`",
+            "The handler needs to be rewritten as a Server Action, because only actions can return non-cached data",
+            "Wrap the fetch inside the handler in a `<Suspense>` boundary so its response streams fresh on each request"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A `GET` handler with no dynamic inputs is treated as static data and cached, so the first response is reused. For always-fresh data you opt the route out of caching — `export const dynamic = 'force-dynamic'` (or read request-specific input that marks it dynamic) — and each request re-runs the handler.",
+          "optionExplanations": [
+            "Static `GET` handlers are cached by the framework by default; blaming the CDN misdiagnoses a Next.js caching behavior.",
+            "Correct — a no-input `GET` is cached like static data, and `force-dynamic` (or reading request data) opts it back into per-request execution.",
+            "Server Actions are for mutations from your own UI, not for serving a cached-vs-fresh GET endpoint; this is the wrong tool.",
+            "Suspense coordinates rendering React trees, not the caching of a raw `Response` from a Route Handler."
+          ],
+          "interviewTip": "Remember the default: `GET` handlers are static-cached unless something makes them dynamic. Name the opt-out — `dynamic = 'force-dynamic'` or reading `request`/cookies/headers."
+        },
+        {
+          "id": "n7-d",
+          "question": "For your own app's 'edit profile' form, a teammate insists on a `PATCH` Route Handler plus a client `fetch`. When is a Server Action the better call, and why?",
+          "options": [
+            "Never — Route Handlers are always safer than Server Actions because their code stays entirely on the server",
+            "Only if the profile form has no file uploads, since Server Actions cannot accept `FormData` of any kind",
+            "When the caller is your own React form: the action removes the endpoint and fetch and colocates revalidation",
+            "Whenever the endpoint is expected to be documented and consumed by external third-party mobile clients too"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The distinguishing question is who calls it. When the consumer is your own React form, a Server Action deletes the endpoint file, the client fetch, and the serialization glue, and colocates the mutation with its cache revalidation — plus you get progressive enhancement. A Route Handler earns its keep when the caller is external or needs a documented URL.",
+          "optionExplanations": [
+            "Both run server-side; 'always safer' is false, and it ignores the boilerplate and colocation wins actions give internal forms.",
+            "Server Actions accept `FormData` including file uploads — that's a core part of how forms submit to them.",
+            "Correct — for your own React form the action removes endpoint and fetch boilerplate and colocates revalidation, which is exactly its niche.",
+            "That case argues *for* a Route Handler, not a Server Action — external documented consumers are the Route Handler's home turf."
+          ],
+          "interviewTip": "Frame it as a fork: internal React form → Server Action; external/documented/URL-shaped consumer → Route Handler. Deciding by *who calls it* is the answer they're listening for."
+        }
+      ]
+    },
+    {
+      "heading": "Middleware and the edge runtime",
+      "paragraphs": [
+        "`middleware.ts` at the project root runs *before* a matched request reaches a route — its job is to inspect and redirect/rewrite/short-circuit, not to render. Typical work: gate authenticated areas by checking a session cookie and redirecting to login, run A/B rewrites, attach headers, or handle i18n locale routing. You return `NextResponse.next()`, `.redirect()`, `.rewrite()`, or a response — and you scope which paths it touches with a `matcher`, because a middleware that runs on every asset request is a latency tax on the whole site.",
+        "Middleware runs on the Edge runtime: a lightweight, V8-based environment deployed close to users, not a full Node.js process. That's why it's fast and globally distributed — and also why it's constrained. No Node built-ins (`fs`, most of `crypto`'s Node API, native addons), no long-running or heavy CPU work, and only Web-standard APIs. Trying to read a file or use a Node-only database driver in middleware fails; that logic belongs in a route or Server Component running on Node.",
+        "The security nuance interviewers probe: middleware is a coarse gate, not your authorization layer. It's the right place for a cheap 'is there a plausible session cookie? if not, bounce to login' check, but the real permission checks — can *this* user perform *this* action on *this* record — must still happen in the Server Action or Route Handler that does the work. Never treat a passed middleware check as proof of authorization."
+      ],
+      "summary": "Middleware runs at the edge before your route to redirect/rewrite/gate requests, but it's constrained (no Node APIs) and is a coarse filter — real authorization still belongs in the handler.",
+      "variants": [
+        {
+          "id": "n8",
+          "question": "In `middleware.ts` you `import fs from 'fs'` to read a config file, and it fails at build or runtime. What's the underlying reason?",
+          "options": [
+            "Middleware runs on the Edge runtime, which has no Node built-ins like `fs` — only Web-standard APIs",
+            "`fs` must be imported using a dynamic `await import('fs')` call rather than a static top-level import statement",
+            "Reading files in middleware is allowed, but only after you first opt in with `export const runtime = 'nodejs'`",
+            "The file wasn't found because middleware resolves all relative paths from the compiled `.next` output directory"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Middleware executes in the Edge runtime, a lightweight V8 environment without Node's built-in modules. `fs` simply doesn't exist there, so importing and using it fails. File access and other Node-only work belong in a route or Server Component that runs on Node, not in middleware.",
+          "optionExplanations": [
+            "Correct — the Edge runtime exposes only Web-standard APIs, so Node built-ins like `fs` are unavailable regardless of how you import them.",
+            "The import style is irrelevant; `fs` isn't present in the Edge runtime at all, so dynamic importing fails just the same.",
+            "Middleware runs on the Edge runtime and isn't switched to Node via that flag; the file-reading logic must move to a Node route.",
+            "The failure is a missing module in the runtime, not a path-resolution quirk — `fs` itself is unavailable."
+          ],
+          "interviewTip": "Say the constraint out loud: 'middleware is Edge, so Web APIs only — no `fs`, no Node database drivers.' Then note the escape hatch: heavy or Node-only work goes in a route/component."
+        },
+        {
+          "id": "n8-alt",
+          "question": "You want unauthenticated users redirected to `/login` before they can load any `/dashboard` page. Where does this belong, and how do you keep it from slowing unrelated routes?",
+          "options": [
+            "In every dashboard `page.tsx`, adding an identical redirect check to each file so the coverage is explicit",
+            "In `middleware.ts`, checking the session cookie and using a `matcher` to scope it to `/dashboard` paths",
+            "In a root `layout.tsx` effect that calls `router.push('/login')` after the protected page has already rendered",
+            "In `next.config.js` `redirects()`, which can branch on whether the visitor's session cookie is present or absent"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A pre-route redirect based on a cookie is the canonical middleware job: it runs before the page renders, so an unauthenticated user never loads protected content. Scoping it with a `matcher` for `/dashboard` means it doesn't add latency to every asset and public page — you pay the check only where it's needed.",
+          "optionExplanations": [
+            "Per-page checks scatter the same logic across many files and still run after routing begins — a matcher-scoped middleware centralizes it before the page loads.",
+            "Correct — middleware runs before the route, and a `matcher` limits it to the protected paths so unrelated requests stay fast.",
+            "A layout effect fires after the protected page has already rendered and shipped — the gate is too late to prevent exposure.",
+            "`next.config.js` redirects are static rules and can't read a per-request cookie to decide auth state."
+          ],
+          "interviewTip": "Two beats: middleware is the right layer for pre-route auth redirects, and `matcher` is how you keep it off unrelated paths. Mentioning `matcher` unprompted shows you've tuned it in production."
+        },
+        {
+          "id": "n8-c",
+          "question": "Your middleware confirms a session cookie exists before allowing `/admin`. A reviewer says this is not sufficient authorization. Why are they right?",
+          "options": [
+            "Because middleware runs on the client, so any user can trivially disable it from their browser's dev tools",
+            "Because cookie checks are impossible in the Edge runtime, so the middleware silently never actually ran at all",
+            "Because a cookie's mere presence proves nothing about *what* this user may do — real permission checks belong in the handler",
+            "Because middleware executes after the route renders, so the admin page has already been served by the time it runs"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "A present cookie shows only that someone has *a* session, not that this particular user is authorized for this particular action or record. Middleware is a coarse, cheap filter; the definitive 'can this user do this' check must live in the Server Action or Route Handler that performs the work, where you have the full identity and the specific request.",
+          "optionExplanations": [
+            "Middleware runs on the server (at the edge), not the client, so it can't be toggled off from dev tools — the real gap is coarseness.",
+            "Reading cookies is fully supported in the Edge runtime; the middleware did run, it just checked too shallow a condition.",
+            "Correct — cookie-presence is not permission; the authoritative authorization check must happen in the handler that does the work.",
+            "Middleware runs before the route, not after — the flaw isn't ordering, it's that presence of a cookie isn't proof of authorization."
+          ],
+          "interviewTip": "Draw the line: middleware = coarse pre-filter (is there plausibly a session?); handler = fine-grained authorization (may *this* user do *this*?). Never let a passed middleware check stand in for real authz."
+        },
+        {
+          "id": "n8-d",
+          "question": "A teammate's middleware runs a heavy CPU crypto routine and a Node database query on every request, and latency spikes site-wide. What are the two core problems?",
+          "options": [
+            "The code is fine architecturally; you only need to raise the middleware's memory limit in `next.config.js`",
+            "Node drivers and heavy CPU work don't belong at the edge, and no `matcher` means it taxes every request",
+            "Middleware simply can't return a response, so the query results are being silently discarded on every call",
+            "Edge functions are billed per redirect, so the only real issue is the cost of the redirects it happens to issue"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Two things are wrong. First, the Edge runtime is for lightweight, Web-API work; a Node-only database driver and heavy CPU crypto don't belong there — that logic should run in a Node route or Server Component. Second, with no `matcher` the middleware executes on every request including static assets, so its cost is multiplied across the whole site.",
+          "optionExplanations": [
+            "A memory bump doesn't fix using Node-only APIs at the edge or the unscoped `matcher` — the design, not the limit, is wrong.",
+            "Correct — Node drivers and heavy CPU work belong on Node, and an unscoped middleware taxing every request needs a `matcher`.",
+            "Middleware can absolutely return responses (redirect, rewrite, next); the real issues are runtime fit and scope.",
+            "Edge billing framing misses both actual problems — the wrong runtime for the work and the missing path scoping."
+          ],
+          "interviewTip": "Diagnose middleware perf complaints on two axes at once: is the work runtime-appropriate (Web APIs, light) and is it path-scoped (a `matcher`)? Heavy Node work with no matcher fails both."
+        }
+      ]
+    },
+    {
+      "heading": "Environment variables and secret leaks",
+      "paragraphs": [
+        "Next.js splits environment variables into two worlds by prefix. A plain variable (`DATABASE_URL`, `STRIPE_SECRET_KEY`) is available only in server-side code — Server Components, Server Actions, Route Handlers, middleware. Any variable prefixed `NEXT_PUBLIC_` is *inlined into the client bundle at build time*, so it ships to every browser and is readable by anyone who opens DevTools. That prefix is not a label; it's a decision to publish.",
+        "The failure mode is one deceptively small typo: naming a secret `NEXT_PUBLIC_STRIPE_SECRET_KEY` because a Client Component needed to read something. Now the live secret is embedded in JavaScript downloaded by the public. Equally, a non-public var read from a Client Component doesn't error — it just resolves to `undefined`, because it was never included in the bundle. So the prefix silently determines both exposure and availability.",
+        "The mental reframe that makes this click: hiding a key from the browser is a *shipping* problem, not an obfuscation problem. The only key that can't leak from the client is one that was never sent there — so keep secrets in server-only code paths. To enforce the boundary at build time, import the `server-only` package into modules that must never end up in a client bundle; if such a module is ever imported by client code, the build fails loudly instead of leaking quietly."
+      ],
+      "summary": "`NEXT_PUBLIC_` inlines a variable into the browser bundle for everyone to read, so never prefix a secret with it — keep secrets in server-only code, and use the `server-only` package to enforce it.",
+      "variants": [
+        {
+          "id": "n9",
+          "question": "A Client Component needs a value from `process.env`, so a developer renames the key to `NEXT_PUBLIC_STRIPE_SECRET_KEY` to make it readable. What's the consequence?",
+          "options": [
+            "Nothing bad — the `NEXT_PUBLIC_` prefix encrypts the value before it's embedded into the shipped client bundle",
+            "The secret is now inlined into browser JavaScript and readable by anyone via DevTools — it's leaked",
+            "The build fails, because Next.js refuses to prefix any variable whose name contains the word `SECRET`",
+            "The value stays server-only regardless; the prefix merely makes it easier to reference from server code paths"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "`NEXT_PUBLIC_` inlines the variable into the client bundle at build time. The prefix is an explicit decision to publish the value to every browser, so a secret named this way is downloaded by the public and visible in DevTools. Secrets must stay in server-only code and never carry that prefix.",
+          "optionExplanations": [
+            "There's no encryption — `NEXT_PUBLIC_` inlines the raw value verbatim into shipped JavaScript.",
+            "Correct — the prefix publishes the value into browser JS for everyone, which is a direct secret leak.",
+            "Next.js doesn't inspect the name for 'SECRET'; it happily inlines whatever you prefix, which is exactly the danger.",
+            "The prefix does the opposite of keeping it server-only — it forces the value into the client bundle."
+          ],
+          "interviewTip": "Treat `NEXT_PUBLIC_` as the word 'publish.' If you'd never print the value on the homepage, it must never carry that prefix."
+        },
+        {
+          "id": "n9-alt",
+          "question": "A Client Component reads `process.env.DATABASE_URL` (no `NEXT_PUBLIC_` prefix) and the value comes back `undefined` at runtime. Why?",
+          "options": [
+            "Non-public env vars aren't inlined into the client bundle, so in browser code they simply resolve to `undefined`",
+            "The variable is present but Next.js masks it as `undefined` in the browser purely to obscure its true length",
+            "`process.env` doesn't exist in Client Components at all, so every single key you read from it returns `undefined`",
+            "The `.env` file must be renamed to `.env.client` before any of its variables become visible to browser-side code"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "Only `NEXT_PUBLIC_`-prefixed variables are inlined into the client bundle. A plain server-only variable was never included, so reading it in browser code yields `undefined` — not an error. This is a feature: it's the same mechanism that keeps secrets out of the browser in the first place.",
+          "optionExplanations": [
+            "Correct — without the public prefix the value isn't shipped to the client, so it reads as `undefined` in browser code.",
+            "It isn't masked; it was genuinely never included in the bundle, so there's nothing to obscure.",
+            "Public-prefixed vars are readable in client code, so it's not that `process.env` is wholly empty — only non-public keys are absent.",
+            "There's no `.env.client` convention; the prefix on the variable name, not the file name, controls client exposure."
+          ],
+          "interviewTip": "Explain the `undefined` as intentional: server-only vars aren't in the client bundle by design. If a Client Component truly needs a value, expose it via `NEXT_PUBLIC_` (only if non-secret) or fetch it from the server."
+        },
+        {
+          "id": "n9-c",
+          "question": "You want a build-time guarantee that a module holding secret logic can never accidentally be pulled into a client bundle. Which approach does that?",
+          "options": [
+            "Add a `// secret` comment at the top of the file so reviewers know not to import it from client components",
+            "Rename the file with a `.server.ts` suffix, which Next.js treats as an absolute ban on client-side imports",
+            "Import the `server-only` package in the module so the build fails if any client code imports it",
+            "Wrap the module's exports in a runtime `if (typeof window !== 'undefined') throw` guard on every call"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "The `server-only` package exists for exactly this: importing it into a module makes the build fail if that module is ever imported by client code. It converts a silent leak into a loud build error, enforcing the server/client boundary at compile time rather than trusting reviewers or runtime checks.",
+          "optionExplanations": [
+            "A comment is documentation, not enforcement — nothing stops a future import from crossing the boundary.",
+            "There's no `.server.ts` suffix convention that bans client imports; the enforcement tool is the `server-only` package.",
+            "Correct — importing `server-only` turns any client import of that module into a build-time failure, enforcing the boundary.",
+            "A runtime `window` guard fires only if code runs and can still ship the module's source to the browser — it doesn't prevent bundling."
+          ],
+          "interviewTip": "Name-drop the `server-only` package and say what it buys you: a compile-time tripwire that turns 'oops, this leaked into the client' into a build failure instead of a production incident."
+        },
+        {
+          "id": "n9-d",
+          "question": "During review you're deciding whether `NEXT_PUBLIC_ANALYTICS_ID` is an acceptable use of the public prefix. What's the right way to reason about it?",
+          "options": [
+            "Reject it outright — the `NEXT_PUBLIC_` prefix should never be used for any variable under any circumstances",
+            "Accept it only after encrypting the id, since anything in the client bundle must be encrypted before shipping",
+            "Approve it automatically — analytics ids are always safe because they're issued by a third-party vendor",
+            "Ask whether the value is safe to be public; if it's non-secret like a public analytics id, the prefix is fine"
+          ],
+          "correctAnswerIndex": 3,
+          "rationale": "`NEXT_PUBLIC_` is legitimate for values that are *meant* to be public — a public analytics/measurement id, a publishable API key, a client-visible feature flag. The correct test isn't 'never use the prefix' but 'is this value safe for anyone to read?' If yes, the prefix is exactly the right tool; if it's a secret, it never belongs there.",
+          "optionExplanations": [
+            "The prefix is the intended mechanism for genuinely public values — banning it outright misunderstands its purpose.",
+            "There's no encryption step, and inventing one misses the real question: whether the value is safe to expose at all.",
+            "'Vendor-issued' doesn't imply 'public' — some vendor keys are secret; you must judge the specific value, not its source.",
+            "Correct — the test is whether the value is safe to be public; a non-secret analytics id qualifies, so the prefix is appropriate."
+          ],
+          "interviewTip": "Show nuance: the rule isn't 'never use `NEXT_PUBLIC_`', it's 'only for values safe to publish.' Public measurement ids and publishable keys are the legitimate cases; secrets never are."
+        }
+      ]
+    },
+    {
+      "heading": "Streaming with Suspense and loading UI",
+      "paragraphs": [
+        "The App Router can stream a page: instead of blocking the whole response until every data fetch resolves, it sends the shell immediately and flushes slower parts as they finish. A `loading.tsx` file is the ergonomic front door — Next.js wraps the route's page in a Suspense boundary and shows `loading.tsx` instantly while the page's async work runs. Time-to-first-byte drops because the user sees layout and a skeleton right away instead of a blank wait.",
+        "For finer control, place `<Suspense fallback={…}>` around individual slow components. Each boundary streams independently: a fast product summary can paint while a slow reviews widget below it still shows its own skeleton, then swaps in when ready. This is how you stop one slow query from holding the entire page hostage — you isolate it behind its own boundary so everything around it renders immediately.",
+        "Errors get the same route-level treatment. `error.tsx` is a Client Component that acts as an error boundary for its route segment: if the page or its data throws, Next.js renders `error.tsx` (with a `reset()` function to retry) instead of a white screen, and because boundaries are scoped to segments, a failure in one part doesn't blow away the surrounding layout. Together, `loading.tsx`, `<Suspense>`, and `error.tsx` let you design the pending and failure states as first-class UI, not afterthoughts."
+      ],
+      "summary": "Streaming sends the page shell first and fills in slow parts as they resolve; `loading.tsx` and `<Suspense>` give instant skeletons, and `error.tsx` is a per-segment error boundary with retry.",
+      "variants": [
+        {
+          "id": "n10",
+          "question": "A dashboard page awaits one slow query, so the entire route shows nothing until it resolves. You want the layout and a skeleton to appear instantly. What's the idiomatic App Router move?",
+          "options": [
+            "Add a `loading.tsx` to the route so Next.js shows it via Suspense while the page's data streams in",
+            "Convert the whole page to a Client Component and manage a manual `isLoading` boolean with `useState`",
+            "Switch the route to `force-dynamic` so it renders per request instead of blocking on the slow query",
+            "Move the slow query into `middleware.ts` so it resolves before the page component ever begins rendering"
+          ],
+          "correctAnswerIndex": 0,
+          "rationale": "`loading.tsx` is the built-in front door for streaming: Next.js wraps the page in a Suspense boundary and shows the loading UI instantly while the async work runs, so the shell and skeleton appear immediately instead of a blank wait. No manual loading state required.",
+          "optionExplanations": [
+            "Correct — `loading.tsx` gives an instant Suspense fallback while the server streams the page's data in.",
+            "Going client-side reintroduces the manual spinner dance streaming exists to eliminate, and loses server data fetching.",
+            "`force-dynamic` changes *when* it renders, not the fact that it still blocks on the slow query before painting.",
+            "Middleware runs at the edge before routing and can't render skeletons or hold your page's data query."
+          ],
+          "interviewTip": "Say what `loading.tsx` really is: sugar for a Suspense boundary around the route. That framing shows you understand it's streaming, not a client spinner."
+        },
+        {
+          "id": "n10-alt",
+          "question": "A product page has a fast summary and a slow reviews widget. Adding a route-level `loading.tsx` hides the *whole* page — including the fast summary — until reviews load. How do you let the summary paint immediately?",
+          "options": [
+            "Set a longer `revalidate` on the reviews fetch so its data is already warm by the time the page renders",
+            "Wrap only the reviews widget in its own `<Suspense fallback={…}>` so it streams independently of the summary",
+            "Move the reviews widget into a `template.tsx` file, which renders separately from the rest of the page content",
+            "Refetch the reviews client-side in a `useEffect` after mount, abandoning server rendering for that section only"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "A route-level `loading.tsx` gates the entire page on the slowest data. Wrapping just the reviews widget in its own `<Suspense>` boundary isolates the slow part: the summary and everything outside the boundary paint immediately, while only the reviews show a skeleton and swap in when their data resolves.",
+          "optionExplanations": [
+            "Warming the cache helps a later hit, but the first render still blocks on the slow fetch — it doesn't decouple the two sections.",
+            "Correct — a component-level `<Suspense>` streams the slow widget independently so the fast summary isn't held hostage.",
+            "`template.tsx` is about remount-on-navigation, not about streaming one slow section apart from the rest of a page.",
+            "Client refetching reintroduces a manual loading dance and gives up server rendering for that section unnecessarily."
+          ],
+          "interviewTip": "Contrast the granularities: `loading.tsx` gates the whole route; a component-level `<Suspense>` isolates one slow subtree. Reach for the boundary when only part of the page is slow."
+        },
+        {
+          "id": "n10-c",
+          "question": "When a data fetch inside a route segment throws, you want a retryable error UI for just that segment instead of a crashed white screen. What provides this?",
+          "options": [
+            "A top-level `try/catch` wrapped around the page component's entire returned JSX during its render",
+            "A `not-found.tsx` file, which Next.js renders automatically whenever a page throws any kind of runtime error",
+            "An `error.tsx` file for the segment — a Client Component error boundary with a `reset()` retry function",
+            "A `<Suspense>` boundary around the fetch, since Suspense fallbacks double as the segment's error state too"
+          ],
+          "correctAnswerIndex": 2,
+          "rationale": "`error.tsx` is the route segment's error boundary — a Client Component that Next.js renders when the page or its data throws, complete with a `reset()` function to retry the render. Because it's scoped to the segment, the surrounding layout survives and only the failed part shows the error UI.",
+          "optionExplanations": [
+            "A `try/catch` around JSX can't catch errors thrown during React's async render of children — that's what an error boundary is for.",
+            "`not-found.tsx` handles missing resources (a 404-style case), not arbitrary thrown runtime errors.",
+            "Correct — `error.tsx` is the per-segment error boundary Client Component, and its `reset()` lets the user retry.",
+            "Suspense handles pending states, not thrown errors; a fallback is shown while loading, not on failure."
+          ],
+          "interviewTip": "Keep the trio distinct: `loading.tsx` = pending, `error.tsx` = threw (with `reset()`), `not-found.tsx` = missing. Mixing them up is a common tell."
+        },
+        {
+          "id": "n10-d",
+          "question": "A page has three independent data-driven widgets, each with its own `<Suspense>` boundary. One widget's fetch is much slower than the others. What does the user experience?",
+          "options": [
+            "A blank page until all three widgets' fetches have resolved, then the entire page appears at once fully rendered",
+            "The two fast widgets render right away; the slow one shows its fallback and streams in when its data resolves",
+            "Only the first widget in source order ever streams; the other two are forced to wait for it before they can paint",
+            "All three widgets are downgraded to client-side fetching automatically because more than one boundary is present"
+          ],
+          "correctAnswerIndex": 1,
+          "rationale": "Independent Suspense boundaries stream independently. The two fast widgets paint as soon as their data is ready, while the slow widget shows its own fallback and swaps in later — no widget waits on any other. This per-boundary streaming is exactly why you isolate slow parts behind their own `<Suspense>`.",
+          "optionExplanations": [
+            "That's the no-streaming, block-on-everything behavior; separate boundaries specifically avoid waiting for the slowest.",
+            "Correct — each boundary resolves on its own timeline, so fast widgets paint immediately and the slow one streams in later.",
+            "Source order doesn't serialize boundaries; they're independent and don't block one another.",
+            "Multiple boundaries don't trigger any client-fetch downgrade; server streaming continues per boundary."
+          ],
+          "interviewTip": "State the payoff of independent boundaries: each streams on its own clock, so one slow query can't hold the others hostage. That's the whole reason to split them."
         }
       ]
     }
