@@ -18,6 +18,8 @@ interface DeckState {
   order: number[];
   pos: number;
   flipped: boolean;
+  /** Which side leads: "term" (term → definition) or "def" (definition → term). */
+  dir: "term" | "def";
 }
 
 let deck: DeckState | null = null;
@@ -47,6 +49,7 @@ export function openFlashcards(entries: GlossaryEntry[]): void {
     order: shuffledOrder(entries.length),
     pos: 0,
     flipped: false,
+    dir: "term",
   };
 
   const root = fcRoot();
@@ -55,14 +58,15 @@ export function openFlashcards(entries: GlossaryEntry[]): void {
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-label", "Codex flashcards");
+  // Header keeps only the title and the Return button (laid out in flow, so
+  // Return never overlaps anything). Progress + card content live below.
   panel.innerHTML = `
     <header class="fc-head">
       <div class="fc-title">
         <h2>Flashcards</h2>
-        <p class="fc-sub">Recall the term, then flip to check yourself.</p>
+        <p class="fc-sub"></p>
       </div>
-      <span class="fc-progress" aria-hidden="true"></span>
-      <button class="codex-close" data-action="close" aria-label="Close flashcards and return">
+      <button class="codex-close fc-return" data-action="close" aria-label="Close flashcards and return">
         <span class="return-glyph" aria-hidden="true">&#8617;</span> Return
       </button>
     </header>
@@ -70,23 +74,26 @@ export function openFlashcards(entries: GlossaryEntry[]): void {
       <button class="fc-card" data-action="flip" aria-label="Flip card">
         <div class="fc-inner">
           <div class="fc-face fc-front">
-            <span class="fc-hint">Term</span>
-            <span class="fc-term"></span>
+            <span class="fc-hint"></span>
+            <span class="fc-content"></span>
+            <div class="fc-tags"></div>
             <span class="fc-flip-hint">click, or press Space, to flip</span>
           </div>
           <div class="fc-face fc-back">
-            <span class="fc-hint">Definition</span>
-            <span class="fc-def"></span>
+            <span class="fc-hint"></span>
+            <span class="fc-content"></span>
             <div class="fc-tags"></div>
           </div>
         </div>
       </button>
     </div>
+    <div class="fc-meta"><span class="fc-progress" aria-hidden="true"></span></div>
     <div class="fc-controls">
       <button class="ghost-btn" data-action="prev" aria-label="Previous card">&larr; Prev</button>
       <button class="primary-btn" data-action="flip">Flip</button>
       <button class="ghost-btn" data-action="next" aria-label="Next card">Next &rarr;</button>
       <button class="ghost-btn fc-shuffle" data-action="shuffle">&#10561; Shuffle</button>
+      <button class="ghost-btn fc-direction" data-action="direction"></button>
     </div>
   `;
 
@@ -105,6 +112,7 @@ export function openFlashcards(entries: GlossaryEntry[]): void {
   panel.querySelector('[data-action="prev"]')!.addEventListener("click", () => go(-1));
   panel.querySelector('[data-action="next"]')!.addEventListener("click", () => go(1));
   panel.querySelector('[data-action="shuffle"]')!.addEventListener("click", reshuffle);
+  panel.querySelector('[data-action="direction"]')!.addEventListener("click", toggleDirection);
 
   update();
   requestAnimationFrame(() => root.classList.add("open"));
@@ -123,19 +131,55 @@ export function closeFlashcards(): void {
   }, 220);
 }
 
+/** Paint one face as either the term (large) or the definition (+ tag seals). */
+function fillFace(face: HTMLElement, kind: "term" | "def", entry: GlossaryEntry): void {
+  const hint = face.querySelector<HTMLElement>(".fc-hint")!;
+  const content = face.querySelector<HTMLElement>(".fc-content")!;
+  const tags = face.querySelector<HTMLElement>(".fc-tags")!;
+  if (kind === "term") {
+    hint.textContent = "Term";
+    content.textContent = entry.term;
+    content.className = "fc-content fc-term";
+    tags.innerHTML = "";
+  } else {
+    hint.textContent = "Definition";
+    content.textContent = entry.definition;
+    content.className = "fc-content fc-def";
+    tags.innerHTML = entry.tags
+      .map((t) => `<span class="term-seal">${escapeHtml(t)}</span>`)
+      .join("");
+  }
+}
+
 /** Repaint the visible card from deck state (no re-mount, so the flip animates). */
 function update(): void {
   if (!deck) return;
   const root = fcRoot();
   const entry = deck.cards[deck.order[deck.pos]];
-  root.querySelector<HTMLElement>(".fc-term")!.textContent = entry.term;
-  root.querySelector<HTMLElement>(".fc-def")!.textContent = entry.definition;
-  root.querySelector<HTMLElement>(".fc-tags")!.innerHTML = entry.tags
-    .map((t) => `<span class="term-seal">${escapeHtml(t)}</span>`)
-    .join("");
+  // The leading side is the front; its reverse is the back.
+  const front = deck.dir === "term" ? "term" : "def";
+  const back = deck.dir === "term" ? "def" : "term";
+  fillFace(root.querySelector<HTMLElement>(".fc-front")!, front, entry);
+  fillFace(root.querySelector<HTMLElement>(".fc-back")!, back, entry);
+
+  root.querySelector<HTMLElement>(".fc-sub")!.textContent =
+    deck.dir === "term"
+      ? "Recall the term, then flip to check yourself."
+      : "Read the definition, then flip to name the term.";
+  root.querySelector<HTMLElement>(".fc-direction")!.textContent =
+    deck.dir === "term" ? "⇄ Definition first" : "⇄ Term first";
   root.querySelector<HTMLElement>(".fc-progress")!.textContent =
     `${deck.pos + 1} / ${deck.order.length}`;
   root.querySelector<HTMLElement>(".fc-card")!.classList.toggle("flipped", deck.flipped);
+}
+
+/** Swap which side leads (term-first ⇄ definition-first); card lands face-up. */
+function toggleDirection(): void {
+  if (!deck) return;
+  deck.dir = deck.dir === "term" ? "def" : "term";
+  deck.flipped = false;
+  playCue("tick");
+  update();
 }
 
 function flip(): void {

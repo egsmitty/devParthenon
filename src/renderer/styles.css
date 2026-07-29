@@ -1064,14 +1064,15 @@ text.score-badge {
 .fc-panel {
   position: relative;
   z-index: 1;
-  width: min(680px, 92vw);
+  width: min(1040px, 94vw);
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   gap: 22px;
-  padding: 22px 26px 26px;
+  padding: 26px 40px 32px;
   border: 1px solid var(--brass-dark);
   border-top: 3px solid var(--gold-deep);
-  border-radius: 8px;
+  border-radius: 10px;
   background: linear-gradient(180deg, #1b2029 0%, #12151d 55%, #0e1118 100%);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.9),
@@ -1083,19 +1084,20 @@ text.score-badge {
 }
 #flashcards-root.open .fc-panel { transform: translateY(0) scale(1); }
 
+/* Title (left) and Return (right) in normal flow — nothing overlaps. */
 .fc-head {
-  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding-right: 164px; /* clear the absolute Return button */
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
   border-bottom: 1px solid rgba(181, 131, 51, 0.25);
-  padding-bottom: 12px;
+  padding-bottom: 14px;
 }
+.fc-title { min-width: 0; }
 .fc-title h2 {
   font-family: "Cinzel", serif;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--brass) 100%);
@@ -1103,25 +1105,32 @@ text.score-badge {
   background-clip: text;
   color: transparent;
 }
-.fc-sub { color: var(--text-dim); font-size: 0.8rem; font-style: italic; margin-top: 2px; }
+.fc-sub { color: var(--text-dim); font-size: 0.84rem; font-style: italic; margin-top: 3px; }
+
+/* Return sits in flow (overriding .codex-close's absolute placement). */
+.fc-return {
+  position: static;
+  flex-shrink: 0;
+}
+
+/* Progress reads on its own line, centered, clear of every control. */
+.fc-meta { display: flex; justify-content: center; }
 .fc-progress {
-  margin-left: auto;
   font-family: "Cinzel", serif;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--gold-hi);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   white-space: nowrap;
-  padding-top: 4px;
 }
 
 /* The stage carries the 3D perspective for the card flip. */
-.fc-stage { perspective: 1400px; display: flex; justify-content: center; }
+.fc-stage { perspective: 1800px; display: flex; justify-content: center; min-height: 0; }
 
 .fc-card {
   width: 100%;
-  max-width: 520px;
-  height: 260px;
+  max-width: 860px;
+  height: clamp(320px, 46vh, 460px);
   background: none;
   border: none;
   padding: 0;
@@ -1145,9 +1154,9 @@ text.score-badge {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 26px 30px;
-  border-radius: 10px;
+  gap: 16px;
+  padding: 40px 52px 48px;
+  border-radius: 12px;
   border: 1px solid var(--brass-dark);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.55);
   text-align: center;
@@ -1164,8 +1173,8 @@ text.score-badge {
 
 .fc-hint {
   font-family: "Cinzel", serif;
-  font-size: 0.62rem;
-  letter-spacing: 0.28em;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--gold);
   opacity: 0.85;
@@ -1173,27 +1182,28 @@ text.score-badge {
 .fc-term {
   font-family: "Cinzel Decorative", "Cinzel", serif;
   font-weight: 700;
-  font-size: clamp(1.5rem, 3.4vw, 2.3rem);
+  font-size: clamp(2rem, 4.4vw, 3.1rem);
   color: var(--marble-warm);
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   line-height: 1.15;
 }
 .fc-flip-hint {
   position: absolute;
-  bottom: 12px;
-  font-size: 0.68rem;
+  bottom: 16px;
+  font-size: 0.74rem;
   letter-spacing: 0.06em;
   color: var(--text-dim);
   opacity: 0.7;
 }
 .fc-def {
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  line-height: 1.6;
   color: var(--text);
   overflow-y: auto;
+  max-width: 640px;
   max-height: 100%;
 }
-.fc-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fc-tags { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
 
 .fc-controls {
   display: flex;
@@ -1202,8 +1212,11 @@ text.score-badge {
   gap: 10px;
   flex-wrap: wrap;
 }
-.fc-controls .primary-btn { min-width: 120px; }
+.fc-controls .primary-btn { min-width: 130px; }
 .fc-shuffle { margin-left: 6px; }
+/* The side-swap toggle sits a little apart, on the right. */
+.fc-direction { margin-left: 18px; color: var(--gold-hi); border-color: var(--brass-dark); }
+.fc-direction:hover { border-color: var(--gold); color: var(--gold-hi); }
 
 /* Parchment day: the deck reads as sunlit vellum. */
 html[data-theme="parchment"] .fc-panel {

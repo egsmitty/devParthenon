@@ -46,10 +46,11 @@ UI/UX refinement on the temple and the Codex.
   near-fullscreen **open illuminated book**: two aged-vellum pages (rubric
   headings, drop-caps, tag seals) flanking a gilded spine of Greek statue
   medallions. Opens/closes as a right-hinged fold; "Return" button.
-- **Flashcards** button (headband) opens a flip-card drill over the glossary:
-  term on the front, flip (click / Space) to reveal the definition + tag
-  seals; Prev/Next walk the deck, Shuffle re-orders, arrows browse, Esc
-  closes. Transform-only 3D flip, reduced-motion-aware. (`flashcards.ts`)
+- **Flashcards** button (headband) opens a large flip-card drill over the
+  glossary: flip (click / Space) between term and definition (+ tag seals),
+  in **either direction** (term-first or definition-first, toggled live);
+  Prev/Next walk the deck, Shuffle re-orders, arrows browse, Esc closes.
+  Transform-only 3D flip, reduced-motion-aware, focus-trapped. (`flashcards.ts`)
 
 **Personalization & extra screens**
 - **Settings panel**: Temple Night / **Parchment Day** (warm sunny) themes,
