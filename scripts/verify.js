@@ -10,9 +10,24 @@
  * (UI/visual changes should also be eyeballed via `npm run audit:ux`.)
  */
 const { spawnSync } = require("child_process");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
+
+// The smoke boots the REAL Electron app. It MUST run against a throwaway
+// user-data dir — never the learner's real %APPDATA%/DevParthenon save — or a
+// boot-time read/reset race could clobber their progress. (The UX audit does
+// the same via PARTHENON_USERDATA.)
+const smokeUserData = fs.mkdtempSync(path.join(os.tmpdir(), "parthenon-smoke-"));
+process.on("exit", () => {
+  try {
+    fs.rmSync(smokeUserData, { recursive: true, force: true });
+  } catch {
+    /* best-effort cleanup */
+  }
+});
 
 function run(label, command, env) {
   console.log(`\n=== verify: ${label} ===`);
@@ -30,6 +45,9 @@ function run(label, command, env) {
 }
 
 run("build + unit tests", "npm test");
-run("headless smoke (load + reload)", "npx electron .", { PARTHENON_SMOKE: "1" });
+run("headless smoke (load + reload)", "npx electron .", {
+  PARTHENON_SMOKE: "1",
+  PARTHENON_USERDATA: smokeUserData,
+});
 
 console.log("\nverify: ALL GREEN — safe to commit.");
