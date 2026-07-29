@@ -16,10 +16,10 @@
           "id": "n1",
           "question": "A news site's article pages must reflect edits within about a minute, get heavy traffic, and are identical for every visitor. Which strategy fits best?",
           "options": [
-            "Pure CSR — fetch the article JSON in the browser",
-            "SSR on every request",
-            "SSG with ISR (revalidate around 60 seconds)",
-            "Static export rebuilt manually whenever an editor remembers"
+            "Pure CSR — fetch the article JSON in the browser per view",
+            "SSR that re-renders the identical page on every request",
+            "SSG with ISR, revalidating roughly every 60 seconds",
+            "Static export rebuilt by hand when an editor remembers"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Identical-for-everyone content is the static sweet spot, and ISR's revalidation window handles 'fresh within a minute' without paying a server render per request. Heavy traffic hits cached static HTML; regeneration happens at most once per window.",
@@ -35,10 +35,10 @@
           "id": "n1-alt",
           "question": "A logged-in banking dashboard shows each user's own account balances and recent transactions, which must be accurate the instant the page loads. Traffic is moderate. Which rendering strategy fits best?",
           "options": [
-            "A single static export regenerated nightly by a cron job",
-            "SSG at build time, shared across all users",
-            "SSG with ISR revalidating every 30 seconds",
-            "SSR per request (or per-user client fetch) — render with that user's live data"
+            "A single static export regenerated nightly by a scheduled cron job",
+            "SSG built once at build time and shared across every logged-in user",
+            "SSG with ISR revalidating the shared page every 30 seconds on a timer",
+            "SSR per request (or a per-user client fetch) using live data"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The content is per-user and must be exact on load, so there is nothing to safely cache and share. Rendering per request (SSR) — or fetching that user's data client-side after auth — is the only approach that guarantees each visitor sees their own live balances.",
@@ -54,10 +54,10 @@
           "id": "n1-c",
           "question": "An internal ops dashboard sits behind SSO, serves about 40 employees, and displays near-real-time queue metrics that the UI re-polls every few seconds. SEO is irrelevant. Which rendering approach is the most defensible?",
           "options": [
-            "SSG with ISR so the metrics page regenerates on a fixed schedule",
-            "CSR — an authenticated client shell that fetches the metrics API in the browser and keeps polling",
+            "SSG with ISR so the metrics page regenerates on a fixed timed schedule",
+            "CSR — an authenticated shell that polls the metrics API in the browser",
             "SSR on every request so the first paint always carries fresh numbers",
-            "A static export that CI rebuilds every time the metrics change"
+            "A static export that CI rebuilds whenever the queue metrics change"
           ],
           "correctAnswerIndex": 1,
           "rationale": "This is the scenario where CSR is the honest answer: no SEO to serve, a tiny authenticated audience, and data that updates continuously within a session. The polling loop means the page's real freshness comes from client fetches regardless of how the first paint was produced, so paying for server rendering or shared caching buys almost nothing.",
@@ -74,9 +74,9 @@
           "question": "Your terms-of-service and privacy pages change maybe three times a year — always through a reviewed code deploy — are identical for every visitor, and serve a global audience. A teammate proposes ISR with `revalidate: 60` 'to be safe.' What do you recommend?",
           "options": [
             "Accept it — a short ISR window is the safest default for any public page",
-            "SSR, because legal content is too important to serve from any cache",
-            "CSR, so the legal team can swap text without an engineering deploy",
-            "Plain build-time SSG — the content only changes via deploys, and every deploy already rebuilds the page, so the revalidation machinery adds cost without adding freshness"
+            "SSR, because legal content is too important to ever serve from a cache",
+            "CSR, so the legal team can swap the text without an engineering deploy",
+            "Plain build-time SSG — deploys rebuild the page, so ISR just adds cost"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The freshness requirement is coupled to deploys: the only event that changes the content is a rebuild, which republishes the static page by definition. ISR here schedules background regenerations that can never observe a change between deploys — pure waste. Reasoning from the cause of change rather than defaulting to 'add revalidation' is what the question tests.",
@@ -103,10 +103,10 @@
           "id": "n2",
           "question": "A component renders `<span>{new Date().toLocaleTimeString()}</span>`. In Next.js it triggers a hydration mismatch warning. What's the root cause?",
           "options": [
-            "The server rendered one time, the client rendered milliseconds later (possibly in a different locale/timezone) — two different outputs for the 'same' render",
-            "Dates must always be wrapped in useEffect in React",
-            "The span element is not allowed to contain dynamic text",
-            "toLocaleTimeString is not available in Node.js"
+            "Server and client render the time at different moments — two outputs",
+            "Dates in React must always be wrapped inside a useEffect hook to render",
+            "A span element is simply not allowed to contain any dynamic text at all",
+            "The toLocaleTimeString method is not available in the Node.js runtime"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Hydration compares server HTML against the client's first render. A wall-clock timestamp is different on every call — and locale/timezone can differ between server and browser too. Fix: render a stable placeholder, then set the time in useEffect (client-only, post-hydration), or pass a fixed server timestamp as a prop.",
@@ -122,10 +122,10 @@
           "id": "n2-alt",
           "question": "A component reads `const width = window.innerWidth` at the top of its render body to pick a layout. Locally it looks fine, but a production build crashes the route with `window is not defined` before any HTML is even sent. Why — and how does this differ from a normal hydration mismatch?",
           "options": [
-            "It's an ordinary hydration mismatch; wrapping the JSX in a `<Suspense>` boundary silences it",
-            "`window` is undefined during the server render in Node, so reading it at render time throws server-side and no HTML is produced — a crash, not just a mismatch warning",
-            "`innerWidth` is a reserved property name that Next.js forbids components from reading",
-            "The build fails because `window` must be imported from `next/navigation` first"
+            "It's just an ordinary hydration mismatch; wrapping the whole JSX in a `<Suspense>` boundary quietly silences the warning",
+            "`window` doesn't exist in the Node server render, so reading it throws and no HTML comes out — a crash, not a warning",
+            "`innerWidth` is a reserved DOM property name that Next.js forbids any component from reading during its render body",
+            "The build fails only because `window` must first be imported from the `next/navigation` module before it can be used"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Server Components (and the SSR pass of Client Components) run in Node, where `window` simply does not exist. A render-time `window` access throws `ReferenceError` during the server render, so the route errors out before emitting HTML. That is strictly worse than a hydration mismatch, which still renders something and only warns about a difference. The fix is to read `window` only after mount — in a `useEffect` or behind a `typeof window !== 'undefined'` guard in a Client Component.",
@@ -141,10 +141,10 @@
           "id": "n2-c",
           "question": "A landing page picks its hero image with `const hero = heroes[Math.floor(Math.random() * heroes.length)]` in the render body. The page loads and displays, but the console logs a hydration error and the hero occasionally flickers to a different image right after load. What is actually happening?",
           "options": [
-            "`Math.random()` is seeded differently in Node — a known Next.js bug fixed by upgrading React",
-            "The image failed to preload, so a Suspense boundary swapped in its fallback",
-            "The server's render rolled one random index and the client's hydration render rolled another; React detected the mismatch, warned, and patched the DOM to the client's result — that patch is the flicker",
-            "Random array indices break React's key-based reconciliation; adding a `key` prop to the image fixes it"
+            "`Math.random()` is seeded differently in Node — a known Next.js bug that upgrading React fixes",
+            "The image failed to preload, so a Suspense boundary quietly swapped in its fallback element instead",
+            "Server and client rolled different random indices; React warned, then patched the DOM to the client's",
+            "Random array indices break React's key-based reconciliation; adding a `key` prop to the `<img>` fixes it"
           ],
           "correctAnswerIndex": 2,
           "rationale": "`Math.random()` is nondeterministic, so the server pass and the client's first render disagree — the textbook hydration mismatch. Crucially, the page still renders: mismatches warn and patch rather than crash. Fixes: choose the variant once on the server and pass it down as a prop, derive it deterministically from a seed, or select it post-mount in `useEffect`.",
@@ -160,10 +160,10 @@
           "id": "n2-d",
           "question": "To restore a saved theme, a Client Component runs `const theme = localStorage.getItem('theme') ?? 'light'` directly in its render body. The route errors server-side with `localStorage is not defined`. A teammate is confused: 'it has `'use client'` — why is it running on the server at all?' What's the correct diagnosis and fix?",
           "options": [
-            "`'use client'` components still get server-rendered to HTML in Node, where `localStorage` doesn't exist — read it in `useEffect` after mount, rendering the default theme for the first paint",
-            "The teammate is right that Client Components never run on the server — the error must originate from a Server Component elsewhere in the tree",
-            "Next.js blocks `localStorage` for security; the supported storage API is cookies read via `next/headers`",
-            "Wrap the component in `<Suspense>` so the server defers it and only the browser ever renders it"
+            "`'use client'` still server-renders to HTML in Node, where `localStorage` is absent — read it in `useEffect` after mount",
+            "The teammate is right that Client Components never run on the server, so the error must come from a Server Component elsewhere",
+            "Next.js blocks `localStorage` for security reasons; the only supported storage API is cookies read through `next/headers`",
+            "Wrap the whole component in a `<Suspense>` boundary so the server defers it and only the browser ever renders that subtree"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The misconception under test: `'use client'` does not mean 'renders only in the browser'. Client Components are still server-rendered to HTML for the initial response, and that pass runs in Node where `localStorage`, `window`, and `document` don't exist. Browser-only APIs must wait until after mount — read the stored theme in `useEffect` (accepting a brief default-theme paint), or move the preference into a cookie the server can read.",
@@ -190,10 +190,10 @@
           "id": "n3",
           "question": "Which of these forces a component to be a Client Component in the App Router?",
           "options": [
-            "Fetching data with async/await",
-            "Rendering a list with .map()",
-            "Using useState and an onClick handler",
-            "Importing a CSS file"
+            "Fetching remote data with async and await in the body",
+            "Rendering a list of items with the array .map() method",
+            "Using useState together with an onClick event handler",
+            "Importing a plain CSS stylesheet file into the module"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Interactivity is the dividing line. State, effects, event handlers, and browser APIs require JavaScript running in the browser — that's what 'use client' opts into. Data fetching, mapping, and styling all work fine (often better) on the server.",
@@ -209,10 +209,10 @@
           "id": "n3-alt",
           "question": "You have a Client Component `<Sidebar>` (it uses `useState` for a collapse toggle). You want to render a data-heavy `<Feed>` Server Component — which queries the database directly — inside that sidebar's layout without turning `<Feed>` into client code. What is the correct composition?",
           "options": [
-            "Move the database query into `<Sidebar>` and pass the raw rows down to `<Feed>` as props",
-            "Add `'use client'` to `<Feed>` so it's allowed to sit inside `<Sidebar>`",
-            "Have `<Sidebar>` directly `import Feed from './feed'` and render `<Feed />` in its JSX",
-            "Render `<Feed>` in a Server Component parent and pass it into `<Sidebar>` as `children` (or another prop)"
+            "Move the database query into `<Sidebar>` and pass the raw fetched rows down to `<Feed>` as props",
+            "Add a `'use client'` directive to `<Feed>` so it is allowed to sit inside `<Sidebar>`'s tree",
+            "Have `<Sidebar>` directly `import Feed from './feed'` and render `<Feed />` inside its own JSX",
+            "In a Server Component parent, render `<Feed>` and pass it to `<Sidebar>` as `children`"
           ],
           "correctAnswerIndex": 3,
           "rationale": "A Client Component cannot import a Server Component (importing it pulls it into the client bundle and forces it client-side). But a Client Component can receive an already-rendered Server Component through `children` or a prop. So a server parent renders `<Feed>` and hands it to `<Sidebar>` — `<Feed>` stays server-only and never ships to the browser.",
@@ -228,10 +228,10 @@
           "id": "n3-c",
           "question": "A page section must call a third-party API using a secret key that can never reach the browser. Where does that call belong in the App Router, and why?",
           "options": [
-            "In a Client Component's `useEffect`, reading the key from `process.env.NEXT_PUBLIC_API_KEY`",
-            "Anywhere — Next.js automatically strips environment variables out of client bundles, so placement doesn't matter",
-            "In a Client Component, with the key obfuscated before it's embedded in the JS bundle",
-            "In a Server Component (or server-only code it calls) — its code and non-public env vars never ship to the browser, so the key stays server-side by construction"
+            "In a Client Component's `useEffect`, reading the key from `process.env.NEXT_PUBLIC_API_KEY` and calling the API",
+            "Anywhere at all — Next.js automatically strips every environment variable out of client bundles, so placement is irrelevant",
+            "In a Client Component, but with the secret key obfuscated first before it gets embedded in the shipped JS bundle",
+            "In a Server Component — its code and non-public env vars never ship to the browser, so the key stays server-side"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Server Components run exclusively on the server and their code is never part of the client bundle, which makes them the structural answer to secret handling: the key isn't hidden, it simply never travels. The `NEXT_PUBLIC_` option is the planted trap — that prefix explicitly opts a variable *into* the client bundle, the exact opposite of what a secret needs.",
@@ -247,10 +247,10 @@
           "id": "n3-d",
           "question": "To fix a single `<LikeButton>` that needs `onClick`, a teammate adds `'use client'` at the top of the entire `DashboardPage` file — which also imports a chart library, a data table, and a `db.ts` query helper. It appears to work in dev. What is the real cost of that directive's placement?",
           "options": [
-            "None — `'use client'` is an advisory annotation and doesn't change what gets bundled",
-            "The directive converts that module and everything it imports into client code: the charts and table now ship in the browser bundle, and the direct `db` access in that tree is now broken or dangerously exposed — the fix is a tiny leaf `<LikeButton>` Client Component instead",
-            "The page stops being server-rendered entirely, so its SEO is destroyed",
-            "Bundle size is unaffected because Next.js automatically tree-shakes server-only imports out of client files"
+            "None at all — `'use client'` is merely an advisory annotation that doesn't change what actually gets bundled for the browser",
+            "It makes the module and imports client code: charts and table ship to the browser and `db` access breaks — scope to a leaf",
+            "The whole page stops being server-rendered entirely from that point on, so its search-engine SEO is completely destroyed",
+            "Bundle size is left unaffected because Next.js automatically tree-shakes all server-only imports back out of client files"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`'use client'` marks a boundary, and everything imported past that boundary becomes client code. Hoisting it to a page-level file drags heavy visualization libraries into the browser bundle and pulls database-touching code toward the client, where it either fails to build or leaks connection details. The discipline is to push the directive down to the smallest leaf that actually needs interactivity.",
@@ -277,10 +277,10 @@
           "id": "n4",
           "question": "After a Server Action creates a new post, the posts list page still shows the old list. What's the idiomatic App Router fix?",
           "options": [
-            "Call revalidatePath('/posts') (or revalidateTag) inside the action after the write",
-            "Set every fetch to cache: 'no-store' across the whole app",
-            "Store the posts in localStorage and update it manually",
-            "Call router.refresh() in a setInterval so the page polls"
+            "Call revalidatePath('/posts') inside the action after the write",
+            "Set every fetch to cache: 'no-store' across the whole application",
+            "Store the posts list in localStorage and update that copy by hand",
+            "Call router.refresh() inside a setInterval so the page keeps polling"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The list is stale because it was served from the cache. The action just changed that data, so the action is the right place to declare it: revalidatePath/revalidateTag invalidates precisely the affected cache entries, and the next render is fresh — no polling, no global cache surrender.",
@@ -296,10 +296,10 @@
           "id": "n4-alt",
           "question": "One product's price is fetched with `fetch(url, { next: { tags: ['product-42'] } })` and cached across several pages (the product page, the homepage carousel, the search index). An admin edits that one product's price. You want the edit to refresh every page showing product 42 — but leave the thousands of other cached products untouched. What's the most precise mechanism?",
           "options": [
-            "Call `revalidatePath('/')` so the whole site re-renders and picks up the change",
-            "Call `revalidateTag('product-42')` in the mutation, invalidating exactly the entries tagged with it",
-            "Set `cache: 'no-store'` on the product fetch so it's never cached in the first place",
-            "Call `router.refresh()` on the client after the admin saves"
+            "Call `revalidatePath('/')` so the entire site re-renders and eventually picks up the price change",
+            "Call `revalidateTag('product-42')` in the mutation to invalidate exactly its entries",
+            "Set `cache: 'no-store'` on the product fetch so that it is simply never cached in the first place",
+            "Call `router.refresh()` on the client right after the admin saves the edited product price"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Because the fetch was tagged `product-42`, every cached entry that used it — across all pages — is bound to that tag. `revalidateTag('product-42')` invalidates precisely those entries and nothing else, so the one product refreshes everywhere it appears while the rest of the cache stays warm. Tags are the tool for 'one piece of data appears on many routes.'",
@@ -315,10 +315,10 @@
           "id": "n4-c",
           "question": "You're building a 'create comment' feature. A teammate starts scaffolding `app/api/comments/route.ts` plus a client-side `fetch` POST with hand-rolled loading state. What's the idiomatic App Router alternative, and what does it buy you?",
           "options": [
-            "There isn't one — Route Handlers are the only sanctioned way to mutate data from a form in Next.js",
-            "A GET Route Handler that performs the insert when the form navigates to its URL",
-            "A `'use server'` Server Action passed to the form's `action` prop: it executes on the server on submit, colocates the mutation with the component, can call `revalidatePath`/`revalidateTag` in the same function, and the form even works before hydration",
-            "Marking the fetch `cache: 'no-store'` so the POST bypasses the Router Cache"
+            "There isn't one — Route Handlers are genuinely the only sanctioned way to mutate data from any of your forms in Next.js",
+            "A GET Route Handler that performs the database insert whenever the form navigates the browser to its URL",
+            "A `'use server'` Server Action on the form's `action`: it runs on submit, colocates the mutation, and revalidates",
+            "Marking the client fetch `cache: 'no-store'` so that the POST request bypasses the Router Cache entirely"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Server Actions exist precisely to close this loop without a hand-written endpoint: the mutation is a plain function marked `'use server'`, wired straight to the form. You delete the endpoint boilerplate, the client fetch, and the serialization glue — and because the action runs on the server, the write and its cache revalidation live in one place. Progressive enhancement (the form submits even before JS loads) comes free.",
@@ -334,10 +334,10 @@
           "id": "n4-d",
           "question": "A pricing table uses `export const revalidate = 300`, but prices only change when someone saves them in your internal admin panel — roughly twice a week. Sales complains prices are stale for up to five minutes after each update, and you're paying for regenerations all day. What's the strongest redesign?",
           "options": [
-            "Move to on-demand invalidation: tag the pricing fetch and have the admin panel's save mutation call `revalidateTag` (or `revalidatePath`), then remove the timer entirely",
-            "Lower `revalidate` to 10 so the staleness window shrinks to ten seconds",
-            "Set the route to `force-dynamic` so every visitor always renders fresh prices",
-            "Have the admin panel append a version query-string to pricing URLs so stale caches get bypassed"
+            "Move to on-demand invalidation: tag the fetch and have the save mutation call `revalidateTag`, drop the timer",
+            "Lower `revalidate` to 10 so the staleness window merely shrinks from five minutes down to about ten seconds",
+            "Set the route to `force-dynamic` so that every single visitor always renders fully fresh prices on each request",
+            "Have the admin panel append a version query-string onto the pricing URLs so that the stale caches get bypassed"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Time-based revalidation is a guess about when data changes; on-demand revalidation is knowledge. Here the writer is your own code, so the exact moment of change is observable — the save mutation should invalidate the tagged entries, making updates visible immediately while the cache stays warm for the days between edits. The timer was only ever an approximation, and now it can go.",
@@ -364,10 +364,10 @@
           "id": "n5",
           "question": "A search input lives in the nav bar. Users complain its text clears whenever they click a result and navigate. Where should the nav bar live to fix this?",
           "options": [
-            "In loading.tsx, which renders on every navigation",
-            "In each page.tsx so every route controls its own nav",
-            "In a shared layout.tsx, which persists (keeps DOM and state) across navigations within it",
-            "In a separate iframe so navigation can't touch it"
+            "In loading.tsx, which re-renders completely fresh on every single navigation",
+            "In each page.tsx so that every individual route fully controls its own nav bar",
+            "In a shared layout.tsx, which persists its DOM and state across navigations",
+            "In a separate iframe element so that ordinary page navigation can't ever touch it"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Layouts don't remount on navigation between their child routes — that's their defining behavior. A nav bar (with its input state) inside the shared layout survives every page change beneath it.",
@@ -383,10 +383,10 @@
           "id": "n5-alt",
           "question": "A signup wizard needs a fresh CSS mount animation to replay every time the user navigates between its steps, and a per-visit analytics 'step viewed' effect that must fire on each navigation. Placing the wrapper in `layout.tsx` breaks both — the animation plays once and the effect never re-runs. Which file gives the wrapper the remount-on-every-navigation behavior you want?",
           "options": [
-            "`loading.tsx` — it re-renders on every route change",
-            "`page.tsx` — move the wrapper into each step's page so it naturally remounts",
-            "`layout.tsx` — add a `key` prop to force it to remount each time",
-            "`template.tsx` — it renders a new instance on every navigation, remounting its DOM and re-running effects"
+            "`loading.tsx` — it re-renders freshly on every single route change that the user makes here",
+            "`page.tsx` — move the wrapper into each individual step's own page so that it naturally remounts",
+            "`layout.tsx` — add a `key` prop to the wrapper to force it to remount on each navigation",
+            "`template.tsx` — renders a new instance per navigation, remounting DOM and rerunning effects"
           ],
           "correctAnswerIndex": 3,
           "rationale": "`template.tsx` is the deliberate opposite of `layout.tsx`: where a layout persists its instance across navigations, a template creates a fresh instance on each navigation. That remount replays enter animations and re-runs effects like the analytics 'step viewed' event — exactly the requested behavior — while still wrapping the child routes.",
@@ -402,10 +402,10 @@
           "id": "n5-c",
           "question": "A podcast app docks a mini audio player at the bottom of the screen; playback must continue seamlessly while the user browses between episode pages. Where does the player belong, and what mechanism makes it work?",
           "options": [
-            "In `template.tsx`, so every navigation constructs a fresh player instance",
-            "In a shared `layout.tsx` — layouts keep their DOM and component state across navigations beneath them, so the `<audio>` element is never unmounted and playback never stops",
-            "In each episode's `page.tsx`, forwarding the current timestamp between routes via `searchParams`",
-            "In `loading.tsx`, since it's rendered during every route transition"
+            "In `template.tsx`, so that every navigation constructs a brand-new fresh player instance",
+            "In a shared `layout.tsx` — it keeps its DOM across navigations, so the `<audio>` never unmounts",
+            "In each episode's `page.tsx`, forwarding the current playback timestamp between routes via `searchParams`",
+            "In `loading.tsx`, since that file is rendered during every single route transition the user triggers"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Uninterrupted playback requires the `<audio>` element to never leave the DOM — the moment it unmounts, the browser stops the stream. Layout persistence is exactly that guarantee: navigating among the layout's child routes re-renders pages beneath it while the layout's own instance, DOM, and state are preserved. It's the same mechanism as the classic persistent nav bar, applied to media.",
@@ -421,10 +421,10 @@
           "id": "n5-d",
           "question": "A dashboard's `layout.tsx` renders a Client Component sidebar whose expanded/collapsed state lives in `useState`. The user collapses it on `/dashboard/settings`, then navigates to `/dashboard/billing` — both under that layout. What happens to the sidebar, and by what mechanism?",
           "options": [
-            "It re-expands — client-side navigation reconstructs the whole component tree from the root",
-            "It stays collapsed, but only because Next.js snapshots component state into `sessionStorage` between routes",
-            "It stays collapsed — the layout's component instance is preserved across navigations between its child routes, so its DOM and React state survive while only the `page` subtree re-renders",
-            "It stays collapsed only if the sidebar is converted to a Server Component, because server output is cached"
+            "It re-expands — client-side navigation reconstructs the entire component tree from the root down each time",
+            "It stays collapsed, but only because Next.js quietly snapshots the component state into `sessionStorage` between routes",
+            "It stays collapsed — the layout instance is preserved across child-route navigations, so its React state survives",
+            "It stays collapsed only if the sidebar is converted into a Server Component, because server output gets cached"
           ],
           "correctAnswerIndex": 2,
           "rationale": "This is layout persistence viewed from the state's perspective: on soft navigation the App Router swaps only the route segments that changed and leaves ancestor layouts mounted. Because the sidebar component never unmounts, its `useState` value simply continues to exist — no storage, no serialization, no framework magic beyond not remounting. If remount-per-navigation were ever desired, that's what `template.tsx` provides.",

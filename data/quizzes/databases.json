@@ -16,10 +16,10 @@
           "id": "db1",
           "question": "Posts can have many tags, and tags apply to many posts. What's the standard relational way to model this?",
           "options": [
-            "Duplicate each post row once per tag it has",
+            "Duplicate each post row once for every tag it happens to carry",
             "A tags column on posts holding a comma-separated string of tag names",
-            "A join table post_tags(post_id, tag_id) with foreign keys to both tables",
-            "A posts column on tags holding an array of post ids"
+            "A join table post_tags(post_id, tag_id) keyed to both tables",
+            "A posts column on each tag holding an array of the post ids"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Many-to-many decomposes into two one-to-many relationships through a join table. Each row of post_tags is one fact — 'this post has this tag' — indexable, constrainable, and queryable from both directions.",
@@ -35,10 +35,10 @@
           "id": "db1-alt",
           "question": "In a music app, a `song` can appear on many `playlist`s, and each `playlist` holds many `song`s. A junior dev proposes adding a `playlist_ids` integer column to the `songs` table. What's the correct relational model, and what's wrong with the proposal?",
           "options": [
-            "Add both a `playlist_ids` column on `songs` and a `song_ids` column on `playlists` to cover both directions",
-            "Store the relationship as a JSON blob on `playlists` for flexibility",
-            "The proposal is fine as long as `playlist_ids` is indexed",
-            "Introduce a `playlist_songs(playlist_id, song_id)` join table; the proposed column can't be foreign-keyed or queried from the playlist side without scanning every song"
+            "Add a `playlist_ids` column on `songs` and a `song_ids` column on `playlists` for both directions",
+            "Store the whole relationship as a JSON blob on `playlists`, which keeps the schema flexible",
+            "The proposal is fine as written, provided the `playlist_ids` column is indexed for lookups",
+            "Add a `playlist_songs(playlist_id, song_id)` join table; the scalar column can't be keyed"
           ],
           "correctAnswerIndex": 3,
           "rationale": "A many-to-many between songs and playlists resolves into a join table whose every row is one membership fact. A single scalar column on `songs` can hold only one playlist id per row, and even packing many ids into it forfeits referential integrity and any efficient 'which songs are on playlist 7' lookup.",
@@ -54,10 +54,10 @@
           "id": "db1-c",
           "question": "An e-commerce schema must place `products` under `categories`: a product can sit in several categories, and each category contains many products. Which design captures this correctly — and what does it unlock beyond mere linkage?",
           "options": [
-            "A `product_categories(product_id, category_id)` join table with foreign keys to both tables — which can also carry relationship-specific columns like `featured` or `sort_order`",
-            "A single `category_id` foreign key on `products`, since every product surely has one primary category",
+            "A `product_categories(product_id, category_id)` join table that can carry a `featured` column",
+            "A single `category_id` foreign key on `products`, since every product has one primary category",
             "A `category_names` text array column on `products`, GIN-indexed for fast containment lookups",
-            "A `product_ids_csv` column on `categories`, refreshed by a nightly batch job"
+            "A `product_ids_csv` column on `categories`, refreshed each night by a scheduled batch job"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Many-to-many resolves into a join table where every row is one membership fact, enforceable and queryable from both directions. The join table is also the natural home for attributes of the relationship itself — `featured`, `sort_order` — which belong to neither product nor category alone.",
@@ -74,9 +74,9 @@
           "question": "A university system tracks which `students` enroll in which `courses`. A proposal argues that since Postgres supports arrays, an `enrolled_course_ids integer[]` column on `students` is simpler than another table. Which statement identifies the decisive flaw?",
           "options": [
             "Arrays are fine here because Postgres can index them, making the design equivalent to a join table",
-            "Array elements can't participate in foreign-key constraints, so the database can never guarantee those course ids exist; an `enrollments(student_id, course_id)` join table restores integrity and symmetric two-way queries",
-            "The flaw is purely performance — arrays are slower to scan, but data integrity is unaffected",
-            "The array simply belongs on the other side: store `student_ids` on `courses` instead, which reads more naturally for roster queries"
+            "Array elements can't join in foreign-key constraints, so those course ids are never guaranteed to exist",
+            "The flaw is purely one of performance — arrays are slower to scan, but data integrity is fully unaffected",
+            "The array simply belongs on the other side: store `student_ids` on `courses`, which reads more naturally"
           ],
           "correctAnswerIndex": 1,
           "rationale": "No relational engine enforces foreign keys on array elements: drop a course and every student row silently keeps a dangling id, with no error and no cascade. The join table is the only design the database itself can police, and it answers 'who takes course 12?' as cheaply as 'what does student 7 take?'.",
@@ -103,10 +103,10 @@
           "id": "db2",
           "question": "A 'signups vs activity' report must list ALL users with their order counts — including users with zero orders. Which query shape is right?",
           "options": [
-            "users LEFT JOIN orders ... GROUP BY users.id with COUNT(orders.id)",
-            "Two separate queries concatenated with UNION",
-            "orders LEFT JOIN users ... GROUP BY orders.id",
-            "users INNER JOIN orders ... GROUP BY users.id"
+            "users LEFT JOIN orders, GROUP BY users.id, COUNT(orders.id)",
+            "Two separate queries — one per branch — stitched with UNION",
+            "orders LEFT JOIN users, GROUP BY orders.id, COUNT(users.id)",
+            "users INNER JOIN orders, GROUP BY users.id, COUNT(orders.id)"
           ],
           "correctAnswerIndex": 0,
           "rationale": "LEFT JOIN preserves every user; those without orders get NULL order columns, and COUNT(orders.id) counts non-NULL values — yielding 0 for them. INNER JOIN would silently drop exactly the zero-order users the report exists to find.",
@@ -122,10 +122,10 @@
           "id": "db2-alt",
           "question": "A dashboard needs the number of published comments for every blog `article`, and articles with no comments yet must show `0`. A teammate writes `articles LEFT JOIN comments ... GROUP BY articles.id` but uses `COUNT(*)`, and complaints come in that commentless articles show `1`. What actually went wrong?",
           "options": [
-            "`LEFT JOIN` was the wrong choice; an `INNER JOIN` would have shown the correct zero counts",
-            "`COUNT(*)` counts the single NULL-filled placeholder row that `LEFT JOIN` produces for a matchless article as `1`; `COUNT(comments.id)` counts only non-NULL and yields `0`",
-            "`GROUP BY articles.id` is invalid and silently returns 1 per group",
-            "The counts are off because `HAVING` was needed instead of `GROUP BY`"
+            "`LEFT JOIN` was the wrong choice here; an `INNER JOIN` would have shown the correct zero counts",
+            "`COUNT(*)` counts the NULL row `LEFT JOIN` makes as `1`; `COUNT(comments.id)` yields `0`",
+            "`GROUP BY articles.id` is invalid on a joined table and silently returns exactly 1 per group",
+            "The counts are off because `HAVING`, not `GROUP BY`, was the clause needed to collapse the rows"
           ],
           "correctAnswerIndex": 1,
           "rationale": "For an article with no comments, `LEFT JOIN` still emits one row with every `comments` column NULL. `COUNT(*)` counts rows regardless of NULLs, so it counts that placeholder as 1. `COUNT(comments.id)` counts only non-NULL values of that column, correctly returning 0.",
@@ -141,10 +141,10 @@
           "id": "db2-c",
           "question": "A staffing report must show every support `agent` with the number of `tickets` they resolved this month — managers specifically want to spot agents with zero resolutions. The query uses `agents INNER JOIN tickets ... GROUP BY agents.id` and passes code review as 'looking correct'. What will production reveal?",
           "options": [
-            "Nothing — INNER JOIN and LEFT JOIN produce identical results once GROUP BY is applied",
-            "The query errors at runtime, since aggregating over an INNER JOIN requires a HAVING clause",
-            "Zero-resolution agents appear with NULL instead of 0, which merely confuses formatting",
-            "Zero-resolution agents are absent from the result entirely — no row, no zero, no error; the fix is `agents LEFT JOIN tickets` with `COUNT(tickets.id)`"
+            "Nothing — INNER JOIN and LEFT JOIN produce identical results once the GROUP BY is applied",
+            "The query errors at runtime, because aggregating over an INNER JOIN requires a HAVING clause",
+            "Zero-resolution agents appear with a NULL count instead of 0, which merely confuses the formatting",
+            "Zero-resolution agents are absent entirely — no row, no zero; use `agents LEFT JOIN tickets`"
           ],
           "correctAnswerIndex": 3,
           "rationale": "INNER JOIN emits only agents with at least one matching ticket, so precisely the rows the report exists to surface are missing — and nothing fails loudly. LEFT JOIN preserves every agent; matchless agents get a NULL-filled row, and `COUNT(tickets.id)` turns that into the desired 0.",
@@ -160,10 +160,10 @@
           "id": "db2-d",
           "question": "To list all `warehouses` with their count of delayed `shipments` (zeros included), someone writes: `warehouses LEFT JOIN shipments ON shipments.warehouse_id = warehouses.id WHERE shipments.status = 'delayed' GROUP BY warehouses.id`. Warehouses with no shipments vanish from the output anyway. Why?",
           "options": [
-            "COUNT was applied before GROUP BY, which discards empty groups",
-            "LEFT JOIN only preserves left rows when the right table is empty overall, not per row",
-            "The `WHERE` on `shipments.status` throws away the NULL placeholder rows (`NULL = 'delayed'` is not true), silently degrading the LEFT JOIN into an INNER JOIN; the condition belongs in the `ON` clause",
-            "`GROUP BY warehouses.id` must be `GROUP BY shipments.warehouse_id` for outer-join semantics to hold"
+            "COUNT was applied before the GROUP BY step, and that ordering quietly discards the empty groups",
+            "LEFT JOIN only preserves left rows when the right table is empty overall, never on a per-row basis",
+            "The `WHERE` on `shipments.status` drops the NULL rows (`NULL = 'delayed'` is untrue); use `ON`",
+            "`GROUP BY warehouses.id` must instead read `GROUP BY shipments.warehouse_id` for the outer join to hold"
           ],
           "correctAnswerIndex": 2,
           "rationale": "For a matchless warehouse, LEFT JOIN emits one row with every `shipments` column NULL. The WHERE clause then evaluates `NULL = 'delayed'`, which is not true, and discards that row — outer-join semantics destroyed after the fact. Moving the predicate into `ON` filters shipments *before* the join, so every warehouse survives with its (possibly zero) delayed count.",
@@ -190,10 +190,10 @@
           "id": "db3",
           "question": "A query filtering `WHERE user_id = ? AND created_at > ?` is slow. The table has an index on (created_at, user_id). The DBA suggests (user_id, created_at) instead. Why would column order matter?",
           "options": [
-            "(created_at, user_id) is invalid SQL and was never being used",
-            "It doesn't — column order in a composite index is purely cosmetic",
-            "With user_id first, the index groups all of one user's rows together, letting the range scan on created_at run within that narrow slice; equality columns should precede range columns",
-            "Indexes can only ever use their first column"
+            "The index (created_at, user_id) is invalid SQL, so it was never actually being used at all",
+            "It doesn't matter here — column order within a composite index is purely cosmetic and inert",
+            "With user_id first, the index groups a user's rows so the created_at range scans one slice",
+            "Composite indexes can only ever use their single first column, and never any that follow it"
           ],
           "correctAnswerIndex": 2,
           "rationale": "A B-tree sorts by the first column, then the second within it. Leading with the equality filter (user_id) narrows to one contiguous slice, and the range on created_at scans just that slice. Leading with the range column scatters the target user's rows across the whole date range.",
@@ -209,10 +209,10 @@
           "id": "db3-alt",
           "question": "A table has a composite index on `(tenant_id, status, created_at)`. Three queries run against it: (A) `WHERE tenant_id = ?`, (B) `WHERE status = ? AND created_at > ?`, (C) `WHERE tenant_id = ? AND status = ?`. Which query can the index NOT accelerate, and why?",
           "options": [
-            "Query C, because an index needs all three columns present to be used at all",
-            "All three are accelerated equally; column order in the index is irrelevant",
-            "Query A, because a single-column filter can never use a three-column index",
-            "Query B, because it skips the leading `tenant_id` column and the leftmost-prefix rule means the index can't be seeked without it"
+            "Query C, because an index needs all three of its columns present in the filter to be used",
+            "All three are accelerated equally well; the column order within the index is entirely irrelevant",
+            "Query A, because a single-column filter can never make use of a three-column composite index",
+            "Query B, because it skips the leading `tenant_id`, and leftmost-prefix bars seeking without it"
           ],
           "correctAnswerIndex": 3,
           "rationale": "A B-tree composite index is sorted by its leading column first. Query B filters on `status` and `created_at` but never constrains `tenant_id`, so it can't use the sorted structure to seek — the leftmost prefix is missing. A uses the prefix `(tenant_id)`, and C uses the prefix `(tenant_id, status)`, so both are served.",
@@ -228,10 +228,10 @@
           "id": "db3-c",
           "question": "A `signups` table carries a composite index on `(country, signup_date)`. The nightly analytics job runs `WHERE signup_date >= ? AND signup_date < ?` with no country filter, and `EXPLAIN` shows a full table scan. What explains this, and what's the honest fix?",
           "options": [
-            "Range operators disable B-tree indexes; rewriting the range as one equality check per day would restore index use",
-            "The index leads with `country`, so a query that never constrains `country` supplies no leftmost prefix to seek on — the matching dates are interleaved across every country's slice; add an index leading with `signup_date` (or accept the scan if the job is rare)",
-            "The index is corrupted; running REINDEX will restore its use for this query",
-            "Composite indexes only apply to JOIN queries, never to plain WHERE filters"
+            "Range operators disable B-tree indexes; rewriting the range as one equality check per day fixes it",
+            "The index leads with `country`, so a date-only query has no leftmost prefix; put `signup_date` first",
+            "The index has become corrupted over time; running a REINDEX will restore its use for this query shape",
+            "Composite indexes only ever apply to JOIN queries, and never to a plain single-table WHERE filter"
           ],
           "correctAnswerIndex": 1,
           "rationale": "A B-tree on `(country, signup_date)` is sorted by country first; within it, dates repeat per country. A date-only filter has no leading value to seek to, so its target rows are scattered through the entire structure — the planner rightly prefers a scan. Serving this query well means an index whose leftmost column is `signup_date`.",
@@ -247,10 +247,10 @@
           "id": "db3-d",
           "question": "You may add exactly ONE index to speed `WHERE status = 'open' AND assignee_id = ? AND due_at < ?` on a large `tasks` table — two equality filters and one range. Which column order serves the query best?",
           "options": [
-            "`(assignee_id, status, due_at)` — both equality columns first (their mutual order is flexible), the range column last, confining the scan to one narrow contiguous slice",
-            "`(due_at, assignee_id, status)` — the range column should lead because ranges are the most selective predicates",
-            "`(due_at)` alone — single-column indexes always outperform composites",
-            "Any order works; the optimizer internally reorders a composite index's columns to match each query"
+            "`(assignee_id, status, due_at)` — both equality columns first, the range column last, for one narrow slice",
+            "`(due_at, assignee_id, status)` — the range column should lead, since ranges are the most selective filters",
+            "`(due_at)` alone — a single-column index always outperforms a composite one on a large table like this",
+            "Any order works fine; the optimizer internally reorders a composite index's columns to match each query"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Equality columns pin exact values, narrowing to one contiguous run of the B-tree; the trailing range column is then a short in-order scan within that run. Lead with `due_at` and you get a wide band of dates in which the target assignee's open tasks are scattered — the equality filters can no longer seek.",
@@ -277,10 +277,10 @@
           "id": "db4",
           "question": "An order checkout does three writes: create order, decrement inventory, record payment. The server can crash at any moment. What guarantees the database never ends up with an order whose inventory was never decremented?",
           "options": [
-            "Wrap all three in a single transaction so a crash before COMMIT rolls back every write",
-            "Add a try/catch and log any errors for manual cleanup",
-            "Use three separate databases so failures stay isolated",
-            "Run the three writes in quick succession to minimize the risk window"
+            "Wrap all three writes in one transaction, so a crash before COMMIT rolls them all back",
+            "Add a try/catch around the writes and log any errors for a human to clean up manually",
+            "Use three separate databases so that a failure in one stays isolated from the others",
+            "Run the three writes in quick succession to keep the window of risk as small as it can be"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Atomicity is precisely this guarantee: until COMMIT, none of the writes are permanent; a crash mid-way leaves the database as if nothing happened. Shrinking timing windows or logging for cleanup are mitigations — a transaction is the actual solution.",
@@ -296,10 +296,10 @@
           "id": "db4-alt",
           "question": "A signup flow inserts a `user` row, then inserts a matching `wallet` row seeded with a starting balance. In production, some users exist with no wallet at all. The code already wraps both inserts in `db.transaction(async (tx) => {...})`. Which ACID property is being violated, and what's the most likely cause?",
           "options": [
-            "Durability is failing; the committed wallet rows are being lost after the fact",
-            "Atomicity is likely being defeated because the second insert runs on the outer connection instead of `tx`, so it isn't part of the transaction and its failure doesn't roll back the user insert",
-            "Isolation is the problem; another transaction is deleting the wallets concurrently",
-            "Consistency is fine and this is expected behavior for transactions"
+            "Durability is failing here; the committed wallet rows are being quietly lost after the fact",
+            "Atomicity is defeated: the wallet insert runs on the outer `db`, not `tx`, so it's outside the unit",
+            "Isolation is the problem here; a second concurrent transaction is deleting the wallet rows as they land",
+            "Consistency is fine, and users existing without a wallet is simply expected transaction behavior"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Atomicity means all statements in the transaction commit or none do. If the wallet insert accidentally uses the outer `db` handle rather than the transaction's `tx` handle, it executes outside the atomic unit — so it can fail (or its enclosing scope can throw after it) while the user insert still commits, producing users without wallets.",
@@ -315,10 +315,10 @@
           "id": "db4-c",
           "question": "A loyalty-points transfer runs inside `db.transaction(async (tx) => {...})`: debit the sender via `tx`, then credit the receiver via `tx`. The credit occasionally fails, yet production shows senders debited with no matching credit. The credit call is wrapped in its own `try/catch` that logs the error and continues. What's actually happening?",
           "options": [
-            "Durability is broken — the credit committed but was lost when the server restarted",
-            "The database auto-commits each statement; transactions cannot span multiple awaited calls",
-            "The inner `catch` swallows the failure, so the callback returns normally and the transaction COMMITs the debit alone — rollback only fires when the error propagates out of the callback",
-            "The two writes need separate transactions so the credit's failure can't affect the debit"
+            "Durability is broken — the credit did commit, but was lost when the server later restarted",
+            "The database auto-commits every statement, so a transaction cannot span multiple awaited calls",
+            "The inner `catch` swallows the failure, so the callback returns and COMMITs the debit alone",
+            "The two writes need separate transactions, so the credit's failure can't affect the debit at all"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Interactive transaction APIs roll back when the callback throws. Catch the failure inside and suppress it, and the driver sees a callback that completed successfully — so it commits whatever did succeed. Atomicity wasn't defeated by the database; it was defeated by error handling that stopped the signal from reaching the transaction boundary.",
@@ -334,10 +334,10 @@
           "id": "db4-d",
           "question": "A flash sale has `stock = 1` for an item. Two checkouts run concurrently: each SELECTs the stock (both read 1), each decides it can sell, each runs `UPDATE stock = stock - 1` and inserts an order — both COMMIT, and stock lands at `-1`. Every statement ran inside a transaction. Which ACID property is at issue, and why didn't 'using transactions' save you?",
           "options": [
-            "Atomicity — one of the two transactions must have partially committed its statements",
-            "Durability — the first decrement wasn't flushed to disk before the second transaction read",
-            "Consistency — the database defines an implicit non-negative rule for numeric columns that transactions bypass",
-            "Isolation — at default isolation levels this read-then-write race is permitted; the guard must be atomic in the database, e.g. `UPDATE ... SET stock = stock - 1 WHERE stock > 0`, `SELECT ... FOR UPDATE`, or a stricter isolation level"
+            "Atomicity — one of the two transactions must have partially committed only some of its statements",
+            "Durability — the first decrement wasn't flushed to disk before the second transaction read the stock",
+            "Consistency — the database defines an implicit non-negative rule on numeric columns that this bypassed",
+            "Isolation — default levels permit this read-then-write race; guard with `UPDATE ... WHERE stock > 0`"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Both transactions were atomic and durable — each committed everything it did. The anomaly lives *between* them: under common default isolation (read committed), both may read the same stale stock and proceed, a classic lost-update race. Transactions bound a unit of work; they do not automatically serialize concurrent decision logic built on plain reads.",
@@ -364,10 +364,10 @@
           "id": "db5",
           "question": "A page lists 100 posts with author names. Logs show 101 queries per page load. What's happening, and what's the fix?",
           "options": [
-            "The ORM's cache is disabled; enabling it removes the repeat queries",
-            "The connection pool is misconfigured; raise the pool size",
-            "Classic N+1: one query for posts, then one per post for its author. Fix: eager-load the relation (Prisma include / Drizzle with) so it's one or two queries",
-            "The database is missing an index on posts.id"
+            "The ORM's query cache is disabled; enabling it will remove the repeated author queries",
+            "The connection pool is misconfigured for this load; raising the pool size clears the backlog",
+            "Classic N+1: one query for posts, then one per author. Fix: eager-load with include/with",
+            "The database is missing an index on posts.id, so each lookup scans the whole posts table"
           ],
           "correctAnswerIndex": 2,
           "rationale": "1 + 100 = the N+1 signature. Each author lookup happens lazily inside the render loop. Eager loading declares the relation need up front, letting the ORM emit a join (or one batched IN query) instead of a hundred round-trips.",
@@ -383,10 +383,10 @@
           "id": "db5-alt",
           "question": "An API serializes 50 `order`s, and for each order accesses `order.customer.tier` and `order.shippingAddress.country`. Query logs show 101 queries per request. A developer adds `include: { customer: true }` and the count drops to 51, not 1. What's the remaining issue and the complete fix?",
           "options": [
-            "The remaining 50 queries are caused by a missing index on `orders.id`",
-            "Dropping to 51 proves the ORM cache is now working; clearing it would restore 101",
-            "51 is already optimal; a second `include` would make it slower",
-            "Only the `customer` relation was eager-loaded, so `shippingAddress` is still lazily fetched per order (the leftover +50); add it to the same `include`/`with` so all relations load up front"
+            "The remaining 50 queries come from a missing index on the `orders.id` primary-key column",
+            "Dropping to 51 proves the ORM cache is now working; clearing that cache would restore 101",
+            "51 is already the optimal count; adding a second `include` here would only make it run slower",
+            "Only `customer` was eager-loaded, so `shippingAddress` stays lazy — add it to the include"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The original 101 was 1 + 50 (customer) + 50 (address). Eager-loading only `customer` collapses one of the two N-loops, leaving 1 + 50 = 51 from the still-lazy `shippingAddress` access. Including every accessed relation in the same query removes the remaining per-row round-trips.",
@@ -402,10 +402,10 @@
           "id": "db5-c",
           "question": "A hotfix needs a `refunded_at` column on `payments`. A teammate connects directly to the production database, runs `ALTER TABLE payments ADD COLUMN refunded_at timestamptz`, and ships the code. Weeks later, staging deploys start failing and a new developer's local setup breaks on the same missing column. What was the mistake, and what's the disciplined alternative?",
           "options": [
-            "Nothing was wrong — altering production first and backfilling other environments later is standard operating procedure",
-            "The change bypassed the migration system, so no versioned script exists to replay: production now silently disagrees with every other environment. The fix is expressing the change as a committed migration and applying it everywhere through the same pipeline",
-            "The column type was the mistake; `timestamptz` cannot be added to an existing table without downtime",
-            "Migrations only matter for destructive changes; additive columns are safe to apply by hand in any environment"
+            "Nothing was wrong — altering production first, then backfilling other environments later, is standard practice",
+            "The change bypassed migrations, so no versioned script exists to replay; commit one and run it everywhere",
+            "The column type was the real mistake; `timestamptz` can't be added to an existing table without downtime",
+            "Migrations only matter for destructive changes; an additive column is safe to apply by hand in any environment"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Migrations version the schema the way git versions code: every environment converges by replaying the same ordered scripts. A hand-run ALTER exists only in production's memory — staging, CI, and fresh local databases have no record of it, so they drift until something visibly breaks, usually far from the original change.",
@@ -421,10 +421,10 @@
           "id": "db5-d",
           "question": "An admin table renders `n` invoices with each customer's name. Metrics show query count tracking page size exactly: 26 queries when `n = 25`, 101 when `n = 100`. A teammate proposes doubling the connection pool and putting Redis in front of the customer lookups. What's the sharper diagnosis and fix?",
           "options": [
-            "Query count scaling as `1 + n` is the N+1 fingerprint — a lazy per-row relation fetch inside the render loop; declare the relation up front (`include`/`with`) so the ORM fetches invoices with their customers in one or two queries",
-            "Pool exhaustion is the root cause; doubling connections will bring the query count down",
-            "Redis is the right call — caching customer names eliminates the pattern rather than masking it",
-            "The per-invoice queries indicate a missing index on `customers.id` that the primary key doesn't cover"
+            "Query count scaling as `1 + n` is the N+1 fingerprint; declare the relation up front via include/with",
+            "Pool exhaustion is the root cause; doubling the connections will bring the per-page query count down",
+            "Redis is the right call here — caching customer names eliminates the pattern rather than masking it",
+            "The per-invoice queries indicate a missing index on `customers.id` that the table's primary key fails to cover"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The tell isn't any single number — it's the scaling law: one list query plus exactly one query per row rendered. That's a lazy relation access inside the loop. Pools and caches change how the extra queries are absorbed; eager loading is the only proposal that removes them.",

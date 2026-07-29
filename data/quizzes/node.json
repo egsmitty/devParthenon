@@ -16,10 +16,10 @@
           "id": "d1",
           "question": "An Express server handles one route that synchronously computes a huge report for 3 seconds. During those 3 seconds, what happens to other incoming requests?",
           "options": [
-            "They queue and wait — the single JS thread is busy, so the event loop can't dispatch anything until the computation finishes",
-            "Node automatically rejects them with 503 responses",
-            "They're handled fine because Express requests are isolated",
-            "Node spawns a thread per request, so they proceed normally"
+            "They queue and wait, since the busy JS thread dispatches nothing",
+            "Node automatically rejects every one of them with a 503 error response",
+            "They are all handled just fine because Express keeps each request isolated",
+            "Node quietly spawns one thread per request, so they all proceed normally"
           ],
           "correctAnswerIndex": 0,
           "rationale": "One thread runs all JavaScript. A 3-second synchronous computation blocks the event loop, so every other request — even trivial health checks — waits the full 3 seconds. Fixes: chunk the work, move it to a worker thread, or push it to a job queue.",
@@ -35,10 +35,10 @@
           "id": "d1-alt",
           "question": "Inside a request handler you write `Promise.resolve().then(() => log('A')); setTimeout(() => log('B'), 0); log('C');`. In what order do A, B, and C print?",
           "options": [
-            "A, B, C — queued callbacks always run before synchronous code",
-            "C, A, B — synchronous code runs first, then the microtask (resolved promise), then the macrotask (timer)",
-            "C, B, A — the timer was registered before the promise resolved, so B wins",
-            "A, C, B — the promise callback is hoisted ahead of the synchronous log"
+            "A, B, C — any queued callback always runs before the synchronous code does",
+            "C, A, B — synchronous first, then the promise microtask, then the timer",
+            "C, B, A — the timer was registered before the promise resolved, so B wins the tie",
+            "A, C, B — the resolved promise's callback is hoisted ahead of the synchronous log"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`log('C')` is synchronous and runs immediately while the stack is unwinding. When the stack empties, the event loop drains the microtask queue (the resolved promise's `.then`) before any macrotask, so A prints next. `setTimeout` schedules a macrotask, which runs last — giving C, A, B.",
@@ -54,10 +54,10 @@
           "id": "d1-c",
           "question": "Under a burst of logins, your `/healthz` endpoint starts timing out even though it only returns `{ ok: true }`. Profiling shows each login calls `bcrypt.hashSync` (~80ms of pure CPU). Why is the health check affected, and what's the right fix?",
           "options": [
-            "The health route shares the login route's connection pool; raising the pool size restores it",
-            "Each 80ms synchronous hash monopolizes the one JS thread, and queued logins stack those blocks back-to-back — the health check's callback can't be dispatched until the loop is free; switch to the async `bcrypt.hash` (or offload to a worker thread)",
-            "HTTP keep-alive is pinning the health check's socket behind login sockets; disabling keep-alive fixes it",
-            "Node prioritizes routes by registration order, so registering `/healthz` first restores it"
+            "The health route shares the login route's DB connection pool; enlarging that pool restores its response times entirely",
+            "Each 80ms hash monopolizes the JS thread and queued logins stack up, so the health callback waits; use async `bcrypt.hash`",
+            "HTTP keep-alive is pinning the health check's socket behind the login sockets; disabling keep-alive on the server fixes it",
+            "Node schedules routes by their registration order, so simply registering `/healthz` before the login route restores it fully"
           ],
           "correctAnswerIndex": 1,
           "rationale": "80ms of synchronous CPU doesn't sound like much, but under a login burst those blocks queue back-to-back on the single JS thread, and every other callback — including a trivial health check — waits behind the entire backlog. The async `bcrypt.hash` runs the hashing off the JS thread (libuv threadpool), keeping the loop free to dispatch other work; worker threads are the general answer for CPU-bound code.",
@@ -73,10 +73,10 @@
           "id": "d1-d",
           "question": "A handler runs: `setTimeout(() => log('T'), 0); (async () => { log('S'); await null; log('W'); })(); log('E');`. What prints, in order?",
           "options": [
-            "S, W, E, T — an async function runs to completion before control returns to the caller",
-            "E, S, W, T — async function bodies are deferred to the microtask queue from the start",
-            "S, E, W, T — the async body runs synchronously until the `await`, `E` finishes the stack, the post-`await` continuation runs as a microtask, and the timer macrotask goes last",
-            "S, E, T, W — the timer was queued before the `await`, so it fires before the continuation"
+            "S, W, E, T — the async function runs fully to completion before control returns to its caller",
+            "E, S, W, T — async function bodies are wholly deferred to the microtask queue right from the start",
+            "S, E, W, T — sync prefix runs, `E` ends the stack, the continuation is a microtask, timer last",
+            "S, E, T, W — the timer was queued before the `await` ran, so it fires before the continuation does"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Calling an async function executes its body synchronously up to the first `await` — so S prints during the call. `await null` suspends the function and control returns to the caller, which prints E. When the stack empties, the continuation (W) runs from the microtask queue before the loop services the timer queue, so T is last: S, E, W, T.",
@@ -103,10 +103,10 @@
           "id": "d2",
           "question": "getUser() takes ~200ms and getOrders() takes ~300ms; they don't depend on each other. `await getUser(); await getOrders();` takes ~500ms total. What change gets it to ~300ms?",
           "options": [
-            "Use process.nextTick to prioritize the calls",
-            "Wrap both awaits in a try/catch block",
-            "Start both promises first, then await together: `Promise.all([getUser(), getOrders()])`",
-            "Convert both functions to synchronous versions"
+            "Use `process.nextTick` to prioritize the two calls in the loop",
+            "Wrap both of the awaits together inside one try/catch block",
+            "Start both promises first, then await: `Promise.all([...])`",
+            "Convert both async functions to blocking synchronous versions"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Sequential awaits serialize independent I/O. Promise.all starts both immediately and resolves when the slowest settles — total time becomes max(200, 300) ≈ 300ms instead of the 500ms sum.",
@@ -122,10 +122,10 @@
           "id": "d2-alt",
           "question": "You fire five independent inventory lookups with `const results = await Promise.all(calls);`. One of the five services is down and its promise rejects. What does `results` end up being, and what's the fix if you need every store's status regardless?",
           "options": [
-            "`Promise.all` retries the failed call automatically, so `results` eventually fills in",
-            "`results` is an array of promises you must await individually afterward",
-            "`results` holds the four successes with `undefined` in the failed slot; no change needed",
-            "The whole `await` rejects and `results` is never assigned — swap to `Promise.allSettled` to collect every outcome, success or failure"
+            "`Promise.all` retries the failed call automatically, so `results` eventually fills in fully",
+            "`results` becomes an array of pending promises you must then await individually afterward",
+            "`results` holds the four successes with `undefined` sitting in the failed slot; no change needed",
+            "The whole `await` rejects and `results` is never assigned — swap to `Promise.allSettled`"
           ],
           "correctAnswerIndex": 3,
           "rationale": "`Promise.all` fails fast: the first rejection rejects the aggregate immediately, so the `await` throws and `results` is never bound — the four successes are discarded. When you need every result whether it succeeded or failed, `Promise.allSettled` resolves to an array of `{status, value|reason}` objects, one per input.",
@@ -141,10 +141,10 @@
           "id": "d2-c",
           "question": "`for (const id of skus) { prices.push(await fetchPrice(id)); }` over 10 independent SKUs at ~120ms each takes ~1.2s. Which rewrite brings it to ~120ms, and why?",
           "options": [
-            "`const prices = await Promise.all(skus.map((id) => fetchPrice(id)))` — the `map` fires all ten requests immediately, so the single await pays only the slowest call",
-            "Replace the `for...of` with `skus.forEach(async (id) => ...)` — the loop body then runs in parallel and `prices` is populated right after the loop",
-            "Move each iteration into `process.nextTick` so the fetches interleave between loop turns",
-            "Switch to `for await (const id of skus)` — `for await` makes any loop's iterations concurrent automatically"
+            "`await Promise.all(skus.map((id) => fetchPrice(id)))` — `map` fires all ten at once, so one await pays the slowest",
+            "Replace `for...of` with `skus.forEach(async (id) => ...)` — the body then runs in parallel and `prices` fills right after",
+            "Move each loop iteration into `process.nextTick` so that the pending fetches interleave between the loop's turns",
+            "Switch to `for await (const id of skus)` — `for await` makes any loop's iterations run concurrently and automatically"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The `await` inside the loop body means iteration N+1 can't even start its request until N's response arrives — ten sequential 120ms round-trips. Mapping to an array of promises starts all ten requests in the same tick; the one `await Promise.all` then resolves when the slowest settles, so total time collapses to roughly max instead of sum.",
@@ -160,10 +160,10 @@
           "id": "d2-d",
           "question": "You migrate a batch notifier from `Promise.all` to `Promise.allSettled` and keep the surrounding `try/catch` to log failures. Sends fail all week, but the `catch` block never fires and nothing is logged. What's happening?",
           "options": [
-            "`allSettled` swallows errors permanently; once it's in place, failures are unobservable",
-            "The `try/catch` is scoped wrong — moving it inside each promise callback restores the logging",
-            "The promise `Promise.allSettled` returns never rejects — failures arrive as fulfilled `{status: 'rejected', reason}` entries in the result array, so you must inspect each outcome (e.g., filter for `status === 'rejected'`) instead of relying on `catch`",
-            "`allSettled` retries failed promises until they succeed, so there are no failures left to log"
+            "`allSettled` permanently swallows the errors, so once it is in place every single failure becomes unobservable",
+            "The `try/catch` here is simply scoped wrong — moving it inside each individual promise callback restores the logging",
+            "The promise `allSettled` returns never rejects — failures arrive as `{status:'rejected'}` entries you inspect",
+            "`allSettled` quietly retries each of the failed promises until they eventually succeed, so no failures remain to log"
           ],
           "correctAnswerIndex": 2,
           "rationale": "`Promise.allSettled` fulfills unconditionally with one descriptor per input: `{status: 'fulfilled', value}` or `{status: 'rejected', reason}`. Since the aggregate never rejects, the `await` never throws, and a `try/catch` around it is dead code for per-item failures. Error handling must move from exception flow to data flow: iterate the results and act on the rejected entries.",
@@ -190,10 +190,10 @@
           "id": "d3",
           "question": "Which endpoint design best follows REST conventions for 'cancel order 42'?",
           "options": [
-            "POST /orders/42/cancel  (or PATCH /orders/42 with a status change)",
-            "DELETE /orders/cancel/42",
-            "PUT /cancel with the order id in the body",
-            "GET /cancelOrder?id=42"
+            "`POST /orders/42/cancel` (or `PATCH /orders/42` for status)",
+            "`DELETE /orders/cancel/42`, removing the cancelled order row",
+            "`PUT /cancel` carrying the order id down in the request body",
+            "`GET /cancelOrder?id=42`, passing the id as a query string"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Cancellation is a state transition on order 42, not a read and usually not a removal — the order record persists as 'cancelled'. Modeling it as a sub-action POST or a PATCH of the status field keeps the resource-oriented grammar while expressing a domain action.",
@@ -209,10 +209,10 @@
           "id": "d3-alt",
           "question": "A client submits the same `POST /payments` twice because the network dropped the first response. Which HTTP-method property is at stake, and which status code correctly signals a duplicate creation attempt on a resource that already exists?",
           "options": [
-            "`GET` is idempotent, so the fix is to change the endpoint to `GET /payments`",
-            "`POST` is not idempotent by default; guard it with a client-supplied idempotency key and return `409 Conflict` (or the original `201`) on the duplicate rather than creating a second payment",
-            "`POST` is idempotent, so a second identical `POST` is always safe and returns `200`",
-            "The correct response to any duplicate is `400 Bad Request` because the client sent the request twice"
+            "`GET` is idempotent, so the fix is simply to change this endpoint over to `GET /payments`",
+            "`POST` isn't idempotent; guard it with an idempotency key and return `409` on the duplicate",
+            "`POST` is idempotent, so any second identical `POST` is always safe and just returns a plain `200`",
+            "The correct response to any duplicate is `400 Bad Request`, since the client sent the request twice"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`POST` is neither safe nor idempotent — repeating it can create duplicate resources. The standard defense is an idempotency key the server records so a retry maps to the original operation, returning `409 Conflict` when the key collides with a different in-flight/completed create (or replaying the original `201`). This is exactly why `PUT` (idempotent) is preferred when the client controls the identifier.",
@@ -228,10 +228,10 @@
           "id": "d3-c",
           "question": "Your API needs 'deactivate account 7' — the account must remain readable afterward for audit and possible reactivation. Which design best fits REST conventions?",
           "options": [
-            "`DELETE /accounts/7` — deactivation is a removal, and clients can recreate the account later",
-            "`GET /accounts/deactivate/7` — reads are cache-friendly and the URL is self-describing",
-            "`PUT /deactivate` with `{ \"accountId\": 7 }` in the body",
-            "`POST /accounts/7/deactivation` (or `PATCH /accounts/7` setting `status: \"inactive\"`) — a state transition expressed on the resource itself"
+            "`DELETE /accounts/7` — deactivation is a removal, and clients can always recreate the account afterward",
+            "`GET /accounts/deactivate/7` — reads are cache-friendly here and this URL is nicely self-describing",
+            "`PUT /deactivate` with the payload `{ \"accountId\": 7 }` carried in the request body instead",
+            "`POST /accounts/7/deactivation` (or `PATCH /accounts/7` setting `status:\"inactive\"`) — a transition"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Deactivation changes an account's state without removing it — the record must stay addressable for audit, support, and reactivation. That rules out `DELETE` (semantic removal) and anything with side effects on `GET`. A sub-action `POST` or a `PATCH` of the status field expresses the domain transition while keeping resource-oriented URLs.",
@@ -247,10 +247,10 @@
           "id": "d3-d",
           "question": "An API gateway automatically re-sends any request that times out. Which endpoint below can it safely re-send without server-side deduplication, and what property makes that true?",
           "options": [
-            "`PUT /shipments/3f9a` with the full shipment body — `PUT` is idempotent: replaying a complete replacement at a client-chosen URL converges to the same final state",
-            "`POST /shipments` — creation endpoints are always replay-safe because the server assigns the ids",
-            "`PATCH /shipments/3f9a` with `{ \"op\": \"increment\", \"retries\": 1 }` — `PATCH` is idempotent by definition",
-            "None — no HTTP method may ever be retried, so the gateway feature must be disabled"
+            "`PUT /shipments/3f9a` with the full body — `PUT` is idempotent, so replaying a full replacement converges",
+            "`POST /shipments` — creation endpoints are always replay-safe here because the server assigns each of the ids",
+            "`PATCH /shipments/3f9a` with `{ \"op\":\"increment\", \"retries\":1 }` — a `PATCH` is idempotent by its definition",
+            "None — no HTTP method whatsoever may ever be safely retried, so the gateway's feature must be disabled"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Idempotency means N identical requests leave the server in the same state as one. A `PUT` of the full representation to a client-chosen URL has exactly that property — replaying it just rewrites the same bytes. A bare `POST` create mints a new resource per replay, and an increment-style `PATCH` compounds on every retry: both need deduplication (idempotency keys) before blind retries are safe.",
@@ -277,10 +277,10 @@
           "id": "d4",
           "question": "A developer registers routes first and the authentication middleware after them: `app.use('/api', routes); app.use(authMiddleware);`. What's the consequence?",
           "options": [
-            "Nothing — middleware order doesn't matter in Express",
-            "Express detects the mistake and reorders them at startup",
-            "The routes run before auth ever executes — every /api endpoint is effectively unauthenticated",
-            "The auth middleware runs twice per request"
+            "Nothing at all — middleware registration order doesn't matter in Express",
+            "Express detects the ordering mistake and quietly reorders them at startup",
+            "Routes run before auth executes, so each `/api` route is unauthenticated",
+            "The auth middleware ends up running twice on every single request instead here"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Middleware executes in registration order. A request matching /api hits the route handler, which sends a response — the chain never reaches authMiddleware. Order-dependent security is why auth registration belongs above the routes it protects.",
@@ -296,10 +296,10 @@
           "id": "d4-alt",
           "question": "An async route handler in Express 4 throws inside a rejected `await`, but the developer forgot to `catch` it. The four-argument error middleware is registered correctly at the end. Why does the client still hang instead of getting a clean 500?",
           "options": [
-            "Registering the error handler last is the bug; it must be registered first",
-            "Throwing inside `await` crashes the process instantly, so no response is possible",
-            "The error middleware needs five arguments to catch async errors",
-            "Express 4 does not automatically forward a rejected promise to the error handler — the rejection escapes the middleware chain, so `next(err)` is never called and the response is never sent"
+            "Registering the error handler last is itself the bug here; it has to be registered first instead",
+            "Throwing inside `await` crashes the whole process instantly, so no response can ever be sent back",
+            "The error middleware actually needs five arguments, not four, to catch these async errors properly",
+            "Express 4 won't forward a rejected promise to the error handler, so `next(err)` is never called"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Express 4 only routes errors to the `(err, req, res, next)` handler when you synchronously throw or explicitly call `next(err)`. An unhandled promise rejection in an async handler is invisible to that mechanism — nothing calls `next(err)`, no response is written, and the socket stays open until it times out. The fix is a try/catch that calls `next(err)` (or an async wrapper); Express 5 forwards rejections automatically.",
@@ -315,10 +315,10 @@
           "id": "d4-c",
           "question": "A teammate registers routes before the parsers: `app.use('/api', apiRoutes); app.use(express.json());`. POSTs to `/api` now misbehave. What do the route handlers actually observe, and why?",
           "options": [
-            "Express buffers each request until all registered middleware has run, so handlers still see parsed bodies",
-            "`req.body` is `undefined` in every handler — the router matches first, so the request reaches the handlers before any middleware has parsed the body stream",
-            "Express throws at startup because parsers must be registered before routers",
-            "Handlers receive the raw body as a string and must call `JSON.parse` themselves"
+            "Express buffers each request until every registered middleware has run, so the handlers still see parsed bodies",
+            "`req.body` is `undefined` in every handler — the router matches first, so requests arrive before parsing",
+            "Express throws an error at startup here because the parsers must always be registered ahead of any of the routers",
+            "Handlers instead receive the raw request body as a plain string and must call `JSON.parse` on it themselves"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Registration order is execution order. A POST to `/api` matches the router immediately, the handler runs, and `express.json()` — sitting later in the chain — never gets a chance to read and parse the stream. The handler sees `req.body === undefined`, and the failure is quiet: no error, just missing data, often surfacing as a confusing `TypeError` deep in business logic.",
@@ -334,10 +334,10 @@
           "id": "d4-d",
           "question": "Errors forwarded with `next(err)` skip your custom handler and fall through to Express's default HTML error page. The handler is registered last, after all routes: `app.use((err, req, res) => { res.status(500).json({ error: 'oops' }); });`. Why is it never invoked?",
           "options": [
-            "Express identifies error middleware purely by function arity — a three-parameter function is treated as ordinary middleware regardless of parameter names, so the error path skips it entirely; declare all four: `(err, req, res, next)`",
-            "`next(err)` can only reach handlers registered before the route that raised the error",
-            "Custom JSON error responses require replacing Express's default handler via `app.set`",
-            "The handler must call `next()` once without arguments before it becomes eligible to receive errors"
+            "Express identifies error middleware purely by arity, so a three-parameter function counts as ordinary middleware; declare all four",
+            "`next(err)` can only ever reach the handlers that were registered before the route which actually raised the error itself here",
+            "Custom JSON error responses always require fully replacing Express's built-in default error handler through an explicit `app.set` call",
+            "The handler must first call `next()` once with no arguments at all before it ever becomes eligible to receive any of the errors"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Express inspects `fn.length` — the declared parameter count — to classify middleware. Exactly four parameters marks an error handler; anything else is regular middleware, which the error-dispatch path skips entirely. Parameter names are irrelevant, so `(err, req, res)` silently registers as a normal three-argument middleware and errors sail past it to the default handler.",
@@ -364,10 +364,10 @@
           "id": "d5",
           "question": "A payment provider call occasionally hangs for minutes. The team adds an aggressive automatic retry (3 attempts, no backoff, no idempotency key). What's the biggest risk?",
           "options": [
-            "Duplicate charges: a 'hung' request may have actually succeeded server-side, and non-idempotent retries repeat it — while synchronized retry bursts hammer a struggling upstream",
-            "The TypeScript compiler will flag the retry loop as unsafe",
-            "Retrying is impossible with async/await",
-            "The retries consume too much memory on the client"
+            "Duplicate charges: a hung request may have succeeded already, so non-idempotent retries repeat it",
+            "The TypeScript compiler will statically flag the whole retry loop here as being unsafe at build time",
+            "Retrying an operation is essentially impossible when you are using async/await syntax here",
+            "The three retries end up consuming far too much heap memory on the client machine itself"
           ],
           "correctAnswerIndex": 0,
           "rationale": "A timeout tells you the response didn't arrive — not that the operation didn't happen. Retrying a possibly-succeeded charge without an idempotency key risks charging twice. Backoff with jitter matters too: immediate uniform retries pile onto an already-degraded service.",
@@ -383,10 +383,10 @@
           "id": "d5-alt",
           "question": "A service fronts a flaky third-party API. Under load, a spike of failures triggers thousands of simultaneous retries that all fire again at the exact same interval, repeatedly knocking the recovering upstream back down. Backoff is already in place. What's missing?",
           "options": [
-            "Nothing — synchronized retries are the correct behavior; the upstream should just scale",
-            "Jitter: adding randomness to each backoff delay so retries spread out instead of aligning into synchronized 'thundering herd' waves — and a circuit breaker to stop retrying a known-down upstream entirely",
-            "The retry count is too low; raising it to 10 attempts will push through the outage",
-            "Switching from exponential to linear backoff will fix the alignment"
+            "Nothing at all — synchronized retries are the correct behavior here; the upstream should simply scale up itself",
+            "Jitter: randomize each backoff delay so retries spread out instead of aligning into thundering-herd waves",
+            "The retry count is far too low here; raising it up to 10 attempts will reliably push through the whole outage",
+            "Switching over from exponential backoff to plain linear backoff will fix the retry alignment problem here"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Fixed exponential backoff makes every failed caller wait the same computed delay, so they all retry in lockstep — a self-inflicted thundering herd that prevents recovery. Randomized jitter decorrelates the retries across time, and a circuit breaker trips after sustained failure to stop hammering the upstream and fail fast until it's healthy again.",
@@ -402,10 +402,10 @@
           "id": "d5-c",
           "question": "Your checkout service calls a shipping-rates API with idempotent retries and jittered exponential backoff — yet during an upstream incident, in-flight requests pile up for minutes and the Node process exhausts its sockets. Which safeguard is missing?",
           "options": [
-            "A higher retry cap, so requests eventually punch through the incident",
-            "`Promise.race` against a `setInterval` that polls the upstream until it responds",
-            "A per-attempt timeout (`AbortController` + `signal`) — retries and backoff only govern what happens *after* a failure; nothing yet bounds how long a single hung attempt may wait, so hung sockets accumulate indefinitely",
-            "Moving the calls into a worker thread so hung requests only block the worker"
+            "A higher retry cap, so that the piled-up requests eventually punch their way through the whole incident",
+            "A `Promise.race` against a `setInterval` that keeps polling the upstream repeatedly over and over until it finally responds",
+            "A per-attempt timeout (`AbortController` + `signal`) — retries only act after a failure, so nothing bounds a hung attempt",
+            "Moving all of the calls into a worker thread so that the hung requests will then only block that one worker"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Retry logic activates on failure — but a hung socket isn't a failure yet; it's an attempt that never resolves. Without a timeout, 'slow' never converts into 'failed', so backoff and retries sit idle while open connections accumulate and starve the process. An `AbortController` deadline per attempt turns hangs into prompt errors that the (already correct) retry machinery can handle.",
@@ -421,10 +421,10 @@
           "id": "d5-d",
           "question": "To make payment retries safe, a developer generates a fresh UUID idempotency key inside the retry loop — a new key per attempt. Retries 'work', but duplicate charges still appear after timeouts. What's the flaw?",
           "options": [
-            "UUIDs can collide under load, so two customers occasionally share a key",
-            "Idempotency keys only function over connections that support HTTP/2",
-            "The key should be derived from the card number so the server can match customers",
-            "The key must be held constant across every retry of one logical operation — a fresh key per attempt makes each retry look like a brand-new payment, so the server's deduplication never matches and a possibly-succeeded charge is executed again"
+            "UUIDs can quietly collide under heavy load, so two different customers occasionally end up sharing one key",
+            "Idempotency keys only ever function correctly over network connections that happen to support HTTP/2",
+            "The key should instead be derived from the card number itself so that the server can match up customers",
+            "The key must stay constant across every retry of one operation; a new key per attempt defeats dedup"
           ],
           "correctAnswerIndex": 3,
           "rationale": "An idempotency key identifies the logical operation, not the network attempt. The server dedupes by recording the key with the outcome; a retry bearing the same key replays the recorded result instead of re-executing. Regenerating the key per attempt severs that link — after a timeout (where the charge may have succeeded server-side), the retry arrives with an unknown key and is processed as a second, distinct payment.",

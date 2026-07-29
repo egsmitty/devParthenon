@@ -16,10 +16,10 @@
           "id": "g1",
           "question": "What actually happens when you run `git branch feature-x`?",
           "options": [
-            "A new label is created pointing at the current commit — nothing is copied",
-            "All uncommitted changes move to the new branch automatically",
-            "A remote branch is created on origin",
-            "The entire project is copied into a new directory for the branch"
+            "A new label is created that points at the current commit",
+            "Every uncommitted change is moved onto the new branch for you",
+            "A matching remote branch is created up on the origin server",
+            "The whole project is copied into a fresh directory per branch"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Branches are ~40-byte pointers into the commit graph. That's why branching in git is instant and why workflows built on many short-lived branches are practical — there is no duplication to pay for.",
@@ -35,10 +35,10 @@
           "id": "g1-alt",
           "question": "You're on `main` with two files edited but not yet committed. You run `git checkout -b hotfix` and then `git commit -am 'patch'`. Where did that new commit land, and what happened to `main`?",
           "options": [
-            "The commit landed on `main`, and `hotfix` is an empty copy waiting for its first change",
-            "The commit landed on `hotfix`; `main` still points at the commit it did before, now one behind",
-            "Both `main` and `hotfix` advanced to the new commit, since they started from the same place",
-            "The edits were lost during checkout because they weren't committed before switching branches"
+            "It landed on `main`, and `hotfix` is an empty copy awaiting its first change",
+            "It landed on `hotfix`; `main` still points where it did, one commit behind",
+            "Both `main` and `hotfix` advanced, since they started from the same commit",
+            "The edits were dropped during checkout, having not been committed first"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`checkout -b hotfix` created a label at the same commit as `main` and moved HEAD onto it, carrying the uncommitted edits along. The commit advances only the branch HEAD points at — `hotfix` — while `main` stays frozen at the older commit. Branches diverge precisely because a commit moves one pointer, not all of them.",
@@ -54,10 +54,10 @@
           "id": "g1-c",
           "question": "`main` and `experiment` both point at commit `abc123`. You run `git branch -d experiment`. What did git actually remove?",
           "options": [
-            "Commit `abc123` and its snapshot, since a branch owns the commits made on it",
-            "The working-directory files that were created while `experiment` was checked out",
-            "Only the tiny `experiment` label itself — `abc123` and every ancestor remain fully reachable through `main`",
-            "The reflog entries for `experiment`, making the deletion impossible to undo"
+            "Commit `abc123` and its snapshot, since a branch owns its own commits",
+            "The working-directory files that were created while on `experiment`",
+            "Only the `experiment` label — `abc123` stays reachable through `main`",
+            "The reflog entries for `experiment`, making the deletion irreversible"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Branches don't own commits — commits live in the shared object store and a branch is merely a ~40-byte pointer into that graph. Deleting `experiment` deletes the pointer and nothing else; since `main` still references `abc123`, the history is untouched. That's why `-d` is instant and why git only warns (`-D`) when deletion would leave commits unreachable.",
@@ -74,9 +74,9 @@
           "question": "You run `git switch -c release/v2` from the tip of `main`, then immediately run `git log` on the new branch. It shows the project's entire history. Where is that history stored for `release/v2`?",
           "options": [
             "Git copied the commit history into a per-branch log file at creation time",
-            "Nowhere new — `release/v2` points at the same commit as `main`, and `git log` simply walks the parent chain backwards from that one pointer",
-            "In the staging area, which snapshots the full history whenever a branch is created",
-            "On the remote — `git log` queries origin to reconstruct the new branch's history"
+            "Nowhere new — the ref shares `main`'s commit and `git log` walks its parents",
+            "In the staging area, which snapshots full history whenever a branch is made",
+            "On the remote — `git log` queries origin to rebuild the new branch's history"
           ],
           "correctAnswerIndex": 1,
           "rationale": "History in git is the chain of parent pointers hanging off whatever commit a ref names. A new branch adds exactly one label; `git log` starts at that commit and follows parents backwards, so the 'branch history' is just the reachable ancestry — shared, not duplicated. This is the structural reason branching is free.",
@@ -103,10 +103,10 @@
           "id": "g2",
           "question": "A teammate rebased the shared `develop` branch and force-pushed it. Everyone's local `develop` now 'has diverged'. What did the rebase do that caused this?",
           "options": [
-            "Nothing — divergence warnings are cosmetic and safe to ignore",
-            "It deleted everyone's commits from the server permanently",
-            "It rewrote the branch's commits as new commits with new hashes, so every clone's history no longer matches the remote's",
-            "It merged develop into every open feature branch"
+            "Nothing real — divergence warnings are purely cosmetic and safe to ignore here",
+            "It permanently deleted everyone's existing commits from the origin server itself",
+            "It rewrote the commits with new hashes, so no clone matches the remote",
+            "It merged the `develop` branch into every open feature branch at once"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Rebase creates replacement commits; force-push made the remote point at the rewritten line. Every local clone still holds the old line, so git correctly reports divergence — and anyone who naively merges the two lines resurrects zombie duplicate commits. This is precisely why shared branches are rebase-forbidden.",
@@ -122,10 +122,10 @@
           "id": "g2-alt",
           "question": "Your feature branch is 6 commits ahead of `main`, all still local and unpushed. `main` moved ahead with 3 new commits. You want your feature to sit cleanly on top of the latest `main` with no merge commit. Which is safe and appropriate here — and why?",
           "options": [
-            "Nothing is safe here; any history operation on a branch behind `main` risks corrupting the shared repo",
-            "`git rebase main` but only after force-pushing the feature branch first so the remote is authoritative",
-            "`git merge main` into the feature branch, because merging is always the safer default",
-            "`git rebase main` on your feature branch, because the commits are private and unshared, so rewriting their hashes harms no one"
+            "Nothing here is safe; any history op on a branch behind `main` risks corrupting the shared repo",
+            "`git rebase main`, but only after force-pushing the feature branch first so the remote leads it",
+            "`git merge main` into the feature branch, because merging is always the safer default choice here",
+            "`git rebase main` on the feature branch — its commits are private, so rewriting hashes is safe"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The golden rule forbids rebasing *shared* history — commits others may have built on. These 6 commits are local and unpushed, so nobody else has them; rewriting their hashes onto the new `main` tip is exactly the sanctioned use of rebase, giving the straight-line history you asked for with zero merge commit.",
@@ -141,10 +141,10 @@
           "id": "g2-c",
           "question": "`feat/search` is pushed to origin, but you are its only author and nobody has based work on it. After `git rebase main`, your `git push` is rejected as 'non-fast-forward'. Why, and what's the accepted move?",
           "options": [
-            "The rebase minted new hashes, so your local line no longer descends from the remote tip; on a single-author feature branch, `git push --force-with-lease` is the accepted way to publish the rewrite",
-            "The rejection means the rebase corrupted the branch — reset to `origin/feat/search` and redo the work on top of it",
-            "Run `git pull` first to merge the remote copy back in; merging is always preferable to any form of force-push",
-            "Rebasing any pushed branch violates the golden rule outright, so the only fix is to undo the rebase entirely"
+            "New hashes mean your line no longer descends from the remote tip; on a solo branch `--force-with-lease` publishes it",
+            "The rejection means the rebase corrupted the branch — reset back to `origin/feat/search` and redo all the work on top of it again",
+            "Run `git pull` first to merge the remote copy back in, since merging is always preferable to any form of force-pushing",
+            "Rebasing any pushed branch breaks the golden rule outright, so the one real fix is to undo the entire rebase completely"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Rebase replaced your commits with new-hash equivalents, so the remote tip is no longer an ancestor of your local tip — git correctly refuses a plain push. The golden rule targets history *others have built on*; a personal feature branch nobody consumes is fair game, and `--force-with-lease` publishes the rewrite while refusing to clobber the remote if someone pushed there in the meantime.",
@@ -160,10 +160,10 @@
           "id": "g2-d",
           "question": "An upstream maintainer rebased and force-pushed `release`. A teammate ran a default `git pull` on their local `release`, and `git log` now shows nearly every commit twice under different hashes. What produced the duplicates?",
           "options": [
-            "A network interruption during the pull re-downloaded the same commits a second time",
-            "Force-push uploads a fresh copy of each commit alongside the originals on the server",
-            "The teammate's reflog leaked into branch history when the pull replayed it",
-            "The default pull merged the old pre-rebase line with the rewritten line — the replayed commits carry new hashes, so git treats each original/rewrite pair as two distinct commits"
+            "A network interruption mid-pull re-downloaded the same set of commits a second time",
+            "Force-push uploads a fresh copy of each commit right alongside the originals on the server",
+            "The teammate's reflog leaked into the branch history when the default pull replayed it back",
+            "The default pull merged the stale line with the rewritten one, and new hashes doubled each"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Rebase produces replacement commits with identical changes but new hashes. A default `git pull` is fetch + merge, so it stitched the teammate's stale line to the rewritten remote line — and since git identifies commits by hash, every original/replacement pair now coexists in the graph. Recovery is `git reset --hard origin/release` (after saving local work); prevention is never rewriting shared branches.",
@@ -190,10 +190,10 @@
           "id": "g3",
           "question": "A test for 'trial expires after 14 days' calls the real `Date.now()` and started failing this week — the fixture data aged past the window. What's the durable fix?",
           "options": [
-            "Control time in the test (fake timers / inject a clock), making the test deterministic regardless of the real date",
-            "Widen the assertion to accept both outcomes",
-            "Delete the test since expiry logic is simple",
-            "Regenerate the fixture data every couple of weeks"
+            "Control time with fake timers or an injected clock to fix the date",
+            "Widen the assertion so it accepts either the expired or valid outcome",
+            "Delete the test, since the expiry logic here is really quite simple",
+            "Regenerate the fixture data on a set schedule every couple of weeks"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The test depends on wall-clock time — a hidden input that changes daily. Faking time (`vi.useFakeTimers()` + `vi.setSystemTime(...)`) or injecting a clock pins that input, so the test verifies the 14-day rule forever, not just for two weeks after someone refreshes fixtures.",
@@ -209,10 +209,10 @@
           "id": "g3-alt",
           "question": "A test asserts `describe('cart', () => { it('applies a random 5–15% loyalty discount', ...) })` by calling the real `Math.random()` and checking the total is within range. It passes ~99% of runs but fails intermittently in CI with no code change. What's the correct fix?",
           "options": [
-            "Add a retry so the test re-runs up to three times before it's marked failed",
-            "Mock the randomness boundary (e.g. `vi.spyOn(Math, 'random').mockReturnValue(0.5)`) so the discount is a fixed, asserted value",
-            "Loosen the range check to 0–100% so the assertion can never fail",
-            "Move the test to run only locally, never in CI, since CI machines behave differently"
+            "Add a retry so the test re-runs up to three times before it is marked failed",
+            "Mock randomness with `vi.spyOn(Math, 'random').mockReturnValue(0.5)` to fix it",
+            "Loosen the range check to accept 0–100% so the assertion can never fail at all",
+            "Run the test only on the local machine, never in CI, since CI boxes differ here"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The flake is nondeterminism from real randomness — a hidden input that varies each run, occasionally landing on a boundary the assertion mishandles. Stubbing `Math.random()` to a fixed value pins the input so the same computation runs every time, turning an intermittent test into a deterministic one that actually verifies the discount formula.",
@@ -228,10 +228,10 @@
           "id": "g3-c",
           "question": "A Vitest suite for a currency formatter calls the real `fetch('https://api.rates.example/latest')` to get exchange rates. It fails whenever the API is slow, rate-limits CI, or the rates drift from the asserted values. What's the durable fix?",
           "options": [
-            "Raise the test timeout to 30 seconds so slow API responses stop failing the suite",
-            "Loosen the assertion to 'result is a non-empty string', since live rates can't be predicted",
-            "Schedule the suite to run overnight when the API is under less load",
-            "Mock the network boundary (`vi.mock` / a stubbed `fetch`) so the formatter runs against fixed response data and produces the same output every run"
+            "Raise the test timeout to 30 seconds so slow API responses stop failing runs",
+            "Loosen the assertion to 'result is a non-empty string', as live rates vary",
+            "Schedule the suite to run overnight, when the rates API is under less load",
+            "Mock the network with `vi.mock` or a stubbed `fetch` so responses are fixed"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The test smuggles in three hidden inputs — latency, availability, and live data — none of which the formatter logic controls. Stubbing the fetch pins the response, so the unit test verifies formatting deterministically; whether the real API honors its contract is a separate, explicitly-marked integration concern, not something every unit run should gamble on.",
@@ -247,10 +247,10 @@
           "id": "g3-d",
           "question": "`saveDraft` debounces calls by 300ms. Its test invokes it, then does `await new Promise(r => setTimeout(r, 350))` before asserting the save fired once. It adds real wall-time to every run and still flakes on loaded CI machines. What's the right approach?",
           "options": [
-            "`vi.useFakeTimers()` then `vi.advanceTimersByTime(300)` — the test drives virtual time explicitly, runs instantly, and can't lose a race with the scheduler",
-            "Raise the real wait to 1000ms so even a heavily loaded CI machine has enough slack",
-            "Change the app's debounce to 0ms so the test doesn't need to wait at all",
-            "Assert the save fired 'zero or one times' so scheduler jitter can never fail the test"
+            "`vi.useFakeTimers()` then `vi.advanceTimersByTime(300)` to drive time and skip the race",
+            "Raise the real wait up to 1000ms so even a heavily loaded CI machine has ample slack here",
+            "Change the app's debounce down to 0ms so this test does not have to wait around at all now",
+            "Assert the save fired 'zero or one times' so scheduler jitter can never fail this test"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Sleeping real time makes the test both slow and probabilistic — 350ms is a bet that the event loop stays under 50ms of jitter, a bet loaded CI machines lose. Fake timers replace the clock with one the test owns: `advanceTimersByTime(300)` fires the debounce synchronously and exactly, so the test is instant and cannot race.",
@@ -277,10 +277,10 @@
           "id": "g4",
           "question": "Why does Playwright's own documentation push `getByRole('button', { name: 'Submit' })` over `page.locator('#app > div.form > button:nth-child(3)')`?",
           "options": [
-            "nth-child is not supported inside locator()",
-            "Role selectors execute significantly faster in the browser",
-            "Role/name selectors track what users (and assistive tech) perceive, so they survive DOM refactors and implicitly verify accessibility",
-            "CSS selectors are deprecated in modern Playwright"
+            "The `nth-child` pseudo-class is not supported inside `locator()` at all",
+            "Role selectors execute significantly faster inside the browser at runtime",
+            "Role/name selectors track what users perceive, so they survive refactors",
+            "Plain CSS selectors are now formally deprecated in modern Playwright APIs"
           ],
           "correctAnswerIndex": 2,
           "rationale": "The structural selector encodes today's DOM shape — one wrapper div added and the test lies about the app being broken. The role selector encodes intent ('the button a user knows as Submit'), which changes only when the actual UX changes — and it fails if the button loses its accessible name, catching a11y regressions for free.",
@@ -296,10 +296,10 @@
           "id": "g4-alt",
           "question": "A test does `await page.waitForTimeout(3000)` then clicks a 'Checkout' button that appears after an async cart load. It passes locally but fails ~10% of the time in CI, where the machine is slower. What's the idiomatic Playwright fix?",
           "options": [
-            "Wrap the click in a try/catch and retry it in a loop until it succeeds",
-            "Disable the test in CI and run it only on the faster local machine",
-            "Bump the timeout to `waitForTimeout(8000)` to give the slow CI box more headroom",
-            "Replace the fixed sleep with an auto-waiting assertion/locator like `await page.getByRole('button', { name: 'Checkout' }).click()`, which retries until the element is actionable"
+            "Wrap the click in a try/catch and retry it inside a loop until it finally succeeds",
+            "Disable the test in CI entirely and run it only on the faster local developer machine",
+            "Bump the delay up to `waitForTimeout(8000)` to give the slower CI box far more headroom",
+            "Replace the sleep with auto-waiting `getByRole('button', { name: 'Checkout' }).click()`"
           ],
           "correctAnswerIndex": 3,
           "rationale": "A hardcoded `waitForTimeout` guesses at how long the async load takes — too short and it flakes on slow CI, too long and it wastes time. Playwright's locators and web-first assertions auto-wait and retry until the element is present and actionable, so the test synchronizes on the actual condition instead of a fragile fixed delay. That's the mechanism that kills sleep-based flakiness.",
@@ -315,10 +315,10 @@
           "id": "g4-c",
           "question": "During a Tailwind migration a designer renames utility classes, and the E2E test using `page.locator('div.account-panel .btn-danger')` for the 'Close account' flow goes red — while the feature works perfectly in a real browser. What should replace the selector?",
           "options": [
-            "A longer XPath anchored on the panel's exact position in the DOM tree, which is more precise than class names",
-            "`getByRole('button', { name: 'Close account' })` — it targets what the user perceives, so it survives styling refactors and fails only when the actual UX or its accessible name breaks",
-            "A `data-style` attribute mirroring the old class names so the existing selector keeps matching",
-            "A pixel screenshot comparison of the button, since visual diffs can't be broken by class renames"
+            "A longer XPath anchored on the panel's exact position in the DOM, being more precise than classes",
+            "`getByRole('button', { name: 'Close account' })` — targeting the user's view survives restyles",
+            "A `data-style` attribute mirroring the old class names so the existing selector keeps matching well",
+            "A pixel screenshot comparison of the button, since visual diffs can't break on a class rename"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The test just produced a false alarm: it failed while the product worked, because it encoded a styling detail users never see. A role + accessible-name locator encodes intent — 'the button a user knows as Close account' — so cosmetic refactors pass silently, and a failure now means something real: the control vanished or lost its accessible name, which is itself an a11y regression worth catching.",
@@ -334,10 +334,10 @@
           "id": "g4-d",
           "question": "After clicking 'Apply coupon', a test immediately reads the price: `const text = await page.locator('.total').textContent(); expect(text).toBe('$36.00');`. It fails whenever the recalculation request is slow. Why, and what's the idiomatic fix?",
           "options": [
-            "`textContent()` is deprecated; switching to `innerText()` makes Playwright wait for network idle first",
-            "Insert `await page.waitForTimeout(2000)` before the read so the request has time to finish",
-            "The one-shot read races the async update — a web-first assertion like `await expect(page.locator('.total')).toHaveText('$36.00')` re-queries and retries until it passes or times out",
-            "Wrap the `expect` in a manual polling loop that re-reads the text every 100ms until it matches"
+            "`textContent()` is deprecated; using `innerText()` makes Playwright wait for network idle first here",
+            "Insert `await page.waitForTimeout(2000)` before the read so the slow request has time to fully finish",
+            "The one-shot read races the update; `expect(page.locator('.total')).toHaveText('$36.00')` retries",
+            "Wrap the `expect` inside a manual polling loop that re-reads the text every 100ms until it matches"
           ],
           "correctAnswerIndex": 2,
           "rationale": "The moment you extract a value with `textContent()` and hand it to a plain `expect`, you've left Playwright's retry machinery — the assertion checks a stale snapshot taken before the recalculation landed. `expect(locator).toHaveText(...)` keeps the locator live: it re-reads the DOM on each retry until the condition holds, synchronizing on the actual outcome rather than a guess about timing.",
@@ -364,10 +364,10 @@
           "id": "g5",
           "question": "A PR's pipeline runs: lint → unit tests → E2E tests → build. E2E is the slowest stage. Why do lint and unit tests run first?",
           "options": [
-            "Fail fast: cheap checks catch most failures in seconds, so broken pushes don't burn 20 minutes of E2E before reporting the lint error",
-            "E2E tests can only run after a deployment to production",
-            "Lint must pass before code will compile at all",
-            "Alphabetical ordering of pipeline stages"
+            "Fail fast: cheap checks catch most failures in seconds, before E2E runs",
+            "E2E tests can only be run after a full deployment out to the production env now",
+            "Lint has to pass before the project's code will compile successfully at all",
+            "The pipeline simply runs its stages in plain alphabetical name order here"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Pipeline ordering is economics: fastest-and-most-likely-to-fail first. A typo that lint catches in 10 seconds shouldn't cost a full E2E run to discover. Same total coverage, radically better feedback latency for the common failure cases.",
@@ -383,10 +383,10 @@
           "id": "g5-alt",
           "question": "Your team's `main` branch pipeline goes red: a merged commit broke the build. A developer opens a fresh PR to add an unrelated new feature and asks to merge it 'since it's green on its own branch'. What does a healthy CI/CD culture do first?",
           "options": [
-            "Merge the new feature — it's green in isolation, and unrelated to the breakage",
-            "Stop the line: fixing or reverting the broken `main` outranks new work, because everyone branches from `main` and builds on the breakage",
-            "Disable the failing check on `main` so the pipeline goes green and work can continue",
-            "Wait a day to see if the failure resolves itself before taking any action"
+            "Merge the new feature, since it's green on its own branch and unrelated to the break",
+            "Stop the line: fixing or reverting broken `main` outranks new work everyone builds on",
+            "Disable the failing check on `main` so the pipeline goes green and the work continues",
+            "Wait a full day to see whether the failure quietly resolves itself before acting at all"
           ],
           "correctAnswerIndex": 1,
           "rationale": "A red `main` is a stop-the-line event. Everyone cuts new branches from `main` and merges back into it, so a broken `main` poisons every downstream branch and hides which failures are new. Restoring green — by fixing forward or reverting the offending commit — takes priority over any new feature, however clean that feature looks in isolation.",
@@ -402,10 +402,10 @@
           "id": "g5-c",
           "question": "A team inherited a pipeline that runs stages in this order: E2E suite (25 min) → build → unit tests → type-check → lint. Developers routinely wait half an hour to learn they missed a semicolon. What's the highest-leverage restructure?",
           "options": [
-            "Cache the E2E browser binaries so the 25-minute stage starts a little sooner",
-            "Drop the lint and type-check stages entirely — a passing E2E suite already proves the app works",
-            "Collapse everything into one giant job so at least all failures arrive in a single report",
-            "Invert to cost order — lint and type-check in seconds, then unit tests, then build, then E2E — so the cheap checks that catch most failures report first"
+            "Cache the E2E browser binaries so the 25-minute first stage begins a little bit sooner overall",
+            "Drop the lint and the type-check stages, since a passing E2E suite already proves the app works",
+            "Collapse everything into one single giant job so that at least all failures land in one report",
+            "Invert to cost order — lint, type-check, unit, build, E2E — so cheap checks report first"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The pipeline's coverage is fine; its *ordering* is economically backwards. Most failures are cheap ones — syntax, types, broken units — and this layout taxes every one of them with a 25-minute E2E toll before reporting. Reordering costs nothing, keeps identical total coverage, and collapses time-to-feedback for the common case from ~30 minutes to seconds.",
@@ -421,10 +421,10 @@
           "id": "g5-d",
           "question": "One E2E test on `main` fails roughly one run in five. The team's habit is clicking 're-run jobs' until it goes green, and a dev proposes marking the whole E2E suite non-required 'since it's basically noise'. What does a healthy CI culture do instead?",
           "options": [
-            "Treat the flake as a defect: root-cause or quarantine that one test with a tracked ticket, and keep the suite required — a check people re-run until green has stopped gating anything",
-            "Accept the proposal — non-required checks still show red, so anyone who cares can inspect them",
-            "Configure the workflow to auto-retry every E2E job three times so humans stop clicking the button",
-            "Move the E2E suite to a nightly schedule where its flakiness can't block anyone's merge"
+            "Treat the flake as a defect: quarantine that one test under a ticket and keep the suite required",
+            "Accept the proposal, since non-required checks still show red for anyone who cares to inspect them",
+            "Configure the workflow to auto-retry every E2E job three times so people stop clicking the button",
+            "Move the E2E suite onto a nightly schedule where its flakiness can't block anyone's merge to `main`"
           ],
           "correctAnswerIndex": 0,
           "rationale": "A CI gate is only worth what the team believes it means. 'Re-run until green' trains everyone to treat red as noise, which is exactly the state in which a real regression sails through on its second attempt. The fix is surgical: diagnose or quarantine the single flaky test under a tracked issue so the remaining suite stays trustworthy and required — preserving the gate instead of dismantling it.",

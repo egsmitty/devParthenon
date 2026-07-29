@@ -16,10 +16,10 @@
           "id": "c1",
           "question": "Which portfolio signals the most to a hiring manager reviewing 50 candidates in an afternoon?",
           "options": [
-            "One deployed full-stack app with auth, a database, tests, and a README explaining the architecture decisions — plus source they can skim",
-            "A repository with 2,000 GitHub stars forked from a popular project",
-            "A private repo described verbally as very impressive",
-            "Eight repositories of completed tutorial projects, none deployed"
+            "One deployed full-stack app with auth, a database, tests, and a README that documents the decisions",
+            "A public repository with 2,000 GitHub stars, forked from a well-known popular open-source project",
+            "A private repo the candidate describes verbally as very impressive but nobody outside can actually open",
+            "Eight separate repositories of finished tutorial-course projects, competently done but none of them deployed"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Reviewers spend minutes, not hours. A live URL proves you can ship; the README proves you can communicate; tests and auth prove engineering maturity; and everything in it becomes interview material you control. Depth on one project beats breadth on many.",
@@ -35,10 +35,10 @@
           "id": "c1-alt",
           "question": "A bootcamp grad asks you to review two versions of their portfolio before applications. Version A is a single expense-tracker: deployed at a URL, with login, a Postgres backend, Stripe test payments, a handful of `Jest` tests, and a README documenting why they chose each tool. Version B is twelve repositories — clones of Twitter, Netflix, Spotify, and others — each following a well-known YouTube course, none deployed, all with default `create-react-app` READMEs. Which do you tell them leads with, and why?",
           "options": [
-            "Version B, because twelve projects demonstrate more breadth and stamina than a single app",
-            "Version A, because a live URL plus payments, tests, and documented reasoning is depth a reviewer can verify in minutes — and every part of it seeds interview conversation",
-            "Version B, because recognizable app clones prove they can rebuild real products",
-            "Neither leads; tell them to combine all thirteen into one mega-repo so nothing is wasted"
+            "Version B, because twelve finished projects demonstrate more breadth and more sustained stamina than one single app does",
+            "Version A, because a live URL plus payments, tests, and documented reasoning is depth a reviewer can verify in minutes",
+            "Version B, because clones of instantly recognizable products prove that they can rebuild real, complex applications from scratch",
+            "Neither leads; tell them to merge all thirteen repositories into one giant mono-repo so that no prior work is wasted"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Reviewers reward verifiable depth over volume. Version A ships, handles money and auth, has tests, and hands the reviewer a written rationale — each of which is a follow-up question the candidate already scripted answers for. Twelve un-deployed course clones signal instruction-following, not decision-making, and none can be confirmed to actually run.",
@@ -54,10 +54,10 @@
           "id": "c1-c",
           "question": "You have a deployed recipe-manager app — CRUD, login, Postgres — and exactly two weeks before you start applying. Which use of that time most improves your odds of getting interviews?",
           "options": [
-            "Start a second project in a different domain — a chat app — so the portfolio shows range",
-            "Port the recipe app to a trendier framework to demonstrate adaptability",
-            "Add one genuinely hard feature to the existing app — full-text ingredient search, or image uploads with server-side processing — and document the design decisions in the README",
-            "Polish the visual design and add page-transition animations, since first impressions decide screening"
+            "Begin a second project in a different domain — a real-time chat app — so that the portfolio visibly shows range",
+            "Port the recipe app onto a trendier newer framework, rewriting the same features to demonstrate your adaptability",
+            "Add one genuinely hard feature — full-text ingredient search or server-processed image uploads — and document its design",
+            "Polish the visual design and add smooth page-transition animations, since first impressions largely decide the screening"
           ],
           "correctAnswerIndex": 2,
           "rationale": "The CRUD-plus-auth baseline is already proven; what the portfolio lacks is the hard feature that generates interview conversation. Two weeks spent deep on one real capability — and writing down why you built it that way — compounds into material you control in the room. A second shallow app or a framework port adds surface area without adding a single defensible decision.",
@@ -73,10 +73,10 @@
           "id": "c1-d",
           "question": "Two hours before you publish your portfolio project, you have time to rewrite the README once. Which structure earns the most from a hiring manager's 30-second skim?",
           "options": [
-            "A complete dependency list with step-by-step local install instructions for every platform",
-            "A screenshot gallery, CI badges, and a bulleted feature list",
-            "A single line linking to the live site, letting the deployed app speak for itself",
-            "The problem it solves, the stack with reasons for each choice, a small architecture sketch, the tradeoffs you accepted, and what you'd build next"
+            "A full dependency list with careful step-by-step local install instructions covering every operating system and platform",
+            "A screenshot gallery up top, a row of green CI status badges, and a tidy bulleted list of every feature",
+            "A single line linking straight to the live site, letting the deployed app quietly speak entirely for itself",
+            "The problem it solves, the stack with reasons for each choice, an architecture sketch, the tradeoffs, and what's next"
           ],
           "correctAnswerIndex": 3,
           "rationale": "A README structured as a case study — problem, reasoned stack, architecture, tradeoffs, next steps — answers exactly the questions a reviewer is silently asking, and every section becomes an interview prompt you've already rehearsed. Install instructions and badges describe plumbing every project has; a bare link proves the app runs but discards your one chance to narrate the reasoning.",
@@ -103,10 +103,10 @@
           "id": "c2",
           "question": "In the form-submission walkthrough, the interviewer interrupts: 'the network request fails — what should the UI have already been doing, and what happens now?' What's the strongest answer?",
           "options": [
-            "The page reloads automatically so state resets cleanly",
-            "The UI freezes until the request eventually succeeds via retries",
-            "The UI showed a pending state on submit; on failure it surfaces an error, re-enables the form preserving the user's input, and (if optimistic) rolls back the optimistic update",
-            "Errors are logged to the console for debugging"
+            "The whole page reloads automatically on failure so that all of the client state resets back cleanly",
+            "The UI freezes and blocks all interaction until the request eventually succeeds through silent background retries",
+            "It showed a pending state on submit; on failure it surfaces an error, re-enables the form, and rolls back",
+            "The failure gets caught and logged to the browser console so a developer can debug it afterward"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Failure handling is where full-stack maturity shows: pending feedback during flight, an actionable error on failure, no destroyed user input, and rollback if you rendered success speculatively. Interviewers deliberately inject the failure case to see if your happy path was the whole plan.",
@@ -122,10 +122,10 @@
           "id": "c2-alt",
           "question": "You're walking an interviewer through 'what happens when a user clicks Delete on a row in this table', and you've just described optimistically removing the row from the client list before the `DELETE` request returns. The interviewer leans in: 'the server responds `409 Conflict` because someone else already deleted it — walk me through the client from here.' What's the strongest continuation?",
           "options": [
-            "Roll the row back into the table and surface a red 'Delete failed' error, forcing the user to retry the delete",
-            "Re-issue the `DELETE` in a retry loop until the server returns `200`",
-            "Treat `409` as success since the row is gone either way, and leave the optimistic removal in place with no message",
-            "Because the intended end-state (row absent) already holds, reconcile: keep the row removed, but confirm via a refetch or by treating `409` as an idempotent success, and inform the user the item was already deleted rather than showing a scary error"
+            "Roll the row back into the table, surface a prominent red 'Delete failed' banner, and make the user retry the delete",
+            "Re-issue the `DELETE` request in a retry loop, backing off a little between attempts, until the server returns `200`",
+            "Treat the `409` as a plain success since the row is already gone, leaving the optimistic removal in place with no message",
+            "The end-state already holds, so keep the row removed, treat `409` as idempotent success, and note it was already gone"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The subtlety is that `409 Conflict` here means the desired outcome already happened — the row is genuinely gone. Blindly rolling back (as you would for a true failure) reintroduces a row that no longer exists and confuses the user; blindly retrying hammers a request that can never succeed. Mature handling recognizes the delete as effectively idempotent, keeps the optimistic state, and communicates calmly.",
@@ -141,10 +141,10 @@
           "id": "c2-c",
           "question": "Mid-walkthrough of a checkout form, the interviewer asks: 'the user double-clicks Place Order and two `POST` requests fire — what should the client and the server each be doing?' What's the strongest answer?",
           "options": [
-            "Client: disable the button and show a pending state on the first click; server: accept an idempotency key or enforce a uniqueness constraint, so a duplicate `POST` can't create a second order even when one slips through",
-            "Debounce the click handler by 300ms — that window is long enough to absorb any double-click",
-            "Duplicate prevention is purely the client's job; a well-built frontend makes the second request impossible",
-            "Switch order placement to a `GET` request, since browsers de-duplicate identical GETs automatically"
+            "Client disables the button and shows a pending state; server takes an idempotency key or uniqueness constraint",
+            "Debounce the click handler by 300ms — that window is easily long enough to absorb any accidental double-click",
+            "Duplicate prevention is purely the client's responsibility; a well-built, careful frontend makes the second request impossible",
+            "Switch order placement over to a `GET` request instead, since browsers automatically de-duplicate identical GET requests for you"
           ],
           "correctAnswerIndex": 0,
           "rationale": "This is a defense-in-depth question wearing a UI costume. Disabling the button fixes the common case and gives the user feedback, but network retries, back-button resubmits, and non-browser clients all get past the frontend — so the server must be the layer that guarantees at-most-one order. Naming both halves, and the mechanism (idempotency key or uniqueness constraint), is what the interviewer is fishing for.",
@@ -160,10 +160,10 @@
           "id": "c2-d",
           "question": "Narrating the form flow, you mention validating the email field in React before the request is sent. The interviewer pushes back: 'then why validate it again on the server?' What's the strongest answer?",
           "options": [
-            "You shouldn't — duplicating validation violates DRY; pick one side and keep the logic there",
-            "Client validation is a UX courtesy that anyone can bypass — the API can be hit directly with `curl` or a modified client — so the server must re-validate as the actual integrity and security boundary",
-            "Server validation is mainly a fallback for older browsers where JavaScript might be disabled",
-            "Validating twice roughly halves the odds that a malformed value slips through either check"
+            "You shouldn't — validating on both sides violates DRY, so pick one layer and keep all the logic living there",
+            "Client validation is a bypassable UX courtesy — the API can be hit directly — so the server is the real integrity boundary",
+            "Server validation is mostly a compatibility fallback for older browsers where users might have JavaScript turned off entirely",
+            "Validating in two separate places roughly halves the odds that a malformed value slips past either one of the checks"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The two validations serve different masters: the client check exists for instant feedback and a smooth experience, while the server check exists because it's the only layer an attacker — or any non-browser HTTP client — cannot simply skip. Framing it as a trust boundary, rather than duplication, is what distinguishes a systems answer from a syntax answer.",
@@ -190,10 +190,10 @@
           "id": "c3",
           "question": "In a debugging interview, a page shows stale data after saving. What's the strongest FIRST move?",
           "options": [
-            "Reproduce it and isolate the layer: check DevTools — did the save request fire and succeed, and does the subsequent read return old or new data?",
-            "Add a hard page-reload after every save so data is always fresh",
-            "Clear all caching everywhere in the app",
-            "Explain three frameworks that would have prevented this and suggest a rewrite"
+            "Reproduce it, then in DevTools check whether the save request succeeded and what the following read returns",
+            "Add a hard full-page reload after every single save so that the data on screen is always guaranteed fresh",
+            "Clear every layer of caching everywhere across the whole app and see whether the stale-data symptom disappears",
+            "Explain three alternative frameworks that would have prevented this entirely and recommend rewriting the app on one"
           ],
           "correctAnswerIndex": 0,
           "rationale": "One DevTools check bisects the entire system: if the write succeeded and the read returns fresh data, it's a client cache/state bug; if the read returns stale data, it's server/cache-side. Diagnosis before treatment — and narrated bisection is exactly what the round is scoring.",
@@ -209,10 +209,10 @@
           "id": "c3-alt",
           "question": "In a live debugging round, a user reports that intermittently their uploaded profile image shows up rotated 90 degrees, but only sometimes, and you can't reproduce it on your own machine. You have DevTools, the server logs, and a couple of the offending image files. What's the strongest FIRST move to shrink an intermittent, hard-to-reproduce bug like this?",
           "options": [
-            "Ship a client-side CSS `transform: rotate` toggle so users can straighten images themselves",
-            "Make it reproducible by narrowing the trigger: gather the affected files and look for what they share — e.g. EXIF orientation metadata from certain phone cameras — so an 'intermittent' bug becomes a deterministic one you can bisect",
-            "Add a `try/catch` around the upload handler and log the error, then wait for it to happen again in production",
-            "Assume the image library is buggy and swap it for a different one to see if the problem goes away"
+            "Ship a client-side CSS `transform: rotate` toggle so that affected users can just straighten their own images",
+            "Make it reproducible by finding what the affected files share — e.g. EXIF orientation metadata from certain phones",
+            "Wrap the upload handler in a `try/catch`, log the error out, and then wait for the bug to happen again in production",
+            "Assume the underlying image library is simply buggy and swap it out for a different one to see if the problem goes away"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The first job with an intermittent bug is to destroy the intermittency — find the hidden variable that separates the failing cases from the passing ones. Affected images sharing EXIF orientation flags (common from phone cameras) turns 'sometimes' into 'always, when EXIF orientation != 1', which you can then reproduce and bisect. You can't binary-search a bug you can't trigger on demand.",
@@ -228,10 +228,10 @@
           "id": "c3-c",
           "question": "In a debugging round, a feature works flawlessly on the laptop in front of you but returns a `500` from the deployed environment — same code, same commit. What's the strongest FIRST move?",
           "options": [
-            "Redeploy with verbose logging sprinkled through the whole request path and wait for the error to recur",
-            "Diff the codebase against the last known-good release to spot the breaking change",
-            "Copy production data down to your machine, since an environment-only bug must be data-dependent",
-            "Pull the actual error from the production logs — the stack trace localizes the failing layer immediately — then enumerate what differs between the two environments: env vars, database, runtime versions, secrets"
+            "Redeploy with verbose logging sprinkled all through the request path, then wait for the `500` error to recur",
+            "Diff the whole codebase against the last known-good release, scanning for whichever change might have broken it",
+            "Copy the production database down to your own machine, since an environment-only bug is surely data-dependent",
+            "Read the actual error from the production logs — the stack trace localizes the layer — then enumerate what differs"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The failure is happening right now and its stack trace is already written down — reading it costs nothing and instantly collapses the search space to one layer. Since the code is identical in both environments, the bug lives in the differences between them, so the follow-up move is to enumerate that diff (config, secrets, versions, data) rather than to theorize about any single cause.",
@@ -247,10 +247,10 @@
           "id": "c3-d",
           "question": "A dashboard that rendered fine last week now crashes on load, and `git log` shows roughly 60 commits have landed since. The interviewer hands you the keyboard and asks how you'd find the cause. Strongest answer?",
           "options": [
-            "Read the 60 commits' diffs newest-first until one looks suspicious",
-            "Revert the whole week, then re-apply commits one at a time until the crash returns",
-            "`git bisect`: mark last week's commit good and `HEAD` bad, and let binary search converge on the offending commit in about six checkouts",
-            "Set a breakpoint at the crash site and step through — once you can see the broken state, the culprit commit doesn't matter"
+            "Read through all 60 commit diffs newest-first, stopping the moment one of them starts to look suspicious",
+            "Revert the entire week's work at once, then re-apply the commits one at a time until the crash comes back",
+            "`git bisect`: mark last week's commit good and `HEAD` bad, letting binary search converge in about six checkouts",
+            "Set a breakpoint right at the crash site and step through — once you see the broken state, the commit hardly matters"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Sixty commits is about six bisect steps — `git bisect` is the literal binary search the debugging round is designed to reward, cutting the suspect range in half with each checkout while you run the same repro check. The linear alternatives cost an order of magnitude more effort, and skipping the history entirely throws away the diff, the intent, and usually the fix.",
@@ -277,10 +277,10 @@
           "id": "c4",
           "question": "Asked to 'design an API for a todo app with sharing', what should you do FIRST?",
           "options": [
-            "Pick the deployment platform and CI setup",
-            "Choose the database engine, since everything depends on it",
-            "Clarify requirements: single user or teams? What does 'sharing' mean — read-only links, invitations, roles? Scale expectations?",
-            "Start writing the OpenAPI spec for CRUD endpoints"
+            "Pick the deployment platform and set up the continuous-integration pipeline before anything else gets designed",
+            "Choose the underlying database engine right away, on the grounds that basically everything else depends on it",
+            "Clarify requirements: single user or teams? What is 'sharing' — links, invites, roles? What scale is expected?",
+            "Start writing out the full OpenAPI specification for the standard create, read, update, and delete endpoints"
           ],
           "correctAnswerIndex": 2,
           "rationale": "'Sharing' could mean a public read-only link (trivial) or team workspaces with roles (a whole permission model) — designs that differ by an order of magnitude. Questions-first is explicitly what the round rewards; several interview rubrics literally allocate points to it.",
@@ -296,10 +296,10 @@
           "id": "c4-alt",
           "question": "The interviewer says: 'Design the backend for a feature that lets users export their data as a report.' Before touching entities, endpoints, or storage, which opening move best fits how these rounds are scored?",
           "options": [
-            "Sketch the S3 bucket and file-naming scheme where the generated reports will live",
-            "Propose the specific PDF-rendering library you'd pull in",
-            "Immediately decide between generating the report synchronously in the request versus a background job queue",
-            "Ask scoping questions: how large is a typical export, is a CSV enough or do they need a formatted PDF, must it be instant or can it be emailed when ready, and roughly how often will users trigger it?"
+            "Sketch the S3 bucket layout and the file-naming scheme where the generated report files are going to be stored",
+            "Propose the specific PDF-rendering library you would pull in to actually produce the exported report documents",
+            "Immediately decide between generating the report synchronously in the request versus offloading to a background job queue",
+            "Ask scoping questions: how large is a typical export, CSV or formatted PDF, instant or emailed later, and how often?"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The answer bifurcates entirely on scope: a small instant CSV is a synchronous endpoint returning a file, while a large formatted PDF is a background job with a queue, status polling, and an email-when-done flow. Whether you even need async processing is precisely what the clarifying questions determine — and questions-first is what the rubric explicitly rewards.",
@@ -315,10 +315,10 @@
           "id": "c4-c",
           "question": "'Design a notification system for our app,' the interviewer says, sliding you a marker. Which opening move scores first?",
           "options": [
-            "Ask what 'notification' means here: which channels (in-app, email, push)? Triggered by which events? Real-time or batched into digests? Roughly what volume per user per day?",
-            "Sketch a message queue with a fan-out worker pool, since every notification system converges on that shape eventually",
-            "Lock in the push provider first (say, Firebase), because vendor choice is the hardest decision to reverse later",
-            "Start from the data model: a `notifications` table with `user_id`, `type`, and `read_at` columns"
+            "Ask what 'notification' means: which channels, triggered by which events, real-time or batched, and what volume?",
+            "Sketch a message queue feeding a fan-out worker pool, since every notification system converges on that shape anyway",
+            "Lock in the push provider like Firebase first, because the vendor choice is the single hardest thing to reverse later on",
+            "Start from the data model — a `notifications` table carrying `user_id`, `type`, and `read_at` columns — and build outward"
           ],
           "correctAnswerIndex": 0,
           "rationale": "The word 'notification' spans everything from a bell icon reading one table to a multi-channel delivery pipeline with queues, retries, and digest scheduling — designs that differ by an order of magnitude. Channels, triggers, latency tolerance, and volume are precisely the questions that decide which system you should draw, and asking them first is what the rubric explicitly rewards.",
@@ -334,10 +334,10 @@
           "id": "c4-d",
           "question": "You've proposed Postgres as the store for your URL-shortener design, and the interviewer probes: 'why not just Redis for everything, since lookups dominate?' Which reply demonstrates what the round is actually scoring?",
           "options": [
-            "Concede and redraw the design around Redis — the interviewer has clearly signaled the preferred answer",
-            "Name the tradeoff: Postgres keeps the canonical mapping durable and consistent, and if read load explodes you'd add Redis as a cache in front — while acknowledging what that costs: cache invalidation and a second system to operate",
-            "Defend Postgres as the industry standard that most companies would pick for this workload",
-            "Explain that Redis is in-memory and therefore can never serve as a primary datastore"
+            "Concede and redraw the entire design around Redis, since the interviewer has clearly signaled the answer they prefer",
+            "Name the tradeoff: Postgres keeps the mapping durable, add Redis as a cache if reads explode, and own the cost",
+            "Defend Postgres as the reliable industry-standard choice that the vast majority of companies would reach for on this workload",
+            "Explain that Redis lives entirely in memory and therefore can never serve as a system's primary source-of-truth datastore"
           ],
           "correctAnswerIndex": 1,
           "rationale": "Push-back questions test whether your choice had a 'because'. The strong answer keeps the durable store as the source of truth, shows the evolution path (cache in front) rather than a rip-and-replace, and — critically — names the price of its own proposal. Stating what you're giving up is what separates a decision from a preference, and it's the line the rubric is listening for.",
@@ -364,10 +364,10 @@
           "id": "c5",
           "question": "Asked 'tell me about a hard bug you fixed', which answer structure lands best?",
           "options": [
-            "STAR with specifics: the symptom, how you isolated it (the actual steps), the root cause, the fix, and what changed afterward — e.g. a test or process added",
-            "An honest statement that you rarely encounter bugs",
-            "A detailed complaint about the legacy code that caused it",
-            "A tour of every technology the project used, to establish depth"
+            "STAR with specifics: the symptom, how you isolated it, the root cause, the fix, and the test you added after",
+            "An honest, matter-of-fact statement that you personally happen to rarely run into serious bugs in your own work",
+            "A detailed, pointed complaint about the tangled legacy code that was really responsible for causing the whole problem",
+            "A broad tour through every single technology the project happened to use, offered to establish your technical depth"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Interviewers want evidence of process under adversity: reproduce → isolate → root cause → fix → prevent. The 'prevention' ending (a regression test, a lint rule, a runbook) is what elevates a good story to a great one — it shows you close loops.",
@@ -383,10 +383,10 @@
           "id": "c5-alt",
           "question": "A behavioral interviewer asks: 'Tell me about a time you disagreed with a teammate's technical decision.' Which response structure lands best?",
           "options": [
-            "Explain that you generally defer to whoever is more senior, so disagreements rarely turn into real conflict",
-            "STAR with specifics: the situation and the decision at stake, the concern you raised and how (data, a spike, a small prototype), the action you took to resolve it collaboratively, and the outcome — including what you'd have owned if you'd been wrong",
-            "Recount how you were proven right and the teammate eventually admitted the mistake",
-            "Describe a general philosophy of always writing clean, testable code so disagreements don't arise"
+            "Explain that you generally defer to whoever happens to be more senior, so that technical disagreements rarely become a real conflict",
+            "STAR: the decision at stake, the concern you raised with data or a spike, how you resolved it, and what you'd have owned",
+            "Recount in careful detail how you turned out to be right in the end and the teammate eventually admitted to their own mistake",
+            "Describe a general personal philosophy of always writing clean, well-tested code so that these kinds of disagreements never arise"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The question probes how you handle disagreement, not whether you win it. A strong STAR answer shows you surfaced a concern with evidence, engaged collaboratively rather than combatively, and stayed accountable to the outcome regardless of who was 'right'. The graceful acknowledgement that you might have been wrong is what signals real maturity.",
@@ -402,10 +402,10 @@
           "id": "c5-c",
           "question": "'Tell me about a project that failed,' the interviewer asks. Which answer structure lands best?",
           "options": [
-            "Choose a story where the failure traces cleanly to shifting stakeholder requirements, keeping your own contributions above reproach",
-            "Pick a minor near-miss and reframe it as a success, so the word 'failure' never attaches to you",
-            "Answer honestly that none of your projects have truly failed, since most shipped in some form",
-            "STAR with ownership: the goal, where it went wrong, the part *you* misjudged, what you did once you saw it, and the specific practice you changed afterward — with evidence the lesson stuck"
+            "Choose a story where the failure traces cleanly to shifting stakeholder requirements, keeping your own work above reproach",
+            "Pick a minor near-miss and quietly reframe it as a success, so that the word 'failure' never actually attaches to you at all",
+            "Answer honestly that none of your projects have ever genuinely failed, since most of them did ship in some form eventually",
+            "STAR with ownership: the goal, where it went wrong, what *you* misjudged, what you did next, and the practice you changed"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The failure question is an ownership probe. A strong answer names your own misjudgment specifically, shows what you did the moment you recognized it, and lands on a concretely changed practice — proof the failure purchased something. Stories engineered to keep you blameless, or dodges that deny failure outright, answer a different question than the one asked.",
@@ -421,10 +421,10 @@
           "id": "c5-d",
           "question": "You leave a real interview having stumbled badly on 'how does database indexing work?' — you rambled, and the interviewer moved on. What do the fastest-improving candidates do that evening?",
           "options": [
-            "Move on quickly — replaying a missed question only builds anxiety before the next interview",
-            "Email the interviewer a corrected answer to demonstrate follow-through and recover the lost points",
-            "Log the exact question while it's fresh, then turn it into a drill: study indexing properly, write the 90-second answer you wish you'd given, and rehearse it aloud until it's a prepared story",
-            "Conclude that indexing questions are niche trivia and reallocate prep time toward more common topics"
+            "Move on quickly and let it go, since replaying a missed question only builds anxiety ahead of the next interview",
+            "Email the interviewer a corrected written answer to demonstrate follow-through and try to recover the lost points",
+            "Log the exact question while fresh, study indexing, write the 90-second answer you wish you'd given, and rehearse it",
+            "Conclude that indexing questions are niche trivia and reallocate that prep time toward the more commonly asked topics"
           ],
           "correctAnswerIndex": 2,
           "rationale": "The candidates who improve fastest treat interviews as instrumented test runs of themselves: every stumble is a captured failure case, and each one gets converted into a drill and a rehearsed answer before the next run. The stumble already cost you the question — reviewing it that evening is how you collect what the failure paid for.",

@@ -16,10 +16,10 @@
           "id": "t1",
           "question": "A developer writes `className={`bg-${theme}-500`}` and the background silently never appears in production. Why?",
           "options": [
-            "Tailwind's build-time scan looks for complete class names in source; a name assembled at runtime is never seen, so its CSS is never generated",
-            "The bg- prefix requires a corresponding text- class to activate",
-            "Colors in Tailwind only work with inline styles",
-            "Template literals aren't allowed in the className attribute"
+            "The build scans source for whole class names; one assembled at runtime is never seen, so its CSS is never emitted",
+            "The `bg-` prefix needs a matching `text-` class present in the same element before Tailwind will activate it",
+            "Color utilities in Tailwind only take effect when written as inline styles, never as class names in markup",
+            "Template literals are rejected inside the `className` attribute, so the interpolated string is dropped before render"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Tailwind doesn't execute your code — it greps it. `bg-${theme}-500` contains no complete class name to find. The fix is a map of full names: `{ red: 'bg-red-500', blue: 'bg-blue-500' }[theme]` — every candidate class appears verbatim somewhere in source.",
@@ -35,10 +35,10 @@
           "id": "t1-alt",
           "question": "A team ships a heatmap where each cell's shade comes from `className={`w-4 h-4 bg-${intensity}`}` with `intensity` resolving to strings like `red-300` or `red-700`. In dev everything renders; in the production build every cell is transparent. What single change reliably fixes this?",
           "options": [
-            "Add `!important` to each cell's background so the production purge can't strip it",
-            "Move the color to an inline `style` attribute or select from a map where each full class name (`bg-red-300`, `bg-red-700`, …) appears literally in source",
-            "Import the full Tailwind stylesheet unminified so no classes are dropped",
-            "Wrap the JSX in a client component so the class is evaluated in the browser instead of at build time"
+            "Add `!important` to every single cell background so that the production purge step is forbidden from stripping the generated rule away",
+            "Pick from a map where each full class (`bg-red-300`, `bg-red-700`, …) appears literally, or set the color as an inline style",
+            "Import the full unminified Tailwind stylesheet so that no color classes get dropped during the production build",
+            "Wrap the JSX in a client component so the class string is evaluated in the browser rather than during the build"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The dev/prod split is the tell: dev often has a broader/JIT-generated safelist while the production build only emits classes it statically found in source. `bg-${intensity}` is never a complete token, so `bg-red-700` et al. are never generated. Writing every full class name verbatim (via a lookup map), or computing the color as an inline style, both give the build something real to see.",
@@ -54,10 +54,10 @@
           "id": "t1-c",
           "question": "A dashboard lets admins pick an accent color stored in the database, rendered as `` `border-${accent}-400` ``. The team knows every possible value up front (`sky`, `rose`, `amber`). Which approach makes Tailwind reliably generate the needed CSS?",
           "options": [
-            "Enable the JIT compiler in the config — it evaluates JavaScript expressions and can resolve the template literal at build time",
-            "Declare the color names (`sky`, `rose`, `amber`) in a config array so Tailwind can combine them with utility prefixes during generation",
-            "Write every complete class (`border-sky-400`, `border-rose-400`, `border-amber-400`) verbatim — either in a lookup map keyed by the stored value, or in the config's `safelist`",
-            "Switch to `border-[${accent}]-400` — the arbitrary-value brackets signal the scanner to accept runtime substitution"
+            "Enable the JIT compiler in the config so it evaluates the JavaScript expression and resolves the template literal during the build",
+            "Declare the names (`sky`, `rose`, `amber`) in a config array so Tailwind combines them with utility prefixes when generating",
+            "Write each full class (`border-sky-400`, `border-rose-400`, …) verbatim in a lookup map or in the config's `safelist`",
+            "Switch to `border-[${accent}]-400` so the arbitrary-value brackets tell the scanner to accept the runtime substitution"
           ],
           "correctAnswerIndex": 2,
           "rationale": "Because the set of values is finite and known, the fix is to make every full class name exist somewhere the scanner can see it: a `{ sky: 'border-sky-400', ... }` map in source, or the `safelist` config option, which force-generates listed classes regardless of whether they're found in source. Both satisfy the same underlying rule — the build needs whole tokens, not fragments.",
@@ -73,10 +73,10 @@
           "id": "t1-d",
           "question": "Conceptually, why can Tailwind's build step generate CSS for `md:hover:bg-indigo-600` written literally in a file, but not for the identical string produced at runtime by `` `md:hover:bg-${shade}-600` ``?",
           "options": [
-            "Modifier prefixes like `md:` and `hover:` can only be resolved statically, so any class using them must be a literal",
-            "Tailwind's scanner runs in the browser, and template literals are only evaluated on the server",
-            "Bundlers hoist literal strings into the CSS pipeline but leave template literals in the JavaScript bundle",
-            "The build step is a text scan over raw source files, not a JavaScript evaluator — it extracts complete class-shaped tokens from text, so a token that only exists after evaluation is invisible to it"
+            "Modifier prefixes such as `md:` and `hover:` can only resolve statically, so any class carrying one has to be a literal",
+            "Tailwind's scanner runs inside the browser, and template literals happen to be evaluated only on the server, not the client",
+            "Bundlers hoist literal strings straight into the CSS pipeline but leave template literals behind in the JavaScript bundle",
+            "The build is a text scan over source, not a JS evaluator, so a token that only exists after evaluation stays invisible"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Tailwind's extractor is deliberately dumb: it treats every source file as plain text and pulls out anything shaped like a class name. It has no idea what `${shade}` will become because it never runs your program. The literal string contains the whole token; the template produces it only at runtime, long after CSS generation finished.",
@@ -103,10 +103,10 @@
           "id": "t2",
           "question": "Inside a `flex flex-col h-screen` container, which class centers children horizontally?",
           "options": [
-            "self-center on the container",
-            "justify-center",
-            "items-center",
-            "content-center"
+            "`self-center` set on the flex container itself",
+            "`justify-center` on the container element",
+            "`items-center` on the container element",
+            "`content-center` on the container element"
           ],
           "correctAnswerIndex": 2,
           "rationale": "With flex-col, the main axis is vertical — so justify-* controls vertical distribution and items-* controls the horizontal (cross) axis. items-center centers children horizontally here. The axes rotating with direction is the whole trick.",
@@ -122,10 +122,10 @@
           "id": "t2-alt",
           "question": "You have `flex flex-row` toolbar and you want its icon buttons pushed hard against the right edge while staying vertically centered within the bar's height. Which pair of utilities does exactly that?",
           "options": [
-            "`justify-center self-end`",
-            "`content-end items-center`",
-            "`items-end justify-center`",
-            "`justify-end items-center`"
+            "`justify-center self-end` on the toolbar",
+            "`content-end items-center` on the toolbar",
+            "`items-end justify-center` on the toolbar",
+            "`justify-end items-center` on the toolbar"
           ],
           "correctAnswerIndex": 3,
           "rationale": "In `flex-row` the main axis is horizontal, so `justify-end` pushes children to the right edge; the cross axis is vertical, so `items-center` vertically centers them within the bar. The two concerns map to different properties precisely because the axes differ.",
@@ -141,10 +141,10 @@
           "id": "t2-c",
           "question": "A `flex flex-col h-full` sidebar has a single logout block as its only child, and the design pins that block to the sidebar's bottom edge while it stays stretched to the sidebar's full width. Which container class does the pinning?",
           "options": [
-            "`justify-end` — in a column the main axis runs vertically, so main-axis distribution controls top-to-bottom placement",
-            "`items-end` — end alignment always refers to the bottom edge of the container",
-            "`content-end` — it shifts the container's content block downward",
-            "`align-bottom` — the vertical-align utility anchors flex children to the bottom"
+            "`justify-end` — in a column the main axis is vertical, so main-axis distribution controls top-to-bottom placement",
+            "`items-end` — end alignment always refers to the container's bottom edge, no matter what the current flex direction happens to be",
+            "`content-end` — this utility shifts the whole content block of the container downward toward its bottom edge",
+            "`align-bottom` — the `vertical-align` utility anchors flex children to the bottom of their container's box"
           ],
           "correctAnswerIndex": 0,
           "rationale": "With `flex-col`, vertical placement is a *main-axis* question, so `justify-end` pushes the lone child to the bottom. Crucially, cross-axis stretch (the default `items-stretch`) is untouched, so the block keeps its full width — using `items-end` instead would both fail to move it down and collapse its width.",
@@ -160,10 +160,10 @@
           "id": "t2-d",
           "question": "A message row is styled `flex justify-between items-center`. For a mobile redesign the developer changes it to `flex flex-col md:flex-row justify-between items-center`. On phones (below 768px), what do `justify-between` and `items-center` now control?",
           "options": [
-            "They keep their original row meanings — alignment utilities lock onto the axes of the first direction the container had",
-            "`justify-between` now distributes the children vertically and `items-center` centers them horizontally — the properties track the main and cross axes, and those axes rotate with `flex-col`",
-            "Both are ignored below `md`, because alignment utilities need a matching direction prefix like `max-md:justify-between` to apply in the column layout",
-            "`justify-between` still spaces the children horizontally, but `items-center` flips to vertical centering — only cross-axis utilities rotate with direction"
+            "They keep their original row meanings, because alignment utilities lock onto the axes of the container's first direction",
+            "`justify-between` now spaces children vertically and `items-center` centers them across — the axes rotate with `flex-col`",
+            "Both are ignored below `md`, since alignment needs a matching prefix like `max-md:justify-between` to apply to a column",
+            "`justify-between` still spaces children horizontally, but `items-center` flips to vertical — only cross-axis utilities rotate"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`justify-*` and `items-*` are bound to the main and cross axes, not to fixed screen directions. When `flex-col` takes effect on phones, the main axis becomes vertical: `justify-between` spreads children top-to-bottom and `items-center` centers each one horizontally. At `md` and up the row returns and both revert to their familiar meanings — same classes, rotated axes.",
@@ -190,10 +190,10 @@
           "id": "t3",
           "question": "What does `class=\"grid grid-cols-1 md:grid-cols-3\"` produce on a phone (viewport below 768px)?",
           "options": [
-            "One column — bare utilities are the mobile baseline; md:grid-cols-3 only kicks in at 768px and up",
-            "An error, because two grid-cols utilities conflict",
-            "Three columns squeezed to fit the narrow screen",
-            "Three columns — md: styles apply to medium screens and smaller"
+            "One column — bare utilities are the baseline; `md:grid-cols-3` only starts at 768px",
+            "A build error, because two conflicting `grid-cols` utilities sit on the same element",
+            "Three columns, each one squeezed narrow to fit within the phone's limited width",
+            "Three columns, because `md:` styles apply to medium screens and everything smaller"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Mobile-first means unprefixed classes are the default at every width, and each breakpoint prefix adds a min-width override. Below 768px only grid-cols-1 applies; at 768px+ the md: rule takes over.",
@@ -209,10 +209,10 @@
           "id": "t3-alt",
           "question": "A designer wants a gallery that is 2 columns on tablets and 4 columns on large desktops, but a plain single column on phones. A developer writes `grid grid-cols-4 md:grid-cols-2` and is surprised phones show four columns. What's the correct class string, and why did theirs fail?",
           "options": [
-            "`grid grid-cols-4 md:grid-cols-2` is correct; the phone bug is a caching issue",
-            "`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4` — the unprefixed utility is the phone baseline, and prefixes must escalate upward, not start from the widest layout",
-            "`grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1` — order the prefixes largest-to-smallest so the cascade resolves correctly",
-            "`grid max-md:grid-cols-1 grid-cols-2 lg:grid-cols-4` — you must use a max-width prefix to target phones"
+            "`grid grid-cols-4 md:grid-cols-2` was already correct; the four-column phone bug is really a stale-cache issue",
+            "`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4` — the bare utility is the phone baseline; prefixes escalate upward",
+            "`grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-1` — list prefixes largest-to-smallest so the cascade resolves right",
+            "`grid max-md:grid-cols-1 grid-cols-2 lg:grid-cols-4` — you must reach for a max-width prefix to target phones here"
           ],
           "correctAnswerIndex": 1,
           "rationale": "The unprefixed utility is the always-on mobile baseline, so putting `grid-cols-4` bare makes four columns the phone default; `md:grid-cols-2` then only narrows it at ≥768px. Mobile-first means you write the smallest layout unprefixed and layer larger breakpoints on top: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`.",
@@ -228,10 +228,10 @@
           "id": "t3-c",
           "question": "A filter sidebar should be visible on desktop and completely absent on phones. A developer writes `<aside class=\"md:hidden\">` — and the sidebar vanishes on desktop while phones still show it, the exact opposite of the goal. What's the correct pairing?",
           "options": [
-            "`sm:hidden` — the sm prefix targets small screens, so it hides the sidebar on phones",
-            "`hidden max-sm:block` — hide by default, then restore it below the sm breakpoint",
-            "`hidden md:block` — hidden is the always-on mobile baseline, and `md:block` re-reveals the sidebar from 768px upward",
-            "`md:visible hidden` — the visible utility overrides hidden once the md breakpoint is reached"
+            "`sm:hidden` — the `sm` prefix targets small screens, so it hides the sidebar on phones while leaving desktop alone",
+            "`hidden max-sm:block` — hide it by default, then restore it below the `sm` breakpoint so phones show it again",
+            "`hidden md:block` — bare `hidden` is the mobile baseline, and `md:block` re-reveals it from 768px upward",
+            "`md:visible hidden` — the `visible` utility overrides `hidden` once the `md` breakpoint is reached on desktop"
           ],
           "correctAnswerIndex": 2,
           "rationale": "`md:hidden` reads as 'hide on medium screens' but means 'apply `display: none` from 768px up' — which is why it did the opposite. Mobile-first flips the construction: state the phone reality with a bare utility (`hidden`), then override upward (`md:block`). The developer's version described the desktop and prefixed the phone — backwards on both counts.",
@@ -247,10 +247,10 @@
           "id": "t3-d",
           "question": "A card is styled `block md:flex lg:grid`. On a 1440px desktop viewport, what is its computed `display` value, and why?",
           "options": [
-            "`grid` — at 1440px both the `md` and `lg` min-width media queries match simultaneously, and the `lg` rule wins because larger-breakpoint rules are emitted later in the generated stylesheet",
-            "`flex` — the `md` query matched first as the viewport was evaluated, and the first matching breakpoint sticks",
-            "`block` — the three display utilities conflict, so they cancel out and the unprefixed baseline applies",
-            "It's nondeterministic — the winner depends on the order the three classes appear in the class attribute"
+            "`grid` — at 1440px both `md` and `lg` min-width queries match, and `lg` wins by being emitted later in the stylesheet",
+            "`flex` — the `md` query matched first as the viewport was evaluated, and the first matching breakpoint is the one that sticks",
+            "`block` — the three conflicting display utilities cancel each other out, so the unprefixed baseline `block` is what applies",
+            "It's nondeterministic — the winner depends entirely on the order the three classes happen to appear in the class attribute"
           ],
           "correctAnswerIndex": 0,
           "rationale": "Min-width media queries aren't exclusive ranges — at 1440px, `(min-width: 768px)` and `(min-width: 1024px)` are both true, and the unprefixed rule always applies. All three declarations are active; the tie is broken by source order in Tailwind's generated CSS, which emits breakpoints smallest to largest. `lg:grid` sits last, so it wins.",
@@ -277,10 +277,10 @@
           "id": "t4",
           "question": "A dropdown has z-index: 9999 but still renders underneath a sibling section. The dropdown's parent has `transform: translateX(0)` from an animation. What's going on?",
           "options": [
-            "Dropdowns must be direct children of body to stack correctly",
-            "9999 exceeds the maximum z-index and overflows to a negative value",
-            "The transform created a stacking context on the parent; the dropdown's 9999 only competes inside it, and the parent's own stack level loses to the sibling",
-            "z-index needs !important to beat sibling elements"
+            "Dropdowns have to be direct children of `body` before they can stack correctly against other page sections",
+            "The value 9999 exceeds the maximum allowed z-index, so it silently overflows and wraps to a negative value",
+            "The transform gave the parent a stacking context; 9999 only ranks inside it, so the parent loses to a sibling",
+            "A z-index needs `!important` attached before it is allowed to beat sibling elements that sit later in the page"
           ],
           "correctAnswerIndex": 2,
           "rationale": "transform (even an identity transform) spawns a stacking context. The dropdown's z-index is now purely internal ranking within that parent; externally, the whole subtree stacks as one unit at the parent's level. Fixes: remove the transform, raise the parent's own stack level, or portal the dropdown out of the trapped subtree.",
@@ -296,10 +296,10 @@
           "id": "t4-alt",
           "question": "A sticky header with `z-50` mysteriously scrolls *behind* a card lower in the page. The card sits inside a section styled `opacity: 0.98` for a subtle fade, and that section has no z-index at all. Why does a z-index-less card win over a `z-50` header, and what's the cleanest fix?",
           "options": [
-            "Sticky elements can never stack above their following siblings regardless of z-index — this is expected behavior",
-            "The card is winning because it has an implicit `position: absolute`; setting the card to `position: static` fixes it",
-            "The header needs a higher value like `z-[9999]`; `z-50` is simply too low to beat the card",
-            "`opacity` below 1 made the section a new stacking context that paints as an atomic unit; since that context sits later in the source/paint order than the header's context, its whole subtree — card included — stacks above the header. Remove or rework the `opacity` (e.g. use a background with alpha) so no stacking context is created"
+            "Sticky elements can never stack above their following siblings no matter the z-index — this layering is just expected behavior",
+            "The card wins because it carries an implicit `position: absolute`; setting the card to `position: static` is what fixes the overlap",
+            "The header just needs a higher value like `z-[9999]`; its `z-50` is simply too low a number to win out over the card below it",
+            "Sub-1 `opacity` made the section an atomic stacking context later in paint order, so its subtree wins — use background alpha"
           ],
           "correctAnswerIndex": 3,
           "rationale": "`opacity: 0.98` (any value < 1) establishes a stacking context on the section, which then paints as one indivisible unit against the header. Because that context comes later in paint order and the header isn't lifted above it at the *root* level, the entire section — including a z-index-less card — renders on top. Replacing the opacity fade with a semi-transparent background color (rgba/`bg-…/95`) avoids creating the context, so the header's `z-50` behaves as expected.",
@@ -315,10 +315,10 @@
           "id": "t4-c",
           "question": "A modal rendered inline inside a settings card uses `fixed inset-0 z-[999]`, yet the page's `sticky top-0 z-40` toolbar still paints over it. The card carries Tailwind's `drop-shadow-xl` (a `filter`). What explains the layering, and what's the standard React fix?",
           "options": [
-            "`fixed` elements always stack below `sticky` ones; changing the modal to `absolute` restores normal ordering",
-            "The card's `filter` spawned a stacking context, so the modal's `z-[999]` only ranks it *within* the card's subtree; against the toolbar, the card's own unremarkable stack level is what competes — render the modal through `createPortal` into `document.body` to escape",
-            "Arbitrary values like `z-[999]` aren't generated by the build; replacing it with a canonical `z-50` makes the rule exist",
-            "The modal's z-index is fine but too low — bumping it to `z-[99999]` will clear the toolbar's `z-40`"
+            "`fixed` elements always stack below `sticky` ones, so switching the modal to `absolute` restores the normal painting order",
+            "The card's `filter` made a stacking context, so `z-[999]` only ranks within it — `createPortal` the modal to `document.body`",
+            "Arbitrary values like `z-[999]` are never generated by the build; swapping in a canonical `z-50` is what makes the rule exist",
+            "The modal's z-index is fine but simply too low — bumping it up to `z-[99999]` is enough to clear the toolbar's `z-40` layer"
           ],
           "correctAnswerIndex": 1,
           "rationale": "`drop-shadow-*` utilities apply `filter`, and any filter value establishes a stacking context. From that moment the modal's enormous z-index is purely an internal ranking inside the card; the toolbar compares against the card as a whole, not the modal. Portaling the modal to `document.body` moves it out of the trapped subtree entirely — the canonical reason `createPortal` exists. (As a bonus trap, a filtered ancestor also becomes the containing block for `fixed` descendants, so the 'fixed' modal wasn't even viewport-positioned.)",
@@ -334,10 +334,10 @@
           "id": "t4-d",
           "question": "A tooltip's z-index is trapped because its parent has `will-change: transform`. Which of these, applied to the *tooltip itself*, would let it stack above content outside the parent?",
           "options": [
-            "`z-[2147483647]` — the maximum z-index value always escalates to the root stacking context",
-            "`position: fixed` — fixed positioning re-anchors the tooltip to the viewport's root stacking context",
-            "`isolation: isolate` — it re-parents the tooltip into a fresh context at the root level",
-            "None of them — no property on a descendant can escape an ancestor's stacking context; the fix must alter the ancestor (drop the `will-change`) or move the tooltip out of the subtree, e.g. via a portal"
+            "`z-[2147483647]` — the maximum z-index value always escalates the tooltip up to the page's root stacking context",
+            "`position: fixed` — fixed positioning re-anchors the tooltip directly to the viewport's own root stacking context",
+            "`isolation: isolate` — this re-parents the tooltip into a fresh stacking context created at the document root level",
+            "None — no descendant property escapes an ancestor's context; fix the ancestor (drop `will-change`) or portal it out"
           ],
           "correctAnswerIndex": 3,
           "rationale": "Stacking-context membership is structural, not numeric: once an ancestor establishes a context, every descendant's z-index is an internal ranking with no visibility to the outside. There is no CSS property a child can set to break out. The only real fixes operate on the structure — remove the trigger from the ancestor, promote the ancestor's own stack level, or relocate the element (portal) so it was never inside.",
@@ -364,10 +364,10 @@
           "id": "t5",
           "question": "The same 12-utility class string appears on buttons in 9 files, and a designer just changed the border radius. What's the Tailwind-idiomatic fix going forward?",
           "options": [
-            "Extract a Button component that owns the class string once; variants become props selecting from complete class strings",
-            "Write a .btn class in global CSS and use @apply with all 12 utilities",
-            "Shorten the string by dropping the least important utilities",
-            "Find-and-replace across the 9 files each time the design changes"
+            "Extract a `Button` that owns the class string once; variants become props picking from full class strings",
+            "Write a `.btn` class in your global stylesheet and define it with `@apply` listing all twelve of the utilities",
+            "Shorten the repeated string by dropping the least important utilities so there is simply less to keep in sync",
+            "Run a find-and-replace across all nine files by hand every single time the design's border radius or color changes"
           ],
           "correctAnswerIndex": 0,
           "rationale": "In a component framework, the component *is* the reuse mechanism — one source of truth for the markup and its styling, with variants as typed props. The duplication problem was never about CSS; it was about not having extracted the component.",
@@ -383,10 +383,10 @@
           "id": "t5-alt",
           "question": "A `Badge` component needs three color variants (success/warning/danger) and two sizes (sm/lg). A developer proposes building the class at runtime: `` `px-2 rounded bg-${color}-100 text-${color}-800 ${size === 'lg' ? 'text-lg' : 'text-sm'}` ``. What's the strongest objection, and the idiomatic alternative?",
           "options": [
-            "The objection is performance — string concatenation on every render is too slow; precompute the string in a useMemo",
-            "The `bg-${color}-100` / `text-${color}-800` fragments never appear as complete class names in source, so the build won't generate them; instead keep a map of full class strings per variant (e.g. `success: 'bg-green-100 text-green-800'`) and select by prop — often via a helper like cva",
-            "There's no real objection; this is the recommended pattern for variant components in Tailwind",
-            "The objection is that inline conditionals are hard to read; extract the ternary into a separate `if` statement but keep the interpolated color fragments"
+            "The objection is performance — concatenating a class string on every render is too slow, so precompute it inside a `useMemo`",
+            "The `bg-${color}-100` fragments never appear as full names in source, so map each variant to a whole string instead (cva-style)",
+            "There is no real objection here; interpolating the color into the class is the recommended pattern for variant components",
+            "The objection is readability — pull the inline ternary out into a separate `if` block, but keep the interpolated color fragments"
           ],
           "correctAnswerIndex": 1,
           "rationale": "This collides head-on with static extraction: `bg-${color}-100` is never a complete token in source, so `bg-green-100`, `bg-red-100`, etc. are never generated and the badges render unstyled in the build. The idiomatic fix is a variant→full-class-string map (formalized by cva), where every name like `bg-green-100 text-green-800` appears verbatim, satisfying the scanner while giving you typed variants.",
@@ -402,10 +402,10 @@
           "id": "t5-c",
           "question": "To eliminate duplication, a developer converts the design system into global stylesheet classes — `.card`, `.card-header`, `.btn-primary` — each defined with `@apply` lists of ten-plus utilities, then uses those names throughout the JSX. Reviewers push back. What's the strongest Tailwind-idiomatic critique?",
           "options": [
-            "@apply output compiles to measurably larger CSS than raw utilities, so the bundle will bloat",
-            "Classes built with @apply can't express `hover:` or `md:` states, so all interactivity breaks",
-            "The @apply definitions hide the utilities from the production scanner, so the classes get purged from the build",
-            "It reconstructs the named-abstraction layer Tailwind exists to avoid — styling drifts out of the markup into a parallel vocabulary you must name, document, and excavate later, when the framework's intended reuse unit is the component that owns its class string exactly once"
+            "The `@apply` output compiles to measurably larger CSS than the raw utilities would, so the shipped bundle noticeably bloats",
+            "Classes assembled with `@apply` cannot express `hover:` or `md:` states, so every bit of interactivity on them silently breaks",
+            "The `@apply` definitions hide their utilities from the production scanner, so those named classes get purged out of the build",
+            "It rebuilds the named-abstraction layer Tailwind exists to remove; the intended reuse unit is a component owning its classes"
           ],
           "correctAnswerIndex": 3,
           "rationale": "The critique isn't technical breakage — @apply works — it's architectural regression. A wall of `.card-header`-style classes reintroduces every cost utility-first was designed to remove: inventing names, hunting definitions in another file, and dead-CSS accumulation. In a component framework the deduplication mechanism already exists: extract a `Card` component that owns the utilities once, and the 'shared class' becomes unnecessary.",
@@ -421,10 +421,10 @@
           "id": "t5-d",
           "question": "A `Button` accepts a `className` prop so callers can override styles. Its base is `px-4 py-2 bg-slate-700`; a caller passes `px-8`, and the rendered element ends up with `class=\"px-4 py-2 bg-slate-700 px-8\"`. Sometimes the override applies, sometimes it doesn't. What actually determines the winner, and what's the robust pattern?",
           "options": [
-            "The last class in the attribute wins, so `px-8` reliably applies — the flakiness must come from React's re-render ordering",
-            "The caller must write `!px-8`; an important modifier is the only supported override mechanism in Tailwind",
-            "Attribute order is irrelevant — both utilities have equal specificity, so whichever rule happens to sit later in the *generated stylesheet* wins, which is arbitrary from the component's point of view. Merge with a conflict-aware helper like `tailwind-merge`, or expose typed variant props instead of raw class passthrough",
-            "Tailwind deduplicates conflicting utilities at build time and keeps the first occurrence, so the base `px-4` always wins"
+            "The last class in the attribute wins, so `px-8` reliably applies — the flakiness must be coming from React's re-render ordering",
+            "The caller has to write `!px-8`, since an important modifier is really the only override mechanism Tailwind actually supports here",
+            "Attribute order is irrelevant; at equal specificity the later rule in the generated stylesheet wins, so use `tailwind-merge`",
+            "Tailwind dedupes conflicting utilities at build time and keeps the first occurrence, so the component's base `px-4` always wins"
           ],
           "correctAnswerIndex": 2,
           "rationale": "The browser treats `class` as an unordered set: with equal specificity, the declaration that appears later in the CSS file wins, and the order of `px-4` vs. `px-8` in Tailwind's output is an implementation detail you don't control. That's why the override 'sometimes works' — it's a coin flip frozen at build time. `tailwind-merge` resolves conflicts in JavaScript before render (last conflicting utility survives), and typed variant props avoid emitting conflicts at all.",
