@@ -36,6 +36,29 @@ import { playCue } from "./sound.js";
 export const REDEMPTION_CAP = 0.15;
 
 /**
+ * Per-module keyword that scopes a section's "Learn more" web search to the
+ * right topic (a heading like "Who does what" is ambiguous on its own).
+ */
+const LEARN_MORE_KEYWORD: Record<string, string> = {
+  foundation: "web development",
+  "pillar-react": "React",
+  "pillar-nextjs": "Next.js",
+  "pillar-node": "Node.js",
+  "pillar-databases": "SQL databases",
+  "pillar-tailwind": "CSS Tailwind",
+  "pillar-git": "Git version control",
+  pediment: "web development interview",
+};
+
+/** A web-search URL that expands on a section's topic, opened in the browser. */
+function learnMoreUrl(nodeId: string, heading: string): { url: string; topic: string } {
+  const topic = heading.replace(/[`*]/g, "").trim();
+  const keyword = LEARN_MORE_KEYWORD[nodeId] ?? "web development";
+  const query = `${topic} ${keyword}`;
+  return { url: `https://www.google.com/search?q=${encodeURIComponent(query)}`, topic };
+}
+
+/**
  * "graded" is the real, unlock-affecting attempt. "practice" re-runs a
  * completed module with random variants for drilling — it feeds the
  * spaced-repetition scheduler but never touches score or unlock state.
@@ -456,7 +479,19 @@ function renderLesson(): void {
           <div class="lesson-col-right your-turn">${turnHtml}</div>
         </div>`;
 
+  // A per-topic "Learn more" — hands off to a web search that goes deeper than
+  // the lesson. Only on taught sections (the gauntlet is a closed exam).
+  const learn =
+    mode === "gauntlet" ? null : learnMoreUrl(state.node.id, section.heading);
+  const learnMoreHtml = learn
+    ? `<div class="lesson-topbar"><button class="learn-more-btn" data-action="learn-more"
+        title="Search the web for &ldquo;${escapeHtml(learn.topic)}&rdquo;">
+        <span class="lm-glyph" aria-hidden="true">&#128269;</span> Learn more
+        <span class="lm-arrow" aria-hidden="true">&#8599;</span></button></div>`
+    : "";
+
   const el = card(`
+    ${learnMoreHtml}
     <h2>${escapeHtml(quiz.title)}</h2>
     <div class="modal-progress">Section ${sectionIndex + 1} of ${quiz.sections.length}
       &middot; ${state.correct} correct so far${tag}${timerChip()}</div>
@@ -465,6 +500,11 @@ function renderLesson(): void {
   if (mode !== "gauntlet") el.classList.add("lesson-wide");
 
   el.querySelector('[data-action="abandon"]')!.addEventListener("click", abandonModule);
+  if (learn) {
+    el.querySelector('[data-action="learn-more"]')!.addEventListener("click", () =>
+      apiRef.openExternal(learn.url)
+    );
+  }
   el.querySelectorAll<HTMLButtonElement>(".jargon-chip").forEach((chip) =>
     chip.addEventListener("click", () => openCodexTerm(chip.dataset.term ?? ""))
   );

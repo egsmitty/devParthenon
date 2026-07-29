@@ -78,6 +78,10 @@ UI/UX refinement on the temple and the Codex.
 - Every lesson section has a plain-language **"In short"** takeaway; a graded
   pass recaps them ("What you carry forward").
 - **"In the Codex"** chips under lessons jump to glossary definitions.
+- A per-section **"Learn more"** button (top-left of the lesson) opens a web
+  search for that topic in the default browser — going deeper than the lesson.
+  Routed through a validated `open-external` IPC (http(s) only) via
+  `shell.openExternal`; the app itself stays offline/self-contained.
 - A header **"Continue/Begin: <module>"** guide points to the next stone.
 - Per-pillar topic **gems**; hover **cartouche tooltips**; softer, rounder UI.
 

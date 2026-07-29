@@ -174,6 +174,8 @@ export interface ParthenonApi {
   /** Load progress from a chosen file; null if cancelled. Throws if invalid. */
   importProgress(): Promise<ProgressData | null>;
   windowControl(action: "minimize" | "maximize" | "close"): void;
+  /** Open an http(s) URL in the user's default browser (validated in main). */
+  openExternal(url: string): void;
   onMaximizeChange(cb: (isMaximized: boolean) => void): void;
   /** True when running under the headless smoke check (suppress dialogs). */
   isSmoke: boolean;

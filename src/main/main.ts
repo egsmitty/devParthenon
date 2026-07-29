@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, screen } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -407,6 +407,22 @@ function registerIpc(): void {
       case "close":
         mainWindow.close();
         break;
+    }
+  });
+
+  // Open a "Learn more" link in the user's default browser. Only http(s) URLs
+  // are ever handed to the OS — never file:, javascript:, or other schemes —
+  // so a compromised renderer can't use this to launch arbitrary targets.
+  ipcMain.on("open-external", (_event, url: string) => {
+    try {
+      const parsed = new URL(String(url));
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        void shell.openExternal(parsed.href);
+      } else {
+        console.warn("open-external: refused non-http(s) URL:", url);
+      }
+    } catch {
+      console.warn("open-external: refused malformed URL:", url);
     }
   });
 }
