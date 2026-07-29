@@ -47,15 +47,44 @@ describe("loadProgress", () => {
   });
 });
 
-describe("saveQuizScore — pillar progression rule", () => {
-  test("passing the foundation unlocks only pillar 1", () => {
+describe("saveQuizScore + mastery gate — progression rule", () => {
+  const NOW = "2026-07-28T00:00:00Z";
+  const CHAIN = [
+    "foundation",
+    "pillar-react",
+    "pillar-nextjs",
+    "pillar-node",
+    "pillar-databases",
+    "pillar-tailwind",
+    "pillar-git",
+  ];
+
+  test("passing lessons sets the stone but does NOT unlock the next node", () => {
     const result = store.saveQuizScore(paths, "foundation", 0.85);
     assert.equal(result.passed, true);
     assert.equal(result.progress.foundationCompleted, true);
-    assert.deepEqual(result.newlyUnlocked, ["pillar-react"]);
-    assert.equal(result.progress.nodes["pillar-react"].status, "unlocked");
-    assert.equal(result.progress.nodes["pillar-nextjs"].status, "locked");
-    assert.deepEqual(result.progress.unlockedPillars, ["pillar-react"]);
+    assert.equal(result.progress.nodes["foundation"].status, "completed");
+    // The gate holds: no pillar unlocks on the graded pass alone.
+    assert.deepEqual(result.newlyUnlocked, []);
+    assert.equal(result.progress.nodes["pillar-react"].status, "locked");
+  });
+
+  test("passing the Mastery Test is what unlocks the next node", () => {
+    store.saveQuizScore(paths, "foundation", 0.9);
+    const outcome = store.recordMasteryOutcome(paths, "foundation", 0.9, NOW);
+    assert.equal(outcome.passed, true);
+    assert.deepEqual(outcome.newlyUnlocked, ["pillar-react"]);
+    assert.equal(outcome.progress.nodes["pillar-react"].status, "unlocked");
+    assert.equal(outcome.progress.nodes["pillar-nextjs"].status, "locked");
+    assert.deepEqual(outcome.progress.unlockedPillars, ["pillar-react"]);
+  });
+
+  test("mastering a node whose stone isn't set yet unlocks nothing", () => {
+    // Both halves of the gate are required — mastery alone can't jump it.
+    const outcome = store.recordMasteryOutcome(paths, "foundation", 1, NOW);
+    assert.equal(outcome.passed, true);
+    assert.deepEqual(outcome.newlyUnlocked, []);
+    assert.equal(outcome.progress.nodes["pillar-react"].status, "locked");
   });
 
   test("a score below 85% does not complete or unlock anything", () => {
@@ -74,10 +103,7 @@ describe("saveQuizScore — pillar progression rule", () => {
   });
 
   test("attempting a locked pillar throws (prerequisite locking)", () => {
-    assert.throws(
-      () => store.saveQuizScore(paths, "pillar-nextjs", 1),
-      /locked/
-    );
+    assert.throws(() => store.saveQuizScore(paths, "pillar-nextjs", 1), /locked/);
   });
 
   test("unknown node id throws", () => {
@@ -92,21 +118,31 @@ describe("saveQuizScore — pillar progression rule", () => {
     assert.equal(result.progress.nodes["foundation"].status, "completed");
   });
 
-  test("completing all six pillars unlocks the pediment", () => {
-    const order = [
-      "foundation",
-      "pillar-react",
-      "pillar-nextjs",
-      "pillar-node",
-      "pillar-databases",
-      "pillar-tailwind",
-      "pillar-git",
-    ];
+  test("advancing every module (lessons + mastery) unlocks the pediment", () => {
     let last;
-    for (const id of order) last = store.saveQuizScore(paths, id, 1);
+    for (const id of CHAIN) {
+      store.saveQuizScore(paths, id, 1);
+      last = store.recordMasteryOutcome(paths, id, 1, NOW);
+    }
     assert.deepEqual(last.newlyUnlocked, ["pediment"]);
     assert.equal(last.progress.nodes["pediment"].status, "unlocked");
     assert.equal(last.progress.unlockedPillars.length, 6);
+  });
+
+  test("the pediment stays locked until the final pillar is also mastered", () => {
+    // Advance every pillar's stone; master all but the last, so each unlocks
+    // the next but the pediment's mastery-gated prerequisites stay unmet.
+    for (let i = 0; i < CHAIN.length; i++) {
+      store.saveQuizScore(paths, CHAIN[i], 1);
+      if (i < CHAIN.length - 1) store.recordMasteryOutcome(paths, CHAIN[i], 1, NOW);
+    }
+    let data = store.loadProgress(paths);
+    assert.equal(data.nodes["pillar-git"].status, "completed");
+    assert.equal(data.nodes["pediment"].status, "locked");
+    // Master the final pillar → the last prerequisite clears, pediment opens.
+    const outcome = store.recordMasteryOutcome(paths, "pillar-git", 1, NOW);
+    assert.deepEqual(outcome.newlyUnlocked, ["pediment"]);
+    assert.equal(outcome.progress.nodes["pediment"].status, "unlocked");
   });
 });
 
@@ -120,6 +156,8 @@ describe("persistence", () => {
 
   test("rapid repeated writes never corrupt the file", () => {
     store.saveQuizScore(paths, "foundation", 0.9);
+    // Clear the mastery gate so pillar-react is attemptable for the hammering.
+    store.recordMasteryOutcome(paths, "foundation", 1, "2026-07-28T00:00:00Z");
     for (let i = 0; i < 50; i++) {
       store.saveQuizScore(paths, "pillar-react", i % 2 ? 0.5 : 0.95);
       // The file must be valid JSON after every single write.

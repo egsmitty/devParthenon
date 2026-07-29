@@ -643,8 +643,12 @@ async function finishMastery(score: number): Promise<void> {
   const pct = Math.round(score * 100);
   const bar = Math.round(MASTERY_PASS * 100);
 
-  let outcome: { progress: ProgressData; passed: boolean; awardedTrophy: string | null } | null =
-    null;
+  let outcome: {
+    progress: ProgressData;
+    passed: boolean;
+    awardedTrophy: string | null;
+    newlyUnlocked: string[];
+  } | null = null;
   try {
     outcome = await apiRef.recordMasteryResult(node.id, score);
   } catch (err) {
@@ -652,6 +656,11 @@ async function finishMastery(score: number): Promise<void> {
   }
   const passed = outcome?.passed ?? score + 1e-9 >= MASTERY_PASS;
   if (passed) playCue("pass");
+
+  // A mastery pass is what unlocks the next stone under the progression gate.
+  const unlockNames = (outcome?.newlyUnlocked ?? [])
+    .map((id) => outcome?.progress.nodes[id]?.title ?? id)
+    .map(escapeHtml);
 
   const scoreBlock = passed
     ? `<div class="result-burst">${Array.from({ length: 12 })
@@ -669,6 +678,10 @@ async function finishMastery(score: number): Promise<void> {
       ? `<div class="unlock-note">Mastery re-confirmed. The trophy is already in your case.</div>`
       : "";
 
+  const unlockNote = unlockNames.length
+    ? `<div class="unlock-note">Unlocked: ${unlockNames.join(" &middot; ")}</div>`
+    : "";
+
   const actions = passed
     ? `<button class="primary-btn" data-action="done">Return to the temple</button>`
     : `<button class="ghost-btn" data-action="done">Leave</button>` +
@@ -679,6 +692,7 @@ async function finishMastery(score: number): Promise<void> {
     ${scoreBlock}
     <div class="result-detail">${verdict}</div>
     ${trophyNote}
+    ${unlockNote}
     <div class="modal-actions">${actions}</div>
   `);
 

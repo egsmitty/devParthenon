@@ -637,17 +637,23 @@ function renderGuide(): void {
   const host = document.getElementById("temple-next")!;
   const order = ["foundation", ...PILLAR_ORDER.map((p) => p.id), "pediment"];
   const nodes = order.map((id) => progress.nodes[id]).filter(Boolean);
-  const next =
-    nodes.find((n) => n.status === "in_progress") ??
-    nodes.find((n) => n.status === "unlocked");
+  // Priority: finish a started module, then clear a due Mastery Test (which
+  // unlocks the next stone under the gate), then begin the next open module.
+  const inProgress = nodes.find((n) => n.status === "in_progress");
+  const pending = nodes.find((n) => masteryPending(n));
+  const next = inProgress ?? pending ?? nodes.find((n) => n.status === "unlocked");
   if (!next) {
     // Everything mastered — celebrate rather than nag.
     host.innerHTML = `<span class="guide-done">The temple stands complete. Practice any stone to keep it sharp.</span>`;
     return;
   }
-  const verb = next.status === "in_progress" ? "Continue" : "Begin";
-  host.innerHTML = `<button id="guide-btn" class="guide-btn">${verb}: ${escapeHtml(next.title)} &rarr;</button>`;
-  host.querySelector("#guide-btn")!.addEventListener("click", () => launchModule(next));
+  const asMastery = next === pending && next !== inProgress;
+  const verb = asMastery ? "Prove" : next.status === "in_progress" ? "Continue" : "Begin";
+  const suffix = asMastery ? " (Mastery Test)" : "";
+  host.innerHTML = `<button id="guide-btn" class="guide-btn">${verb}: ${escapeHtml(next.title)}${suffix} &rarr;</button>`;
+  host
+    .querySelector("#guide-btn")!
+    .addEventListener("click", () => launchModule(next, asMastery ? "mastery" : "graded"));
 }
 
 function renderStats(): void {

@@ -8,7 +8,7 @@ import {
   loadSettings,
   migrateProgress,
   progressFilePath,
-  recordMasteryResult,
+  recordMasteryOutcome,
   recordSectionResult,
   resetProgress,
   saveAttempt,
@@ -272,14 +272,9 @@ function registerIpc(): void {
       if (typeof nodeId !== "string" || typeof score !== "number" || score < 0 || score > 1) {
         throw new Error("record-mastery-result: invalid arguments");
       }
-      const data = loadProgress(storePaths);
-      const hadTrophy = (data.trophies ?? []).includes(nodeId);
-      recordMasteryResult(data, nodeId, score, new Date().toISOString());
-      writeProgress(storePaths, data);
-      const passed = data.mastery?.[nodeId]?.passed ?? false;
-      const awardedTrophy =
-        !hadTrophy && (data.trophies ?? []).includes(nodeId) ? nodeId : null;
-      return { progress: data, passed, awardedTrophy };
+      // The store records the attempt, runs the unlock sweep (a mastery pass is
+      // what advances the temple under the gate), and persists atomically.
+      return recordMasteryOutcome(storePaths, nodeId, score, new Date().toISOString());
     }
   );
 

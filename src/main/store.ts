@@ -9,6 +9,7 @@ import * as path from "path";
 import type {
   ActiveAttempt,
   HerculeanState,
+  MasteryOutcome,
   ModuleNode,
   ProgressData,
   SaveScoreResult,
@@ -320,10 +321,66 @@ export function recordSectionResult(
   writeProgress(paths, data);
 }
 
+/**
+ * Progression gate: a node unlocks only once every prerequisite is both
+ * *completed* (its lessons passed, stone set to marble) AND *mastered* (its
+ * Mastery Test passed). The 85% graded pass sets the stone and opens the
+ * Mastery Test; passing that test is what actually advances the temple. This
+ * is the "prove mastery on each topic" rule (Progression & Trophies plan).
+ */
 function prerequisitesMet(node: ModuleNode, data: ProgressData): boolean {
-  return node.prerequisites.every(
-    (id) => data.nodes[id] && data.nodes[id].status === "completed"
-  );
+  return node.prerequisites.every((id) => {
+    const pre = data.nodes[id];
+    return (
+      !!pre && pre.status === "completed" && (data.mastery?.[id]?.passed ?? false)
+    );
+  });
+}
+
+/**
+ * Sweep every still-locked node and unlock any whose prerequisites are now
+ * met. Mutates `data` (status + unlockedPillars) and returns the ids newly
+ * unlocked. One pass suffices — unlocking sets "unlocked", never "completed",
+ * so it can't satisfy another node's prerequisites in the same sweep.
+ */
+export function unlockNewlyAvailable(data: ProgressData): string[] {
+  const newlyUnlocked: string[] = [];
+  for (const other of Object.values(data.nodes)) {
+    if (other.status === "locked" && prerequisitesMet(other, data)) {
+      other.status = "unlocked";
+      newlyUnlocked.push(other.id);
+      if (
+        other.category === "pillar" &&
+        !data.unlockedPillars.includes(other.id)
+      ) {
+        data.unlockedPillars.push(other.id);
+      }
+    }
+  }
+  return newlyUnlocked;
+}
+
+/**
+ * Record a Mastery-Test attempt, then run the unlock sweep so a fresh pass
+ * advances the temple, and persist. Mirrors saveQuizScore's contract by
+ * returning what newly unlocked. Kept here (not in the IPC layer) so it stays
+ * Electron-free and unit-testable.
+ */
+export function recordMasteryOutcome(
+  paths: StorePaths,
+  nodeId: string,
+  score: number,
+  nowISO: string
+): MasteryOutcome {
+  const data = loadProgress(paths);
+  const hadTrophy = (data.trophies ?? []).includes(nodeId);
+  recordMasteryResult(data, nodeId, score, nowISO);
+  const passed = data.mastery?.[nodeId]?.passed ?? false;
+  const newlyUnlocked = passed ? unlockNewlyAvailable(data) : [];
+  writeProgress(paths, data);
+  const awardedTrophy =
+    !hadTrophy && (data.trophies ?? []).includes(nodeId) ? nodeId : null;
+  return { progress: data, passed, awardedTrophy, newlyUnlocked };
 }
 
 /**
@@ -356,21 +413,10 @@ export function saveQuizScore(
     data.foundationCompleted = true;
   }
 
-  const newlyUnlocked: string[] = [];
-  if (passed) {
-    for (const other of Object.values(data.nodes)) {
-      if (other.status === "locked" && prerequisitesMet(other, data)) {
-        other.status = "unlocked";
-        newlyUnlocked.push(other.id);
-        if (
-          other.category === "pillar" &&
-          !data.unlockedPillars.includes(other.id)
-        ) {
-          data.unlockedPillars.push(other.id);
-        }
-      }
-    }
-  }
+  // A graded pass sets the stone, but under the mastery gate it only unlocks
+  // the next node once this node's Mastery Test is also passed. The sweep
+  // re-checks every locked node against that combined rule.
+  const newlyUnlocked = passed ? unlockNewlyAvailable(data) : [];
 
   touchActivity(data, new Date().toISOString().slice(0, 10));
   writeProgress(paths, data);

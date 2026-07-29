@@ -132,6 +132,8 @@ export interface MasteryOutcome {
   passed: boolean;
   /** Trophy id newly awarded by this attempt, or null if none/already had it. */
   awardedTrophy: string | null;
+  /** Node ids the mastery pass just unlocked (the gate advancing the temple). */
+  newlyUnlocked: string[];
 }
 
 export type ThemeName = "temple-dark" | "parchment";
