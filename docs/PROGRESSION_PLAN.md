@@ -21,6 +21,46 @@ this doc is the map for the rest.
 
 ---
 
+## ⇢ Start here (handoff for Fable + Sonnet)
+
+Read `CLAUDE.md` first (invariants + the gate). **Every commit must pass
+`npm run verify`; every data change must also pass `npm run lint:data`.** All art
+is inline SVG only (CSP is self-only); set styles via `element.style` (CSSOM),
+never inline `style=`; gate any animation behind `prefers-reduced-motion`.
+
+Do these in order:
+
+1. **Fable — 6 trophy statues.** Add `STATUE_HERMES/APOLLO/HEPHAESTUS/APHRODITE/
+   CHRONOS/ZEUS` next to `STATUE_ATHENA` in `src/renderer/app.ts` (same
+   `viewBox="0 0 140 262"`, `url(#mb)` marble, gold `#e6c063`). Roster/attributes
+   in the table below.
+2. **Fable — Herculean bank.** Create `data/quizzes/herculean.json` per "Fable —
+   content instructions" below. Validate with `npm run lint:data`.
+3. **Sonnet — Trophy Case.** New `#trophy-case-root` overlay following the shared
+   `#x-root` open/close + Esc/backdrop pattern (copy `flashcards.ts`). Read
+   `progress.trophies`; map `nodeId → {god, epithet, art}` (+ `"herculean" → Zeus`).
+   Reuse `.statue-niche` CSS; earned = lit statue, locked = silhouette. Add an
+   entry button (footer or titlebar).
+4. **Sonnet — Overview page.** A recap overlay shown from the graded-pass screen
+   (before the Mastery CTA): each section's `heading` + `summary` + its Codex
+   terms/definitions (all already in the quiz data + glossary).
+5. **Sonnet — node re-entry + "mastery-pending" state.** A module whose lessons
+   passed (marble) but whose Mastery Test isn't passed (`!progress.mastery[id]?.passed`)
+   should be clickable to launch its Mastery Test — call `launchModule(node,
+   "mastery")` (already wired). Add a visual cue on the stone. This UNBLOCKS the gate.
+6. **Opus — enable the gate + tests.** Only after 3+5 exist: make `prerequisitesMet`
+   also require `data.mastery[prereqId]?.passed`, and have the
+   `record-mastery-result` IPC run the unlock sweep + return `newlyUnlocked`
+   (mirror `saveQuizScore`). Add unit tests. This is the "must pass to advance" rule.
+7. **Then**: Herculean node + exam + side-quest (Phase C), and capstone expansion
+   (first cap `buildGauntlet`'s capstone sampling so the gauntlet stays ~17 Qs).
+
+Contract already shipped for you to build on: `progress.trophies[]`,
+`progress.mastery{}`, `progress.herculean{}`; store fns `recordMasteryResult`,
+`herculeanUnlocked`, `recordHerculeanResult`, `herculeanOnCooldown`; renderer
+`configureMastery`, `buildMasteryQuiz`, the `"mastery"` `ModuleMode`, and the
+`record-mastery-result` IPC.
+
 ## The player journey (target)
 
 1. **Learn a module** — the existing lesson path (per-section teaching + checks),
