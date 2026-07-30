@@ -1154,19 +1154,31 @@ function openCodex(): void {
 
 /** The book-opening page-flip flourish (skipped when motion is reduced).
  * The layer lives on the page spread so the leaves hinge on the actual
- * binding — matching its height and vertical position, not the whole book. */
+ * binding — matching its height and vertical position, not the whole book.
+ * While the blank leaves turn, the real pages hold blank (the `flipping`
+ * class); the written entries fade in as the last leaf settles. */
+let flipTimer: number | undefined;
+
 function playBookFlip(): void {
   if (motionReduced()) return;
-  const book = document.querySelector(".codex-book .book-spread");
-  if (!book) return;
-  book.querySelector(".flip-layer")?.remove();
+  const book = document.querySelector(".codex-book");
+  const spread = book?.querySelector(".book-spread");
+  if (!book || !spread) return;
+  spread.querySelector(".flip-layer")?.remove();
   const layer = document.createElement("div");
   layer.className = "flip-layer";
   layer.setAttribute("aria-hidden", "true");
   layer.innerHTML =
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
-  book.appendChild(layer);
-  window.setTimeout(() => layer.remove(), 1300);
+  spread.appendChild(layer);
+  book.classList.add("flipping");
+  // Last leaf: 0.75s delay + 1.15s turn ≈ 1.9s; reveal just as it lands.
+  // (A shared timer so a quick re-open can't reveal the new flip early.)
+  window.clearTimeout(flipTimer);
+  flipTimer = window.setTimeout(() => {
+    layer.remove();
+    book.classList.remove("flipping");
+  }, 1900);
 }
 
 /** Open the Codex focused on a specific term (from a lesson chip). */

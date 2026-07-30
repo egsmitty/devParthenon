@@ -955,43 +955,19 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   transform-origin: left center;
   border: 1px solid rgba(120, 90, 40, 0.45);
   border-radius: 0 6px 6px 0;
-  /* Gutter shadow at the hinge, bright belly, worn outer edge — the lit edge
-     sweeps as the leaf rotates, which is what sells the turn. */
+  /* Blank vellum: gutter shadow at the hinge, bright belly, worn outer edge —
+     the lit gradient sweeping as the leaf rotates is what sells the turn. */
   background: linear-gradient(90deg,
     #cdbb92 0%, #e9dcba 7%, #f6eed8 34%, #f9f2e0 55%, #eee2c2 88%, #d9c69a 99%);
   box-shadow: -12px 0 26px rgba(0, 0, 0, 0.35);
   opacity: 0;
-  animation: page-flip 0.8s cubic-bezier(0.4, 0.1, 0.45, 1) forwards;
-}
-
-/* Faint ruled script on the leaf so it reads as a written page, not a slab
-   (mirrored on the backside it reads as ink show-through). */
-.flip-page::before {
-  content: "";
-  position: absolute;
-  inset: 8% 10%;
-  background:
-    repeating-linear-gradient(180deg,
-      rgba(96, 68, 30, 0.30) 0 2px, transparent 2px 13px);
-  -webkit-mask-image: linear-gradient(90deg, #000 0 68%, transparent 96%);
-  mask-image: linear-gradient(90deg, #000 0 68%, transparent 96%);
-}
-/* A rubric drop-cap block, like the codex pages beneath. */
-.flip-page::after {
-  content: "";
-  position: absolute;
-  top: 8%;
-  left: 10%;
-  width: 12%;
-  height: 9%;
-  background: rgba(150, 60, 34, 0.4);
-  border-radius: 2px;
+  animation: page-flip 1.15s cubic-bezier(0.42, 0.1, 0.4, 1) forwards;
 }
 
 /* Staggered leaf widths so the flourish reads as a stack of pages turning. */
-.flip-page:nth-child(1) { animation-delay: 0.1s; width: 45%; }
-.flip-page:nth-child(2) { animation-delay: 0.3s; width: 43.2%; }
-.flip-page:nth-child(3) { animation-delay: 0.5s; width: 41.5%; }
+.flip-page:nth-child(1) { animation-delay: 0.15s; width: 45%; }
+.flip-page:nth-child(2) { animation-delay: 0.45s; width: 43.2%; }
+.flip-page:nth-child(3) { animation-delay: 0.75s; width: 41.5%; }
 
 /* The leaf stays visible through the whole arc: bright face-up, dimming
    through vertical, and a shaded reverse side falling onto the left page. */
@@ -1002,6 +978,11 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   88% { opacity: 1; }
   100% { transform: rotateY(-176deg); opacity: 0; filter: brightness(0.68); }
 }
+
+/* While the leaves turn, the real pages lie blank; the written entries appear
+   as the last leaf settles. */
+.book-page > * { transition: opacity 0.5s ease; }
+.codex-book.flipping .book-page > * { opacity: 0; transition: none; }
 
 .codex-close {
   position: absolute;
