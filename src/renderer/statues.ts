@@ -166,6 +166,31 @@ export const STATUE_ZEUS = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_D
   <path d="M56 38 C 62 32 78 32 84 38" fill="none" stroke="#e6c063" stroke-width="2"/>
 </svg>`;
 
+/* Boss-fight combatant portraits (circular medallions, not marble statues). */
+
+/** You — a laurel-crowned hero medallion. */
+export const HERO_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <circle cx="60" cy="60" r="56" fill="#1b2331" stroke="#e6c063" stroke-width="3"/>
+  <path d="M60 40 C 48 40 44 52 44 62 C 44 76 52 86 60 86 C 68 86 76 76 76 62 C 76 52 72 40 60 40 Z" fill="#e9e3d2"/>
+  <path d="M50 60 q -6 -3 -6 -10 M70 60 q 6 -3 6 -10" fill="none" stroke="#0d1017" stroke-width="2"/>
+  <circle cx="52" cy="60" r="2.4" fill="#0d1017"/><circle cx="68" cy="60" r="2.4" fill="#0d1017"/>
+  <path d="M54 74 q 6 5 12 0" fill="none" stroke="#0d1017" stroke-width="2"/>
+  <path d="M40 44 C 34 34 44 26 54 30 M80 44 C 86 34 76 26 66 30" fill="none" stroke="#e6c063" stroke-width="3"/>
+  <path d="M42 40 l -5 -3 M48 34 l -3 -5 M78 40 l 5 -3 M72 34 l 3 -5" stroke="#e6c063" stroke-width="2.4"/>
+</svg>`;
+
+/** Hercules — a fierce bearded head hooded in the Nemean lion pelt. */
+export const HERCULES_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <circle cx="60" cy="60" r="56" fill="#2a1512" stroke="#e6c063" stroke-width="3"/>
+  <path d="M32 52 C 28 30 48 20 60 20 C 72 20 92 30 88 52 C 96 46 98 60 90 64 C 92 74 84 78 80 74 M40 64 C 26 66 30 50 30 50" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
+  <path d="M40 34 l -8 -12 l 14 6 Z M80 34 l 8 -12 l -14 6 Z" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
+  <path d="M46 44 C 44 40 40 40 38 44 M74 44 C 76 40 80 40 82 44" fill="none" stroke="#3a2a12" stroke-width="2.4"/>
+  <path d="M56 58 C 52 74 50 84 60 88 C 70 84 68 74 64 58 Z" fill="#e9d9be"/>
+  <circle cx="52" cy="54" r="2.6" fill="#2a1512"/><circle cx="68" cy="54" r="2.6" fill="#2a1512"/>
+  <path d="M46 84 C 54 96 66 96 74 84 C 66 90 54 90 46 84 Z" fill="#8a6a2e"/>
+  <path d="M40 70 q 20 10 40 0" fill="none" stroke="#6b4a1f" stroke-width="2"/>
+</svg>`;
+
 /** One trophy definition: the god, a one-line epithet, and the marble art. */
 export interface TrophyDef {
   god: string;

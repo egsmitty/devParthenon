@@ -654,48 +654,130 @@ text.mastery-crown {
 html[data-motion="reduce"] .mastery-halo,
 html[data-motion="reduce"] text.mastery-crown { animation: none; opacity: 0.9; }
 
-/* The Herculean marker — a thunderbolt medallion beside the pediment. */
-.herc-node { cursor: pointer; }
-.herc-node:focus { outline: none; }
-.herc-disc {
-  fill: url(#grad-stone-warm);
+/* The Herculean gateway — a torch-lit stone portal beside the temple. */
+.herc-gate { cursor: pointer; }
+.herc-gate:focus { outline: none; }
+.herc-stone {
+  fill: url(#grad-marble);
   stroke: var(--gold-deep);
-  stroke-width: 1.6;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  stroke-width: 1.4;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
 }
-.herc-ring {
-  stroke: var(--gold-hi);
-  stroke-width: 2;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: herc-pulse 2.4s ease-in-out infinite;
-}
-.herc-bolt {
+.herc-doorway { fill: #0a0d13; stroke: var(--brass-dark); stroke-width: 1; }
+.herc-gate-glow { opacity: 0.45; animation: herc-glow 3s ease-in-out infinite; }
+.herc-sign { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 1.4; }
+.herc-sign-text {
   fill: var(--gold-hi);
-  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.85));
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
 }
+.herc-spear { stroke: #8a5a13; stroke-width: 3; }
+.herc-spear-tip { fill: var(--gold-hi); }
 .herc-laurel { stroke: var(--gold-hi); stroke-width: 2.2; opacity: 0.9; }
 text.herc-label {
   fill: var(--gold-hi);
   font-family: "Cinzel", serif;
   font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  letter-spacing: 0.1em;
   text-anchor: middle;
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.6));
 }
-.herc-node:hover .herc-disc,
-.herc-node:focus-visible .herc-disc { stroke: var(--gold-hi); }
-.herc-node:hover .herc-ring,
-.herc-node:focus-visible .herc-ring { stroke-width: 3; }
-/* Conquered: still and marble, laurel-crowned. */
-.herc-node.conquered .herc-disc { fill: url(#grad-marble); }
-.herc-node.conquered .herc-ring { animation: none; opacity: 0.85; }
-@keyframes herc-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.92); }
-  50% { opacity: 1; transform: scale(1.06); }
+.herc-gate:hover .herc-stone,
+.herc-gate:focus-visible .herc-stone { stroke: var(--gold-hi); }
+.herc-gate:hover .herc-doorway,
+.herc-gate:focus-visible .herc-doorway { fill: #17110a; }
+.herc-gate:hover .herc-gate-glow { opacity: 0.7; }
+@keyframes herc-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
 }
-@media (prefers-reduced-motion: reduce) { .herc-ring { animation: none; opacity: 0.9; } }
-html[data-motion="reduce"] .herc-ring { animation: none; opacity: 0.9; }
+@media (prefers-reduced-motion: reduce) { .herc-gate-glow { animation: none; } }
+html[data-motion="reduce"] .herc-gate-glow { animation: none; }
+
+/* ---------------- The Herculean antechamber (full-page entrance) ---------------- */
+
+#herculean-gate-root {
+  position: fixed;
+  inset: var(--titlebar-h) 0 0 0;
+  z-index: 69; /* above the temple; the arena modal (50) opens behind it as it fades out */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+#herculean-gate-root[hidden] { display: none; }
+#herculean-gate-root.open { opacity: 1; }
+
+.hg-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 70% at 50% 30%, rgba(60, 20, 12, 0.5), rgba(3, 4, 7, 0.94));
+  backdrop-filter: blur(4px);
+}
+
+.hg-panel {
+  position: relative;
+  z-index: 1;
+  width: min(860px, 94vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 30px 44px 34px;
+  text-align: center;
+  border: 1px solid var(--brass-dark);
+  border-top: 3px solid var(--gold-deep);
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(90, 40, 16, 0.5), transparent 60%),
+    linear-gradient(180deg, #201821 0%, #14100f 55%, #0e0b0b 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.9),
+    inset 0 0 0 2px rgba(181, 131, 51, 0.3),
+    0 24px 70px rgba(0, 0, 0, 0.85),
+    0 0 50px rgba(224, 91, 75, 0.14);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.26s cubic-bezier(0.18, 0.9, 0.32, 1.15);
+}
+#herculean-gate-root.open .hg-panel { transform: translateY(0) scale(1); }
+.hg-return { position: absolute; top: 16px; right: 20px; }
+
+.hg-sign { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hg-crest { width: 200px; height: auto; margin-bottom: -6px; }
+.hg-sign h2 {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 1.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--brass) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hg-subtitle { color: #c9a06a; font-style: italic; letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.8rem; }
+
+.hg-arena { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 6px 0; }
+.hg-brazier { width: 52px; height: auto; align-self: flex-end; }
+.hg-fire { transform-box: fill-box; transform-origin: bottom center; animation: hg-flicker 1.4s ease-in-out infinite; }
+@keyframes hg-flicker {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.95; }
+  50% { transform: scaleY(1.12) scaleX(0.94); opacity: 1; }
+}
+.hg-vs { display: flex; align-items: center; gap: 24px; }
+.hg-lore { max-width: 60ch; color: var(--text); line-height: 1.6; }
+.hg-doors { margin-top: 4px; }
+.hg-enter { font-size: 0.9rem; padding: 12px 26px; }
+@media (prefers-reduced-motion: reduce) { .hg-fire { animation: none; } }
+html[data-motion="reduce"] .hg-fire { animation: none; }
 
 /* ---------- Glossary: carved index ---------- */
 

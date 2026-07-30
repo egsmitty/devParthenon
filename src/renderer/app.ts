@@ -32,6 +32,7 @@ import {
   openReviewDrill,
 } from "./modal.js";
 import { openOverview } from "./overview.js";
+import { openHerculeanGate } from "./herculeanGate.js";
 import {
   closeSettings,
   initSettings,
@@ -375,40 +376,54 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
 }
 
 /**
- * The Herculean marker — a thunderbolt medallion beside the pediment, shown
- * once the final trial unlocks. Pulses as a challenge; laurel-wreathed and
- * still once conquered. Clicking (or Enter/Space) launches the trial.
+ * The Herculean gateway — a torch-lit stone portal standing to the right of the
+ * temple once the final trial unlocks. A carved "HERACLES" sign over the lintel,
+ * crossed spears behind it, a fire in each post, and a glowing doorway you step
+ * into. Clicking (or Enter/Space) opens the full-page antechamber. Laurel-
+ * crowned once the trial is conquered.
  */
-function buildHerculeanMarker(): SVGGElement {
+function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
-  const cx = 916;
-  const cy = 92;
+  const cx = 890;
   const g = el("g");
-  g.classList.add("herc-node");
+  g.classList.add("herc-gate");
   if (passed) g.classList.add("conquered");
   g.setAttribute("tabindex", "0");
   g.setAttribute("role", "button");
   const desc = passed
-    ? "Conquered — the ultimate trophy is yours. Click to face it again."
-    : "The final trial: 25 questions across the whole craft, 85% to pass, timed.";
-  g.setAttribute("aria-label", `The Herculean Trial. ${desc}`);
+    ? "Conquered — the ultimate trophy is yours. Enter to face Hercules again."
+    : "The final trial: face Hercules in a timed, 25-labor duel across the whole craft.";
+  g.setAttribute("aria-label", `The Herculean Trial — an arena gateway. ${desc}`);
 
-  g.appendChild(el("circle", { cx, cy, r: 27, class: "herc-ring", fill: "none" }));
-  g.appendChild(el("circle", { cx, cy, r: 21, class: "herc-disc" }));
-  // Thunderbolt.
-  g.appendChild(
-    el("path", {
-      d: `M ${cx - 3} ${cy - 13} L ${cx + 6} ${cy - 2} L ${cx} ${cy - 1} L ${cx + 4} ${cy + 13} L ${cx - 6} ${cy + 1} L ${cx + 1} ${cy} Z`,
-      class: "herc-bolt",
-    })
-  );
-  if (passed) {
-    g.appendChild(el("path", { d: `M ${cx - 25} ${cy + 8} C ${cx - 31} ${cy - 8} ${cx - 20} ${cy - 22} ${cx - 7} ${cy - 24}`, class: "herc-laurel", fill: "none" }));
-    g.appendChild(el("path", { d: `M ${cx + 25} ${cy + 8} C ${cx + 31} ${cy - 8} ${cx + 20} ${cy - 22} ${cx + 7} ${cy - 24}`, class: "herc-laurel", fill: "none" }));
+  // Warm light spilling from the doorway.
+  g.appendChild(el("ellipse", { cx, cy: 480, rx: 60, ry: 120, fill: "url(#grad-torch-glow)", class: "herc-gate-glow" }));
+  // Crossed spears behind the sign.
+  g.appendChild(el("line", { x1: cx - 34, y1: 372, x2: cx + 34, y2: 336, class: "herc-spear" }));
+  g.appendChild(el("line", { x1: cx + 34, y1: 372, x2: cx - 34, y2: 336, class: "herc-spear" }));
+  g.appendChild(el("path", { d: `M ${cx + 34} 336 l 9 -5 l -4 11 z`, class: "herc-spear-tip" }));
+  g.appendChild(el("path", { d: `M ${cx - 34} 336 l -9 -5 l 4 11 z`, class: "herc-spear-tip" }));
+  // Sign board over the lintel.
+  g.appendChild(el("rect", { x: cx - 44, y: 356, width: 88, height: 24, rx: 3, class: "herc-sign" }));
+  const sign = el("text", { x: cx, y: 373, class: "herc-sign-text" });
+  sign.textContent = "HERACLES";
+  g.appendChild(sign);
+  // Lintel + two posts framing a dark, glowing doorway.
+  g.appendChild(el("rect", { x: cx - 46, y: 384, width: 92, height: 14, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx - 44, y: 398, width: 16, height: 158, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx + 28, y: 398, width: 16, height: 158, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx - 28, y: 400, width: 56, height: 156, class: "herc-doorway" }));
+  // A brazier flame atop each post.
+  for (const px of [cx - 36, cx + 36]) {
+    g.appendChild(el("circle", { cx: px, cy: 392, r: 20, fill: "url(#grad-torch-glow)", class: "herc-gate-glow" }));
+    g.appendChild(el("path", { d: `M ${px} 380 C ${px + 6} 388 ${px + 5} 393 ${px} 398 C ${px - 5} 393 ${px - 6} 388 ${px} 380 Z`, class: "flame" }));
   }
-  const t = el("text", { x: cx, y: cy + 42, class: "node-label herc-label" });
-  t.textContent = "HERCULEAN";
-  g.appendChild(t);
+  if (passed) {
+    g.appendChild(el("path", { d: `M ${cx - 50} 352 C ${cx - 58} 336 ${cx - 44} 322 ${cx - 26} 322`, class: "herc-laurel", fill: "none" }));
+    g.appendChild(el("path", { d: `M ${cx + 50} 352 C ${cx + 58} 336 ${cx + 44} 322 ${cx + 26} 322`, class: "herc-laurel", fill: "none" }));
+  }
+  const label = el("text", { x: cx, y: 574, class: "node-label herc-label" });
+  label.textContent = passed ? "CONQUERED" : "THE HERCULEAN";
+  g.appendChild(label);
 
   g.addEventListener("mouseenter", (e) => {
     const me = e as MouseEvent;
@@ -421,7 +436,7 @@ function buildHerculeanMarker(): SVGGElement {
     showRawTip("The Herculean Trial", desc, r.left + r.width / 2, r.top);
   });
   g.addEventListener("blur", hideNodeTip);
-  const go = () => void launchHerculean();
+  const go = () => openHerculeanGate(herculeanPassed(), () => void launchHerculean());
   g.addEventListener("click", go);
   g.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -551,10 +566,6 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   else if (pediment.status === "completed") pg.appendChild(seal(500, 95, pediment.score));
   svg.appendChild(pg);
 
-  // The Herculean trial: a parallel marker beside the pediment once every
-  // stone stands. It sits alongside the roof, never gating it.
-  if (herculeanUnlocked()) svg.appendChild(buildHerculeanMarker());
-
   // Torch sconces flanking the temple front.
   svg.appendChild(torch(116, 160));
   svg.appendChild(torch(884, 160));
@@ -668,6 +679,10 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   if (foundation.status === "locked") fg.appendChild(ironwork(500, 640, 160));
   else if (foundation.status === "completed") fg.appendChild(seal(500, 638, foundation.score, masteryPending(foundation)));
   svg.appendChild(fg);
+
+  // The Herculean trial: a parallel gateway beside the temple once every stone
+  // stands. Drawn last so it sits above the steps; never gates the roof.
+  if (herculeanUnlocked()) svg.appendChild(buildHerculeanGate());
 
   return svg;
 }
@@ -1204,7 +1219,7 @@ function wireTrophyCase(): void {
 }
 
 function anyOverlayOpen(): boolean {
-  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "flashcards-root", "trophy-case-root", "overview-root", "codex"].some(
+  return ["modal-root", "settings-root", "welcome-root", "chronicle-root", "help-root", "flashcards-root", "trophy-case-root", "overview-root", "herculean-gate-root", "codex"].some(
     (id) => {
       const el = document.getElementById(id);
       return el && !el.hasAttribute("hidden");
