@@ -667,6 +667,13 @@ html[data-motion="reduce"] text.mastery-crown { animation: none; opacity: 0.9; }
 .herc-arch { filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6)); }
 .herc-voussoir { stroke: var(--gold-deep); stroke-width: 1; opacity: 0.55; }
 .herc-brazier-bowl { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 0.8; }
+.herc-pediment { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5)); }
+.herc-ped-line { stroke: var(--gold-deep); stroke-width: 1; opacity: 0.7; }
+.herc-bolt-tym { fill: var(--gold-hi); filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8)); }
+.herc-acro { fill: var(--gold); opacity: 0.9; }
+.herc-banner { fill: #8f2b1e; stroke: #4a130c; stroke-width: 1.2; }
+.herc-banner-trim { stroke: var(--gold); stroke-width: 1.6; }
+.herc-banner-bolt { fill: var(--gold-hi); opacity: 0.9; }
 .herc-shield { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 1.4; }
 .herc-shield-boss { fill: var(--gold-hi); }
 .herc-ground-glow {
@@ -1432,7 +1439,7 @@ html[data-theme="parchment"] .fc-term { color: #5a3f14; text-shadow: none; }
 #modal-root[hidden] { display: none; }
 
 .modal-card {
-  width: min(780px, 94vw);
+  width: min(880px, 94vw);
   max-height: 86vh;
   overflow-y: auto;
   position: relative;
@@ -1521,45 +1528,106 @@ html[data-theme="parchment"] .fc-term { color: #5a3f14; text-shadow: none; }
   color: var(--gold-hi);
 }
 
-/* In-arena HUD: you (left) · clock (center) · Hercules (right). */
-.boss-hud {
+/* The full-screen arena: the modal root becomes the fight stage. */
+#modal-root.arena-mode {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(90, 36, 22, 0.5), transparent 55%),
+    radial-gradient(90% 90% at 50% 55%, rgba(8, 10, 15, 0.85), rgba(3, 4, 7, 0.96));
+}
+.arena {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Street-Fighter HUD: portraits at the edges, tapered bars racing to a big
+   center VS emblem, names in large caps, the round clock beneath. */
+.arena-hud {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 16px;
-  padding-bottom: 14px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid rgba(181, 131, 51, 0.25);
+  gap: 20px;
+  padding: 16px 30px 18px;
+  background: linear-gradient(180deg, rgba(26, 15, 8, 0.98), rgba(12, 8, 5, 0.92));
+  border-bottom: 2px solid var(--gold-deep);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), inset 0 -1px 0 rgba(253, 230, 138, 0.15);
 }
-.boss-hud .boss-fighter { flex-direction: row; gap: 12px; }
-.boss-hud .boss-fighter.foe { flex-direction: row-reverse; }
-.boss-hud .boss-portrait { width: 56px; flex-shrink: 0; }
+.arena-hud .boss-fighter { display: flex; flex-direction: row; align-items: center; gap: 16px; position: relative; }
+.arena-hud .boss-fighter.foe { flex-direction: row-reverse; }
+.arena-hud .boss-portrait { width: 96px; flex-shrink: 0; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7)); }
 .boss-meta { flex: 1; min-width: 0; }
-.boss-hud .boss-name { margin-bottom: 5px; }
-.boss-hud .boss-fighter.foe .boss-meta { text-align: right; }
+.arena-hud .boss-name {
+  font-size: 1.35rem;
+  letter-spacing: 0.16em;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 18px rgba(245, 158, 11, 0.35);
+}
+.arena-hud .boss-fighter.foe .boss-meta { text-align: right; }
 
 .boss-hpbar {
-  height: 14px;
+  position: relative;
+  height: 28px;
   min-width: 120px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #14181f, #0c0f15);
-  border: 1px solid var(--brass-dark);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #191410, #0c0906);
+  border: 2px solid #e6c063;
   overflow: hidden;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  transform: skewX(-16deg);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.8),
+    0 3px 10px rgba(0, 0, 0, 0.6),
+    0 0 16px rgba(245, 158, 11, 0.2);
+}
+/* Glossy arcade highlight across the top of the bar. */
+.boss-hpbar::after {
+  content: "";
+  position: absolute;
+  inset: 2px 2px 55% 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.02));
+  pointer-events: none;
 }
 .boss-hp-fill {
   height: 100%;
   width: 100%;
-  border-radius: 7px 0 0 7px;
   transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.boss-fighter.you .boss-hp-fill { background: linear-gradient(180deg, #7ee0a0, #35a866); }
-.boss-fighter.foe .boss-hp-fill { background: linear-gradient(180deg, #ef8f6b, #c0432a); }
-/* Hercules' bar drains from the other side so both empty toward the center. */
-.boss-fighter.foe .boss-hpbar { transform: scaleX(-1); }
+.boss-fighter.you .boss-hp-fill { background: linear-gradient(180deg, #b8f3cd, #4ec97e 45%, #1f8b4d); }
+.boss-fighter.foe .boss-hp-fill { background: linear-gradient(180deg, #ffc1a1, #ef6b45 45%, #b03318); }
+/* Hercules' bar mirrors so both drain toward the center VS. */
+.boss-fighter.foe .boss-hpbar { transform: scaleX(-1) skewX(-16deg); }
 
-.boss-clock { text-align: center; display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
-.boss-qcount { font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.08em; }
+.arena-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  min-width: 96px;
+}
+.arena-vs {
+  font-family: "Cinzel Decorative", "Cinzel", serif;
+  font-weight: 700;
+  font-size: 2.3rem;
+  line-height: 1;
+  color: var(--ember);
+  paint-order: stroke;
+  -webkit-text-stroke: 1.5px #2a0c06;
+  text-shadow: 0 0 22px rgba(224, 91, 75, 0.75), 0 3px 6px rgba(0, 0, 0, 0.8);
+}
+.arena-center .gauntlet-timer { font-size: 1.15rem; }
+.boss-qcount { font-size: 0.74rem; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* The labor itself: a wide card floating in the arena below the HUD. */
+.arena .modal-card.arena-card {
+  width: min(1240px, 95vw);
+  margin: 26px auto;
+  flex-shrink: 0;
+}
 
 /* Strike feedback: a shake + a floating damage number. */
 .boss-fighter.hit { animation: boss-shake 0.4s ease; }
@@ -1736,7 +1804,25 @@ html[data-motion="reduce"] .boss-hp-fill { transition: none; }
   line-height: 1.5;
 }
 
-.modal-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px; }
+.modal-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
+
+/* "Step away" / "Leave" reads as a real exit, not fine print: bigger, ember-
+   edged, with a door glyph feel on hover. */
+.modal-actions [data-action="abandon"],
+.modal-actions [data-action="leave"] {
+  margin-right: auto; /* anchor the exit to the left, clear of Continue */
+  padding: 9px 20px;
+  font-size: 0.8rem;
+  color: #e08a7c;
+  border: 1px solid rgba(224, 91, 75, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.modal-actions [data-action="abandon"]:hover,
+.modal-actions [data-action="leave"]:hover {
+  color: #ffb3a6;
+  border-color: var(--ember);
+  box-shadow: 0 0 14px rgba(224, 91, 75, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
 
 /* ---------- "Learn more" — per-topic web-search hand-off ---------- */
 
@@ -1780,7 +1866,7 @@ html[data-theme="parchment"] .learn-more-btn:hover { color: #3d2a0c; border-colo
 /* ---------- Two-column lesson: text | "Your turn" ---------- */
 
 /* A taught section is wide to seat the lesson beside a roomy check. */
-.modal-card.lesson-wide { width: min(1320px, 96vw); }
+.modal-card.lesson-wide { width: min(1540px, 97vw); }
 
 .lesson-columns {
   display: flex;

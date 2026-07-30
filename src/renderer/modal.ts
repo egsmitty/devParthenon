@@ -247,8 +247,10 @@ export function openModule(
   onDoneRef = onDone;
   root().hidden = false;
   // The Herculean is a boss fight. Its grand VS intro is the antechamber page
-  // (herculeanGate.ts) shown before this; here we go straight into the arena.
+  // (herculeanGate.ts) shown before this; here the modal root becomes a
+  // full-screen arena (Street-Fighter HUD up top, the labor below).
   if (mode === "herculean") {
+    root().classList.add("arena-mode");
     setupBoss();
     beginBoss();
     return;
@@ -338,6 +340,7 @@ function closeModal(): void {
   state = null;
   const r = root();
   r.hidden = true;
+  r.classList.remove("arena-mode");
   r.replaceChildren();
 }
 
@@ -790,6 +793,8 @@ async function finishMastery(score: number): Promise<void> {
  */
 async function finishHerculean(score: number): Promise<void> {
   if (!state) return;
+  // The fight is over — the verdict reads as a centered card, not the arena.
+  root().classList.remove("arena-mode");
   const { quiz, correct, retry, origins } = state;
   const total = quiz.sections.length;
   const pct = Math.round(score * 100);
@@ -903,6 +908,21 @@ function fighterHud(side: "you" | "foe", name: string, art: string): string {
   </div>`;
 }
 
+/** The full-width Street-Fighter-style fight HUD across the top of the arena. */
+function arenaHud(): string {
+  if (!state) return "";
+  const total = state.quiz.sections.length;
+  return `<div class="arena-hud">
+    ${fighterHud("you", "You", HERO_PORTRAIT)}
+    <div class="arena-center">
+      <div class="arena-vs" aria-hidden="true">VS</div>
+      <span id="gauntlet-timer" class="gauntlet-timer"></span>
+      <span class="boss-qcount">Labor ${state.sectionIndex + 1} / ${total}</span>
+    </div>
+    ${fighterHud("foe", "Hercules", HERCULES_PORTRAIT)}
+  </div>`;
+}
+
 /** Point each HP fill at its current value (CSSOM — inline style attrs break CSP). */
 function setBossBars(el: HTMLElement): void {
   if (!state?.boss) return;
@@ -924,17 +944,13 @@ function renderBossQuestion(): void {
   const section = quiz.sections[sectionIndex];
   const q = pickVariant(section, { mode: "practice" });
   state.shownIds[sectionIndex] = q.id;
-  const total = quiz.sections.length;
 
-  const el = card(`
-    <div class="boss-hud">
-      ${fighterHud("you", "You", HERO_PORTRAIT)}
-      <div class="boss-clock">
-        <span class="boss-qcount">Labor ${sectionIndex + 1} / ${total}</span>
-        <span id="gauntlet-timer" class="gauntlet-timer"></span>
-      </div>
-      ${fighterHud("foe", "Hercules", HERCULES_PORTRAIT)}
-    </div>
+  // Full-screen arena: the fight HUD spans the top; the labor sits beneath.
+  const wrap = document.createElement("div");
+  wrap.className = "arena";
+  wrap.innerHTML = arenaHud();
+
+  const inner = card(`
     <div class="check-label">Trial of Heracles</div>
     <div class="question-text">${rich(q.question)}</div>
     <div class="options">${optionsMarkup(q.options)}</div>
@@ -943,10 +959,13 @@ function renderBossQuestion(): void {
       <button class="ghost-btn" data-action="leave">Retreat</button>
     </div>
   `);
-  el.querySelector('[data-action="leave"]')!.addEventListener("click", closeModal);
-  setBossBars(el);
-  wireBossAnswer(el, q);
-  mountCard(el);
+  inner.classList.add("arena-card");
+  wrap.appendChild(inner);
+
+  wrap.querySelector('[data-action="leave"]')!.addEventListener("click", closeModal);
+  setBossBars(wrap);
+  wireBossAnswer(wrap, q);
+  mountCard(wrap);
 }
 
 /** Animate a strike: drop the bar, shake the fighter, float the damage number. */

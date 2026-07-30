@@ -46,7 +46,7 @@ function seed(dir, mutate, settings) {
   );
 }
 
-async function launch(dir) {
+async function launch(dir, keepWelcome = false) {
   const app = await electron.launch({
     args: [".", "--dev-audit"],
     cwd: root,
@@ -57,6 +57,16 @@ async function launch(dir) {
   // and clickable without force — which also verifies the a11y guard works.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.waitForSelector("#temple-svg-host svg", { timeout: 15000 });
+  // The welcome rite plays on every launch — enter the temple before acting
+  // (unless the scenario wants to capture the rite itself).
+  if (!keepWelcome) {
+    const enter = await page.$("#welcome-root:not([hidden]) .welcome-enter");
+    if (enter) {
+      await enter.click();
+      // The rite fades then sets [hidden] — wait for the attribute, not visibility.
+      await page.waitForSelector("#welcome-root[hidden]", { state: "attached", timeout: 5000 });
+    }
+  }
   return { app, page };
 }
 
@@ -290,9 +300,9 @@ async function main() {
   {
     const dir = path.join(tmpRoot, "welcome");
     seed(dir, undefined, { introSeen: false });
-    const { app, page } = await launch(dir);
+    const { app, page } = await launch(dir, true);
     await page.waitForSelector("#welcome-root.open .welcome-enter");
-    await shot(page, "18-welcome-rite", "First-run welcome overlay (crest, title, three steps)");
+    await shot(page, "18-welcome-rite", "Every-launch welcome overlay (crest, title, three steps)");
     await page.click(".welcome-enter");
     await new Promise((r) => setTimeout(r, 500));
     await page.click("#btn-settings");

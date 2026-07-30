@@ -375,19 +375,18 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
 }
 
 /**
- * The Herculean gateway — a rounded stone archway standing in the open ground
- * to the right of the temple once the final trial unlocks. A voussoir arch with
- * a keystone, a carved "HERACLES" sign, crossed spears on top and tall spears
- * flanking the sides, wall-mounted torches, hung shields, and a warm glow
- * spilling from the dark mouth onto the floor. Clicking (or Enter/Space) opens
- * the full-page antechamber. Laurel-crowned once the trial is conquered.
+ * The Herculean gateway — a small arena-temple façade standing in the open
+ * ground to the right of the temple once the final trial unlocks: a pediment
+ * with a thunderbolt tympanum over a carved HERACLES frieze, two columns
+ * flanking an arched mouth, crossed spears above the roof, red war banners,
+ * column-mounted torches, and firelight spilling onto the steps. Clicking (or
+ * Enter/Space) opens the full-page antechamber. Laurel-draped once conquered.
  */
 function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
-  // Its own ground in the widened canvas, well clear of the temple on the right.
-  const cx = 1062;
-  const springY = 448; // where the arch curve springs from the legs
-  const baseY = 560;
+  // Its own ground in the widened canvas, well clear of the temple.
+  const cx = 1040;
+  const baseY = 566;
   const g = el("g");
   g.classList.add("herc-gate");
   if (passed) g.classList.add("conquered");
@@ -398,7 +397,7 @@ function buildHerculeanGate(): SVGGElement {
     : "The final trial: face Hercules in a timed, 25-labor duel across the whole craft.";
   g.setAttribute("aria-label", `The Herculean Trial — an arena gateway. ${desc}`);
 
-  // A wall-mounted torch: bracket + bowl + big flame + warm light-pool.
+  // A mounted torch: bowl + big flame + warm light-pool.
   const torch = (px: number, py: number, s: number) => {
     g.appendChild(el("circle", { cx: px, cy: py - 6 * s, r: 20 * s, fill: "url(#grad-torch-glow)", class: "herc-gate-glow" }));
     g.appendChild(el("ellipse", { cx: px, cy: py + 4 * s, rx: 7 * s, ry: 3.4 * s, class: "herc-brazier-bowl" }));
@@ -408,74 +407,93 @@ function buildHerculeanGate(): SVGGElement {
     }));
   };
 
-  // Warm light from the mouth, and a glow pool on the floor.
-  g.appendChild(el("ellipse", { cx, cy: 470, rx: 46, ry: 110, fill: "url(#grad-torch-glow)", class: "herc-gate-glow" }));
-  g.appendChild(el("ellipse", { cx, cy: baseY + 4, rx: 60, ry: 16, class: "herc-ground-glow" }));
+  // Firelight from the mouth + a glow pool washing the steps.
+  g.appendChild(el("ellipse", { cx, cy: 490, rx: 44, ry: 96, fill: "url(#grad-torch-glow)", class: "herc-gate-glow" }));
+  g.appendChild(el("ellipse", { cx, cy: baseY + 14, rx: 78, ry: 18, class: "herc-ground-glow" }));
 
-  // Tall spears standing to either side of the arch.
-  for (const sx of [cx - 70, cx + 70]) {
-    g.appendChild(el("line", { x1: sx, y1: baseY, x2: sx, y2: 398, class: "herc-spear" }));
-    g.appendChild(el("path", { d: `M ${sx} 392 l -5 12 h 10 z`, class: "herc-spear-tip" }));
-    g.appendChild(el("circle", { cx: sx, cy: 470, r: 7, class: "herc-shield" }));
-    g.appendChild(el("circle", { cx: sx, cy: 470, r: 2.6, class: "herc-shield-boss" }));
-  }
+  // Crossed spears rising behind the pediment.
+  g.appendChild(el("line", { x1: cx - 52, y1: 338, x2: cx + 46, y2: 288, class: "herc-spear" }));
+  g.appendChild(el("line", { x1: cx + 52, y1: 338, x2: cx - 46, y2: 288, class: "herc-spear" }));
+  g.appendChild(el("path", { d: `M ${cx + 46} 288 l 11 -6 l -4 13 z`, class: "herc-spear-tip" }));
+  g.appendChild(el("path", { d: `M ${cx - 46} 288 l -11 -6 l 4 13 z`, class: "herc-spear-tip" }));
 
-  // The stone arch: outer marble ring, then the dark mouth cut into it.
+  // Wall panel between the columns, holding the arched mouth.
+  g.appendChild(el("rect", { x: cx - 46, y: 396, width: 92, height: baseY - 396, class: "herc-stone" }));
   g.appendChild(el("path", {
-    d: `M ${cx - 58} ${baseY} L ${cx - 58} ${springY} A 58 58 0 0 1 ${cx + 58} ${springY} L ${cx + 58} ${baseY} Z`,
-    class: "herc-stone herc-arch",
-  }));
-  g.appendChild(el("path", {
-    d: `M ${cx - 34} ${baseY} L ${cx - 34} ${springY} A 34 34 0 0 1 ${cx + 34} ${springY} L ${cx + 34} ${baseY} Z`,
+    d: `M ${cx - 30} ${baseY} L ${cx - 30} 470 A 30 30 0 0 1 ${cx + 30} 470 L ${cx + 30} ${baseY} Z`,
     class: "herc-doorway",
   }));
-  // Voussoir stones radiating around the arch + block joints down the legs.
+  // Voussoir ring around the mouth + masonry joints on the wall.
   const vou: string[] = [];
-  for (const a of [-64, -38, -13, 13, 38, 64]) {
+  for (const a of [-66, -40, -14, 14, 40, 66]) {
     const rad = (a * Math.PI) / 180;
-    const sinA = Math.sin(rad);
-    const cosA = Math.cos(rad);
     vou.push(
-      `M ${(cx + 34 * sinA).toFixed(1)} ${(springY - 34 * cosA).toFixed(1)} L ${(cx + 58 * sinA).toFixed(1)} ${(springY - 58 * cosA).toFixed(1)}`
+      `M ${(cx + 30 * Math.sin(rad)).toFixed(1)} ${(470 - 30 * Math.cos(rad)).toFixed(1)} L ${(cx + 40 * Math.sin(rad)).toFixed(1)} ${(470 - 40 * Math.cos(rad)).toFixed(1)}`
     );
   }
-  for (const jy of [478, 508, 538]) {
-    vou.push(`M ${cx - 58} ${jy} h 24 M ${cx + 34} ${jy} h 24`);
-  }
+  for (const jy of [420, 500, 532]) vou.push(`M ${cx - 46} ${jy} h 14 M ${cx + 32} ${jy} h 14`);
   g.appendChild(el("path", { d: vou.join(" "), class: "herc-voussoir", fill: "none" }));
-  // Keystone at the apex.
-  g.appendChild(el("path", { d: `M ${cx - 9} 392 L ${cx + 9} 392 L ${cx + 6} 366 L ${cx - 6} 366 Z`, class: "herc-stone herc-keystone" }));
 
-  // Wall-mounted torches on the arch shoulders + a pair at the base.
-  torch(cx - 68, 462, 1.45);
-  torch(cx + 68, 462, 1.45);
-  torch(cx - 68, 552, 1);
-  torch(cx + 68, 552, 1);
+  // Flanking Doric columns: capital, fluted shaft, base ring.
+  for (const px of [cx - 58, cx + 58]) {
+    g.appendChild(el("rect", { x: px - 12, y: 388, width: 24, height: 8, class: "herc-stone" }));
+    g.appendChild(el("path", { d: `M ${px - 9} 396 Q ${px - 6} 402 ${px - 7} 404 L ${px + 7} 404 Q ${px + 6} 402 ${px + 9} 396 Z`, class: "herc-stone" }));
+    g.appendChild(el("path", { d: `M ${px - 8} 404 L ${px + 8} 404 L ${px + 6.5} 552 L ${px - 6.5} 552 Z`, class: "herc-stone" }));
+    g.appendChild(el("line", { x1: px - 2.5, y1: 408, x2: px - 2.2, y2: 548, class: "herc-voussoir" }));
+    g.appendChild(el("line", { x1: px + 2.5, y1: 408, x2: px + 2.2, y2: 548, class: "herc-voussoir" }));
+    g.appendChild(el("rect", { x: px - 11, y: 552, width: 22, height: 8, rx: 3, class: "herc-stone" }));
+  }
 
-  // Crossed spears + hung shield crest above the arch.
-  g.appendChild(el("line", { x1: cx - 34, y1: 372, x2: cx + 34, y2: 330, class: "herc-spear" }));
-  g.appendChild(el("line", { x1: cx + 34, y1: 372, x2: cx - 34, y2: 330, class: "herc-spear" }));
-  g.appendChild(el("path", { d: `M ${cx + 34} 330 l 10 -5 l -4 12 z`, class: "herc-spear-tip" }));
-  g.appendChild(el("path", { d: `M ${cx - 34} 330 l -10 -5 l 4 12 z`, class: "herc-spear-tip" }));
-
-  // Sign board on the arch face, over the mouth.
-  g.appendChild(el("rect", { x: cx - 42, y: 344, width: 84, height: 23, rx: 3, class: "herc-sign" }));
-  const sign = el("text", { x: cx, y: 360, class: "herc-sign-text" });
+  // Entablature: architrave + the carved HERACLES frieze.
+  g.appendChild(el("rect", { x: cx - 76, y: 372, width: 152, height: 10, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx - 72, y: 350, width: 144, height: 22, class: "herc-sign" }));
+  const sign = el("text", { x: cx, y: 366, class: "herc-sign-text" });
   sign.textContent = "HERACLES";
   g.appendChild(sign);
-  // Laurel swag beneath the sign.
-  g.appendChild(el("path", { d: `M ${cx - 38} 369 Q ${cx} 384 ${cx + 38} 369`, class: "herc-laurel", fill: "none" }));
 
-  // Stepped plinth grounding the arch.
-  g.appendChild(el("rect", { x: cx - 64, y: baseY, width: 128, height: 9, class: "herc-stone" }));
-  g.appendChild(el("rect", { x: cx - 70, y: baseY + 9, width: 140, height: 11, class: "herc-stone" }));
+  // Pediment: raking cornice + a gold thunderbolt in the tympanum + acroteria.
+  g.appendChild(el("polygon", { points: `${cx - 82},350 ${cx + 82},350 ${cx},306`, class: "herc-stone herc-pediment" }));
+  g.appendChild(el("polygon", { points: `${cx - 68},346 ${cx + 68},346 ${cx},310`, fill: "none", class: "herc-ped-line" }));
+  g.appendChild(el("path", {
+    d: `M ${cx - 4} 316 L ${cx + 5} 328 L ${cx - 1} 327 L ${cx + 6} 342 L ${cx - 6} 331 L ${cx - 1} 332 Z`,
+    class: "herc-bolt-tym",
+  }));
+  g.appendChild(el("path", { d: `M ${cx} 306 l -6 -10 h 12 z`, class: "herc-acro" }));
+  g.appendChild(el("path", { d: `M ${cx - 82} 350 l -8 -11 h 13 z`, class: "herc-acro" }));
+  g.appendChild(el("path", { d: `M ${cx + 82} 350 l 8 -11 h -13 z`, class: "herc-acro" }));
+
+  // Red war banners hanging from the entablature ends.
+  for (const bx of [cx - 66, cx + 66]) {
+    g.appendChild(el("path", {
+      d: `M ${bx - 9} 382 h 18 L ${bx + 9} 436 L ${bx} 424 L ${bx - 9} 436 Z`,
+      class: "herc-banner",
+    }));
+    g.appendChild(el("line", { x1: bx - 9, y1: 386, x2: bx + 9, y2: 386, class: "herc-banner-trim" }));
+    g.appendChild(el("path", { d: `M ${bx - 1.6} 398 l 4.5 6.5 l -3.6 -0.6 l 4 8 l -6 -6 l 3 0.4 z`, class: "herc-banner-bolt" }));
+  }
+
+  // Torches on the columns; shields hung beneath them.
+  torch(cx - 58, 436, 1.35);
+  torch(cx + 58, 436, 1.35);
+  for (const px of [cx - 58, cx + 58]) {
+    g.appendChild(el("circle", { cx: px, cy: 502, r: 8, class: "herc-shield" }));
+    g.appendChild(el("circle", { cx: px, cy: 502, r: 3, class: "herc-shield-boss" }));
+  }
+  // Ground braziers flanking the steps.
+  torch(cx - 92, 560, 0.95);
+  torch(cx + 92, 560, 0.95);
+
+  // Three stepped slabs grounding the whole façade.
+  g.appendChild(el("rect", { x: cx - 78, y: baseY, width: 156, height: 9, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx - 88, y: baseY + 9, width: 176, height: 10, class: "herc-stone" }));
+  g.appendChild(el("rect", { x: cx - 98, y: baseY + 19, width: 196, height: 11, class: "herc-stone" }));
 
   if (passed) {
-    g.appendChild(el("path", { d: `M ${cx - 48} 342 C ${cx - 60} 322 ${cx - 44} 306 ${cx - 22} 306`, class: "herc-laurel", fill: "none" }));
-    g.appendChild(el("path", { d: `M ${cx + 48} 342 C ${cx + 60} 322 ${cx + 44} 306 ${cx + 22} 306`, class: "herc-laurel", fill: "none" }));
+    g.appendChild(el("path", { d: `M ${cx - 76} 344 C ${cx - 60} 322 ${cx - 34} 310 ${cx - 6} 308`, class: "herc-laurel", fill: "none" }));
+    g.appendChild(el("path", { d: `M ${cx + 76} 344 C ${cx + 60} 322 ${cx + 34} 310 ${cx + 6} 308`, class: "herc-laurel", fill: "none" }));
   }
-  const label = el("text", { x: cx, y: 592, class: "node-label herc-label" });
-  label.textContent = passed ? "· CLEARED ·" : "THE TRIAL";
+  const label = el("text", { x: cx, y: 614, class: "node-label herc-label" });
+  label.textContent = passed ? "· CONQUERED ·" : "THE TRIAL AWAITS";
   g.appendChild(label);
 
   g.addEventListener("mouseenter", (e) => {
