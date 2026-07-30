@@ -948,8 +948,8 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
 
 .flip-page {
   position: absolute;
-  top: 7%;
-  bottom: 7%;
+  top: 0.5%;
+  bottom: 0.5%;
   left: 50%;
   width: 45%;
   transform-origin: left center;
@@ -1046,6 +1046,7 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   min-height: 0;
   display: flex;
   align-items: stretch;
+  position: relative; /* anchors the page-flip layer to the binding's box */
   border-radius: 5px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
@@ -1622,12 +1623,23 @@ html[data-theme="parchment"] .fc-term { color: #5a3f14; text-shadow: none; }
 .arena-center .gauntlet-timer { font-size: 1.15rem; }
 .boss-qcount { font-size: 0.74rem; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
 
-/* The labor itself: a wide card floating in the arena below the HUD. */
+/* The labor itself: a wide, airy card floating in the arena below the HUD. */
 .arena .modal-card.arena-card {
   width: min(1240px, 95vw);
-  margin: 26px auto;
+  margin: 30px auto;
+  padding: 36px 52px 32px;
   flex-shrink: 0;
 }
+.arena-card .check-label { margin-bottom: 18px; }
+.arena-card .question-text {
+  font-size: 1.08rem;
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+.arena-card .options { display: flex; flex-direction: column; gap: 14px; }
+.arena-card .option-btn { padding: 16px 20px; }
+.arena-card .feedback-slot { margin-top: 18px; }
+.arena-card .modal-actions { margin-top: 22px; }
 
 /* Strike feedback: a shake + a floating damage number. */
 .boss-fighter.hit { animation: boss-shake 0.4s ease; }
@@ -1807,10 +1819,9 @@ html[data-motion="reduce"] .boss-hp-fill { transition: none; }
 .modal-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
 
 /* "Step away" / "Leave" reads as a real exit, not fine print: bigger, ember-
-   edged, with a door glyph feel on hover. */
+   edged, riding the right side of the actions row with the other buttons. */
 .modal-actions [data-action="abandon"],
 .modal-actions [data-action="leave"] {
-  margin-right: auto; /* anchor the exit to the left, clear of Continue */
   padding: 9px 20px;
   font-size: 0.8rem;
   color: #e08a7c;
@@ -2894,7 +2905,7 @@ button.tc-niche:focus-visible { outline: none; }
 }
 .tc-detail-statue .niche { width: 100%; }
 .tc-detail-text { min-width: 0; }
-.tc-back { margin-bottom: 14px; }
+.tc-back { display: block; margin-left: auto; margin-bottom: 14px; }
 .tc-detail-name {
   font-family: "Cinzel", serif;
   font-weight: 700;

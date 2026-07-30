@@ -385,7 +385,7 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
 function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
   // Its own ground in the widened canvas, well clear of the temple.
-  const cx = 1040;
+  const cx = 1072;
   const baseY = 566;
   const g = el("g");
   g.classList.add("herc-gate");
@@ -609,7 +609,7 @@ function renderScene(): void {
 function buildTemple(data: ProgressData): SVGSVGElement {
   // Extra canvas on the right gives the Herculean gateway its own ground,
   // clear of the temple (which stays in its original 0–1000 coordinates).
-  const svg = el("svg", { viewBox: "0 0 1140 720" });
+  const svg = el("svg", { viewBox: "0 0 1180 720" });
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Parthenon progress map");
   svg.appendChild(buildDefs());
@@ -1152,10 +1152,12 @@ function openCodex(): void {
   (document.getElementById("codex-search") as HTMLInputElement).focus();
 }
 
-/** The book-opening page-flip flourish (skipped when motion is reduced). */
+/** The book-opening page-flip flourish (skipped when motion is reduced).
+ * The layer lives on the page spread so the leaves hinge on the actual
+ * binding — matching its height and vertical position, not the whole book. */
 function playBookFlip(): void {
   if (motionReduced()) return;
-  const book = document.querySelector(".codex-book");
+  const book = document.querySelector(".codex-book .book-spread");
   if (!book) return;
   book.querySelector(".flip-layer")?.remove();
   const layer = document.createElement("div");
