@@ -1176,8 +1176,9 @@ function playBookFlip(): void {
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
   spread.appendChild(layer);
   book.classList.add("flipping");
-  // Cover: ~1.1s. Leaves: last starts at 1.55s + 1.15s turn ≈ 2.7s; reveal as
-  // it lands. (A shared timer so a quick re-open can't reveal early.)
+  // Cover lifts open (~1.05s), then the leaves turn (last ≈ 1.55 + 1.15 ≈ 2.7s);
+  // reveal the entries as the last leaf lands. (Shared timer so a quick re-open
+  // can't reveal early.)
   window.clearTimeout(flipTimer);
   flipTimer = window.setTimeout(() => {
     layer.remove();

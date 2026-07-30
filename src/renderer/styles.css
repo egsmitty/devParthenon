@@ -942,7 +942,8 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  transform-style: preserve-3d;
+  /* The 3D "scene": perspective only. preserve-3d here would break the cover
+     faces' backface-visibility (the mirrored-title bleed-through). */
   perspective: 2400px;
 }
 
@@ -996,6 +997,8 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   0%, 72% { opacity: 1; }
   100% { opacity: 0; }
 }
+/* The tooled front cover lifts open around the center spine and fades as it
+   passes edge-on — so its back never faces us (no mirrored-title bleed). */
 .book-cover {
   position: absolute;
   top: 0;
@@ -1004,6 +1007,8 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   width: 50%;
   z-index: 5;
   transform-origin: left center;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1019,7 +1024,7 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
     inset 0 0 0 12px rgba(201, 162, 74, 0.35),
     inset 0 0 60px rgba(0, 0, 0, 0.55),
     -14px 0 30px rgba(0, 0, 0, 0.5);
-  animation: cover-open 1.2s cubic-bezier(0.5, 0.05, 0.35, 1) forwards;
+  animation: cover-open 1.05s cubic-bezier(0.45, 0.05, 0.45, 1) forwards;
 }
 .cover-title {
   font-family: "Cinzel Decorative", "Cinzel", serif;
@@ -1041,13 +1046,12 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
   opacity: 0.75;
 }
 @keyframes cover-open {
-  /* Hinged on the center spine, turning right-to-left — the same arc the
-     page leaves travel, so the cover opens the way the book reads. */
-  0% { transform: rotateY(0deg); opacity: 1; filter: brightness(1); }
-  18% { transform: rotateY(0deg); }
-  60% { filter: brightness(0.9); }
-  85% { opacity: 1; }
-  100% { transform: rotateY(-168deg); opacity: 0; filter: brightness(0.6); }
+  /* Lift open around the spine and fade out just as it reaches edge-on, so its
+     back never turns toward us (no mirrored-title bleed-through). */
+  0% { transform: rotateY(0deg); opacity: 1; }
+  16% { transform: rotateY(0deg); }
+  62% { opacity: 1; }
+  100% { transform: rotateY(-98deg); opacity: 0; }
 }
 
 /* The leaf stays visible through the whole arc: bright face-up, dimming
@@ -1062,8 +1066,13 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
 
 /* While the leaves turn, the real pages lie blank; the written entries appear
    as the last leaf settles. */
-.book-page > * { transition: opacity 0.5s ease; }
-.codex-book.flipping .book-page > * { opacity: 0; transition: none; }
+/* During the opening rite the spread's contents (entries + spine statues) stay
+   hidden — only the leather cover, board, and blank leaves show — then fade in
+   as the book settles open. The blank parchment is revealed earlier, when the
+   cover swings off it. */
+.book-page > *, .statue-niche { transition: opacity 0.5s ease; }
+.codex-book.flipping .book-page > *,
+.codex-book.flipping .statue-niche { opacity: 0; transition: none; }
 
 .codex-close {
   position: absolute;
