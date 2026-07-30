@@ -87,11 +87,23 @@ function renderGrid(): void {
           `</button>`
         );
       }
+      // A hidden trophy (the Herculean's Zeus) stays a mystery — "???" over a
+      // question mark, not its silhouette. Others show a silhouette + which
+      // trial reveals them.
+      if (def.secret) {
+        return (
+          `<figure class="statue-niche tc-niche locked secret">` +
+          `<div class="niche"><span class="tc-secret" aria-hidden="true">?</span></div>` +
+          `<figcaption><span class="niche-name tc-locked-name">???</span>` +
+          `<span class="niche-epithet">${escapeHtml(def.unlock)}</span></figcaption>` +
+          `</figure>`
+        );
+      }
       return (
         `<figure class="statue-niche tc-niche locked">` +
         `<div class="niche">${def.art}<span class="tc-lock" aria-hidden="true">&#128274;</span></div>` +
         `<figcaption><span class="niche-name tc-locked-name">Sealed</span>` +
-        `<span class="niche-epithet">Master this trial to reveal its god</span></figcaption>` +
+        `<span class="niche-epithet">${escapeHtml(def.unlock)}</span></figcaption>` +
         `</figure>`
       );
     }).join("") +

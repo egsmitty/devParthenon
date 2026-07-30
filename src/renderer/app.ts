@@ -382,10 +382,14 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
  * column-mounted torches, and firelight spilling onto the steps. Clicking (or
  * Enter/Space) opens the full-page antechamber. Laurel-draped once conquered.
  */
+/** Where the Herculean gateway stands (shared by the reveal portal). */
+const HERC_GATE_CX = 1150;
+const HERC_GATE_CY = 470;
+
 function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
   // Its own ground in the widened canvas, well clear of the temple.
-  const cx = 1150;
+  const cx = HERC_GATE_CX;
   const baseY = 566;
   const g = el("g");
   g.classList.add("herc-gate");
@@ -515,6 +519,49 @@ function buildHerculeanGate(): SVGGElement {
       go();
     }
   });
+  return g;
+}
+
+/**
+ * A one-shot red/black swirling portal that tears open where the Herculean
+ * gateway stands, then collapses as the arch materializes — the moment the
+ * final trial appears on the map. Self-contained (own gradients); the caller
+ * removes it after the animation.
+ */
+function buildHerculeanPortal(): SVGGElement {
+  const cx = HERC_GATE_CX;
+  const cy = HERC_GATE_CY;
+  const g = el("g");
+  g.classList.add("herc-portal");
+  const defs = el("defs");
+  defs.appendChild(
+    radial("portal-halo", [[0, "#e0431f", 0.9], [0.4, "#7a0f0a", 0.6], [0.75, "#1a0406", 0.4], [1, "#1a0406", 0]])
+  );
+  defs.appendChild(
+    radial("portal-core", [[0, "#000000", 1], [0.55, "#2a0608", 1], [0.85, "#c0301a", 0.9], [1, "#e0431f", 0]])
+  );
+  g.appendChild(defs);
+  // Soft aura.
+  g.appendChild(el("circle", { cx, cy, r: 150, fill: "url(#portal-halo)", class: "portal-halo" }));
+  // Swirling accretion arms.
+  const swirl = el("g");
+  swirl.classList.add("portal-swirl");
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const x0 = cx + Math.cos(a) * 26;
+    const y0 = cy + Math.sin(a) * 26;
+    const x1 = cx + Math.cos(a + 1.5) * 132;
+    const y1 = cy + Math.sin(a + 1.5) * 132;
+    const xm = cx + Math.cos(a + 0.7) * 84;
+    const ym = cy + Math.sin(a + 0.7) * 84;
+    swirl.appendChild(
+      el("path", { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} Q ${xm.toFixed(1)} ${ym.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`, class: "portal-arm", fill: "none" })
+    );
+  }
+  g.appendChild(swirl);
+  // The black core, red rim.
+  g.appendChild(el("circle", { cx, cy, r: 96, fill: "url(#portal-core)", class: "portal-core" }));
+  g.appendChild(el("circle", { cx, cy, r: 58, fill: "#050203", class: "portal-void" }));
   return g;
 }
 
@@ -768,6 +815,9 @@ function buildTemple(data: ProgressData): SVGSVGElement {
  */
 const lastStatuses = new Map<string, NodeStatus>();
 let firstRender = true;
+/** Tracks the Herculean unlock so the reveal portal fires once, on the moment
+ *  the temple becomes whole (not on boot or plain re-renders). */
+let lastHerculeanUnlocked: boolean | null = null;
 
 function renderTemple(): void {
   renderScene();
@@ -791,6 +841,23 @@ function renderTemple(): void {
       }
     }
   }
+
+  // The Herculean appears: a swirling portal tears open, then the arch
+  // materializes out of it. One-shot, on the false→true transition only.
+  const hercNow = herculeanUnlocked();
+  if (!firstRender && lastHerculeanUnlocked === false && hercNow && !motionReduced()) {
+    const gate = svg.querySelector<SVGGElement>(".herc-gate");
+    if (gate) {
+      gate.classList.add("materializing");
+      svg.appendChild(buildHerculeanPortal());
+      playCue("seal");
+      window.setTimeout(() => {
+        document.querySelector("#temple-svg-host .herc-portal")?.remove();
+      }, 2200);
+    }
+  }
+  lastHerculeanUnlocked = hercNow;
+
   firstRender = false;
   for (const node of Object.values(progress.nodes)) {
     lastStatuses.set(node.id, node.status);
