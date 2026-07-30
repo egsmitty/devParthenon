@@ -97,6 +97,8 @@ export const MASTERY_PASS = 0.8;
 /** The Herculean final: question count and the fraction needed to pass. */
 export const HERCULEAN_QUESTION_COUNT = 25;
 export const HERCULEAN_PASS = 0.85;
+/** Time budget for the whole Herculean boss fight (45 minutes, for safety). */
+export const HERCULEAN_TOTAL_SECONDS = 45 * 60;
 
 /** Mock-interview pacing: seconds allotted per gauntlet/Herculean question. */
 export const GAUNTLET_SECONDS_PER_QUESTION = 40;
@@ -188,6 +190,14 @@ interface ModalState {
    * that map to no single concept. Missed ones seed the side-quest.
    */
   origins?: (string | null)[];
+  /** Herculean boss-fight HP state (a presentation skin over the same scoring). */
+  boss?: {
+    youHp: number;
+    herculesHp: number;
+    max: number;
+    dmgToBoss: number;
+    dmgToYou: number;
+  };
 }
 
 let state: ModalState | null = null;
@@ -235,7 +245,14 @@ export function openModule(
   apiRef = api;
   onDoneRef = onDone;
   root().hidden = false;
-  if (isTimedExam(mode)) startGauntletClock();
+  // The Herculean is a boss fight: a VS intro, then the arena. Its clock starts
+  // when the fight begins (not during the intro). The gauntlet times from open.
+  if (mode === "herculean") {
+    setupBoss();
+    renderBossIntro();
+    return;
+  }
+  if (mode === "gauntlet") startGauntletClock();
   if (resumeFrom?.phase === "redeem") {
     if (state.redeemQueue.length > 0) renderRedeem();
     else renderRedemptionIntro();
@@ -248,8 +265,13 @@ export function openModule(
 
 function startGauntletClock(): void {
   if (!state) return;
-  state.deadline =
-    Date.now() + state.quiz.sections.length * GAUNTLET_SECONDS_PER_QUESTION * 1000;
+  // The Herculean gets a generous fixed 45-minute budget; the gauntlet paces
+  // per question.
+  const totalSeconds =
+    state.mode === "herculean"
+      ? HERCULEAN_TOTAL_SECONDS
+      : state.quiz.sections.length * GAUNTLET_SECONDS_PER_QUESTION;
+  state.deadline = Date.now() + totalSeconds * 1000;
   state.timerId = window.setInterval(() => {
     if (!state?.deadline) return;
     const left = state.deadline - Date.now();
@@ -799,8 +821,10 @@ async function finishHerculean(score: number): Promise<void> {
     : `<div class="result-score fail">${pct}%</div>`;
 
   const verdict = passed
-    ? `You cleared the ${bar}% Herculean bar &mdash; ${correct} of ${total} across the whole craft. The pantheon is yours.`
-    : `${correct} of ${total} correct, short of the ${bar}% bar. The trial has marked the concepts you missed &mdash; drill them, then return stronger.`;
+    ? `Hercules falls. You landed ${correct} of ${total} blows &mdash; past the ${bar}% mark &mdash; and the demigod yields. The pantheon is yours.`
+    : `Hercules stands. ${correct} of ${total} blows landed, short of the ${bar}% needed to fell him. The trial marked the concepts he turned against you &mdash; drill them, then challenge him again.`;
+
+  const heading = passed ? "Hercules Defeated" : "You Have Fallen";
 
   const trophyNote = outcome?.awardedTrophy
     ? `<div class="trophy-award"><span class="trophy-mark" aria-hidden="true">&#9819;</span> The ultimate trophy &mdash; Zeus &mdash; is enshrined in your case.</div>`
@@ -818,7 +842,7 @@ async function finishHerculean(score: number): Promise<void> {
     : `<button class="ghost-btn" data-action="done">Leave</button>${retryBtn}${sideQuestBtn}`;
 
   const el = card(`
-    <h2>The Herculean Trial</h2>
+    <h2>${heading}</h2>
     ${scoreBlock}
     <div class="result-detail">${verdict}</div>
     ${trophyNote}
@@ -847,6 +871,207 @@ async function finishHerculean(score: number): Promise<void> {
   );
 
   mountCard(el);
+}
+
+/* ---------------- The Herculean boss fight ---------------- */
+
+/** You — a laurel-crowned hero medallion. */
+const HERO_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <circle cx="60" cy="60" r="56" fill="#1b2331" stroke="#e6c063" stroke-width="3"/>
+  <path d="M60 40 C 48 40 44 52 44 62 C 44 76 52 86 60 86 C 68 86 76 76 76 62 C 76 52 72 40 60 40 Z" fill="#e9e3d2"/>
+  <path d="M50 60 q -6 -3 -6 -10 M70 60 q 6 -3 6 -10" fill="none" stroke="#0d1017" stroke-width="2"/>
+  <circle cx="52" cy="60" r="2.4" fill="#0d1017"/><circle cx="68" cy="60" r="2.4" fill="#0d1017"/>
+  <path d="M54 74 q 6 5 12 0" fill="none" stroke="#0d1017" stroke-width="2"/>
+  <path d="M40 44 C 34 34 44 26 54 30 M80 44 C 86 34 76 26 66 30" fill="none" stroke="#e6c063" stroke-width="3"/>
+  <path d="M42 40 l -5 -3 M48 34 l -3 -5 M78 40 l 5 -3 M72 34 l 3 -5" stroke="#e6c063" stroke-width="2.4"/>
+</svg>`;
+
+/** Hercules — a fierce bearded head hooded in the Nemean lion pelt. */
+const HERCULES_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <circle cx="60" cy="60" r="56" fill="#2a1512" stroke="#e6c063" stroke-width="3"/>
+  <path d="M32 52 C 28 30 48 20 60 20 C 72 20 92 30 88 52 C 96 46 98 60 90 64 C 92 74 84 78 80 74 M40 64 C 26 66 30 50 30 50" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
+  <path d="M40 34 l -8 -12 l 14 6 Z M80 34 l 8 -12 l -14 6 Z" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
+  <path d="M46 44 C 44 40 40 40 38 44 M74 44 C 76 40 80 40 82 44" fill="none" stroke="#3a2a12" stroke-width="2.4"/>
+  <path d="M56 58 C 52 74 50 84 60 88 C 70 84 68 74 64 58 Z" fill="#e9d9be"/>
+  <circle cx="52" cy="54" r="2.6" fill="#2a1512"/><circle cx="68" cy="54" r="2.6" fill="#2a1512"/>
+  <path d="M46 84 C 54 96 66 96 74 84 C 66 90 54 90 46 84 Z" fill="#8a6a2e"/>
+  <path d="M40 70 q 20 10 40 0" fill="none" stroke="#6b4a1f" stroke-width="2"/>
+</svg>`;
+
+/** HP as a fraction of max, mapped from the pass threshold and question count. */
+function setupBoss(): void {
+  if (!state) return;
+  const total = state.quiz.sections.length;
+  const need = Math.max(1, Math.ceil(HERCULEAN_PASS * total)); // correct to win
+  const canMiss = Math.max(1, total - need + 1); // wrong strikes that fell you
+  const max = 100;
+  state.boss = {
+    youHp: max,
+    herculesHp: max,
+    max,
+    dmgToBoss: max / need,
+    dmgToYou: max / canMiss,
+  };
+}
+
+/** One fighter's HUD: portrait, name, and an HP bar (width set via CSSOM). */
+function fighterHud(side: "you" | "foe", name: string, art: string): string {
+  return `<div class="boss-fighter ${side}">
+    <div class="boss-portrait">${art}</div>
+    <div class="boss-meta">
+      <div class="boss-name">${name}</div>
+      <div class="boss-hpbar"><div class="boss-hp-fill"></div></div>
+    </div>
+  </div>`;
+}
+
+/** Point each HP fill at its current value (CSSOM — inline style attrs break CSP). */
+function setBossBars(el: HTMLElement): void {
+  if (!state?.boss) return;
+  const you = el.querySelector<HTMLElement>(".boss-fighter.you .boss-hp-fill");
+  const foe = el.querySelector<HTMLElement>(".boss-fighter.foe .boss-hp-fill");
+  if (you) you.style.width = `${(state.boss.youHp / state.boss.max) * 100}%`;
+  if (foe) foe.style.width = `${(state.boss.herculesHp / state.boss.max) * 100}%`;
+}
+
+/** The VS intro before the arena. */
+function renderBossIntro(): void {
+  if (!state) return;
+  const total = state.quiz.sections.length;
+  const el = card(`
+    <h2>The Herculean Trial</h2>
+    <div class="boss-vs">
+      <div class="boss-fighter you"><div class="boss-portrait big">${HERO_PORTRAIT}</div><div class="boss-name">You</div></div>
+      <div class="boss-vs-mark">VS</div>
+      <div class="boss-fighter foe"><div class="boss-portrait big">${HERCULES_PORTRAIT}</div><div class="boss-name">Hercules</div></div>
+    </div>
+    <div class="result-detail">${total} labors spanning the whole craft. Every right answer lands a blow on Hercules; every wrong one, he lands on you. Fell him before he fells you &mdash; you have 45 minutes.</div>
+    <div class="modal-actions">
+      <button class="ghost-btn" data-action="leave">Retreat</button>
+      <button class="primary-btn" data-action="fight">Enter the arena &rarr;</button>
+    </div>
+  `);
+  el.querySelector('[data-action="leave"]')!.addEventListener("click", closeModal);
+  el.querySelector('[data-action="fight"]')!.addEventListener("click", beginBoss);
+  mountCard(el);
+}
+
+function beginBoss(): void {
+  if (!state) return;
+  startGauntletClock();
+  renderBossQuestion();
+}
+
+function renderBossQuestion(): void {
+  if (!state || !state.boss) return;
+  const { quiz, sectionIndex } = state;
+  const section = quiz.sections[sectionIndex];
+  const q = pickVariant(section, { mode: "practice" });
+  state.shownIds[sectionIndex] = q.id;
+  const total = quiz.sections.length;
+
+  const el = card(`
+    <div class="boss-hud">
+      ${fighterHud("you", "You", HERO_PORTRAIT)}
+      <div class="boss-clock">
+        <span class="boss-qcount">Labor ${sectionIndex + 1} / ${total}</span>
+        <span id="gauntlet-timer" class="gauntlet-timer"></span>
+      </div>
+      ${fighterHud("foe", "Hercules", HERCULES_PORTRAIT)}
+    </div>
+    <div class="check-label">Trial of Heracles</div>
+    <div class="question-text">${rich(q.question)}</div>
+    <div class="options">${optionsMarkup(q.options)}</div>
+    <div class="feedback-slot"></div>
+    <div class="modal-actions">
+      <button class="ghost-btn" data-action="leave">Retreat</button>
+    </div>
+  `);
+  el.querySelector('[data-action="leave"]')!.addEventListener("click", closeModal);
+  setBossBars(el);
+  wireBossAnswer(el, q);
+  mountCard(el);
+}
+
+/** Animate a strike: drop the bar, shake the fighter, float the damage number. */
+function animateHit(el: HTMLElement, side: "you" | "foe", dmg: number): void {
+  if (!state?.boss) return;
+  const fighter = el.querySelector<HTMLElement>(`.boss-fighter.${side}`);
+  const fill = el.querySelector<HTMLElement>(`.boss-fighter.${side} .boss-hp-fill`);
+  const hp = side === "you" ? state.boss.youHp : state.boss.herculesHp;
+  if (fill) fill.style.width = `${Math.max(0, (hp / state.boss.max) * 100)}%`;
+  if (fighter) {
+    fighter.classList.remove("hit");
+    void fighter.getBoundingClientRect();
+    fighter.classList.add("hit");
+    const float = document.createElement("span");
+    float.className = "boss-dmg";
+    float.textContent = `-${Math.round(dmg)}`;
+    fighter.appendChild(float);
+    window.setTimeout(() => float.remove(), 950);
+  }
+}
+
+function wireBossAnswer(el: HTMLElement, q: QuizQuestion): void {
+  let resolved = false;
+  el.querySelectorAll<HTMLButtonElement>(".option-btn").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      if (resolved || !state || !state.boss) return;
+      resolved = true;
+      const chosen = Number(btn.dataset.index);
+      const isCorrect = chosen === q.correctAnswerIndex;
+      playCue(isCorrect ? "correct" : "wrong");
+
+      el.querySelectorAll<HTMLButtonElement>(".option-btn").forEach((b) => {
+        const i = Number(b.dataset.index);
+        b.disabled = true;
+        if (i === q.correctAnswerIndex) b.classList.add("correct");
+        else if (i === chosen) b.classList.add("wrong");
+      });
+
+      const whyWrong = isCorrect
+        ? ""
+        : `<div class="why-wrong"><strong>Why your pick is wrong:</strong> ${rich(
+            q.optionExplanations[chosen] ?? ""
+          )}</div>`;
+      el.querySelector(".feedback-slot")!.innerHTML = `
+        <div class="feedback ${isCorrect ? "good" : "bad"}">
+          <strong>${isCorrect ? "A clean strike!" : "He parries — and counters."}</strong> ${rich(q.rationale)}
+          ${whyWrong}
+          <div class="interview-tip">&#9650; Interview tip: ${rich(q.interviewTip)}</div>
+        </div>`;
+
+      // Score + damage (the fight is a skin over correct/total >= 85%).
+      if (isCorrect) {
+        state.correct++;
+        state.boss.herculesHp = Math.max(0, state.boss.herculesHp - state.boss.dmgToBoss);
+        animateHit(el, "foe", state.boss.dmgToBoss);
+      } else {
+        state.missed.push(state.sectionIndex);
+        state.boss.youHp = Math.max(0, state.boss.youHp - state.boss.dmgToYou);
+        animateHit(el, "you", state.boss.dmgToYou);
+      }
+
+      const last = state.sectionIndex === state.quiz.sections.length - 1;
+      const ko = state.boss.herculesHp <= 0 || state.boss.youHp <= 0;
+      const next = document.createElement("button");
+      next.className = "primary-btn";
+      next.textContent = last || ko ? "See the outcome" : "Strike again";
+      next.addEventListener("click", () => {
+        if (!state) return;
+        if (ko || last) {
+          stopGauntletClock();
+          void finishHerculean(state.correct / state.quiz.sections.length);
+        } else {
+          state.sectionIndex++;
+          renderBossQuestion();
+        }
+      });
+      el.querySelector(".modal-actions")!.appendChild(next);
+      next.scrollIntoView({ block: "nearest" });
+      next.focus();
+    })
+  );
 }
 
 function renderRedemptionIntro(): void {

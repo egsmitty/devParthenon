@@ -559,25 +559,29 @@ function buildTemple(data: ProgressData): SVGSVGElement {
   svg.appendChild(torch(116, 160));
   svg.appendChild(torch(884, 160));
 
-  /* --- Entablature: architrave + triglyph frieze (static masonry) --- */
+  /* --- Entablature: architrave + triglyph frieze. Static masonry that lights
+     to marble once the temple is crowned (the pediment is set). --- */
+  const crownLit = pediment.status === "completed";
   const ent = el("g");
+  ent.classList.add("entablature");
+  if (crownLit) ent.classList.add("lit");
   ent.appendChild(el("rect", {
-    x: 136, y: 172, width: 728, height: 12,
+    x: 136, y: 172, width: 728, height: 12, class: "frieze-band",
     fill: "url(#grad-stone)", stroke: "#39404f", "stroke-width": 1.2,
   }));
   ent.appendChild(el("rect", {
-    x: 136, y: 184, width: 728, height: 18,
+    x: 136, y: 184, width: 728, height: 18, class: "frieze-band",
     fill: "url(#grad-stone-dark)", stroke: "#39404f", "stroke-width": 1.2,
   }));
   // Triglyphs: paired grooved blocks along the frieze.
   for (let tx = 156; tx <= 830; tx += 52) {
     const block = el("g");
     block.appendChild(el("rect", {
-      x: tx, y: 185.5, width: 15, height: 15,
+      x: tx, y: 185.5, width: 15, height: 15, class: "triglyph",
       fill: "url(#grad-stone)", stroke: "#2c3140", "stroke-width": 1,
     }));
-    block.appendChild(el("line", { x1: tx + 5, y1: 187, x2: tx + 5, y2: 199, stroke: "#12151d", "stroke-width": 1.6 }));
-    block.appendChild(el("line", { x1: tx + 10, y1: 187, x2: tx + 10, y2: 199, stroke: "#12151d", "stroke-width": 1.6 }));
+    block.appendChild(el("line", { x1: tx + 5, y1: 187, x2: tx + 5, y2: 199, class: "triglyph-groove", stroke: "#12151d", "stroke-width": 1.6 }));
+    block.appendChild(el("line", { x1: tx + 10, y1: 187, x2: tx + 10, y2: 199, class: "triglyph-groove", stroke: "#12151d", "stroke-width": 1.6 }));
     ent.appendChild(block);
   }
   svg.appendChild(ent);
