@@ -962,41 +962,15 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
     #cdbb92 0%, #e9dcba 7%, #f6eed8 34%, #f9f2e0 55%, #eee2c2 88%, #d9c69a 99%);
   box-shadow: -12px 0 26px rgba(0, 0, 0, 0.35);
   opacity: 0;
-  animation: page-flip 1.15s cubic-bezier(0.42, 0.1, 0.4, 1) forwards;
+  animation: page-flip 1s cubic-bezier(0.42, 0.1, 0.4, 1) forwards;
 }
 
 /* Staggered leaf widths so the flourish reads as a stack of pages turning.
-   Delays wait out the cover swinging open first. */
-.flip-page:nth-child(3) { animation-delay: 0.95s; width: 45%; }
-.flip-page:nth-child(4) { animation-delay: 1.25s; width: 43.2%; }
-.flip-page:nth-child(5) { animation-delay: 1.55s; width: 41.5%; }
+   Delays wait out the cover lifting open first. */
+.flip-page:nth-child(2) { animation-delay: 0.85s; width: 45%; }
+.flip-page:nth-child(3) { animation-delay: 1.1s; width: 43.2%; }
+.flip-page:nth-child(4) { animation-delay: 1.35s; width: 41.5%; }
 
-/* The closed book is two leather halves: a static board over the left page,
-   and the titled front cover over the right. The cover turns right-to-left
-   across the center spine — the exact motion of the page leaves — landing on
-   the board; both fade as the leaves begin. */
-.book-board {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 50%;
-  z-index: 4;
-  border: 2px solid #6b4a1f;
-  border-radius: 8px 0 0 8px;
-  background:
-    radial-gradient(120% 90% at 60% 20%, rgba(140, 90, 30, 0.18), transparent 55%),
-    linear-gradient(225deg, #33200e 0%, #201304 45%, #170c03 100%);
-  box-shadow:
-    inset 0 0 0 10px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 12px rgba(201, 162, 74, 0.28),
-    inset 0 0 60px rgba(0, 0, 0, 0.55);
-  animation: board-fade 1.7s ease forwards;
-}
-@keyframes board-fade {
-  0%, 72% { opacity: 1; }
-  100% { opacity: 0; }
-}
 /* The tooled front cover lifts open around the center spine and fades as it
    passes edge-on — so its back never faces us (no mirrored-title bleed). */
 .book-cover {
@@ -1024,7 +998,7 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
     inset 0 0 0 12px rgba(201, 162, 74, 0.35),
     inset 0 0 60px rgba(0, 0, 0, 0.55),
     -14px 0 30px rgba(0, 0, 0, 0.5);
-  animation: cover-open 1.05s cubic-bezier(0.45, 0.05, 0.45, 1) forwards;
+  animation: cover-open 0.9s cubic-bezier(0.45, 0.05, 0.45, 1) forwards;
 }
 .cover-title {
   font-family: "Cinzel Decorative", "Cinzel", serif;

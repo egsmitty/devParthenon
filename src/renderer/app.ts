@@ -385,7 +385,7 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
 function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
   // Its own ground in the widened canvas, well clear of the temple.
-  const cx = 1072;
+  const cx = 1150;
   const baseY = 566;
   const g = el("g");
   g.classList.add("herc-gate");
@@ -609,7 +609,7 @@ function renderScene(): void {
 function buildTemple(data: ProgressData): SVGSVGElement {
   // Extra canvas on the right gives the Herculean gateway its own ground,
   // clear of the temple (which stays in its original 0–1000 coordinates).
-  const svg = el("svg", { viewBox: "0 0 1180 720" });
+  const svg = el("svg", { viewBox: "0 0 1260 720" });
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Parthenon progress map");
   svg.appendChild(buildDefs());
@@ -1171,19 +1171,18 @@ function playBookFlip(): void {
   // The full rite: the tooled leather cover swings open first, then the blank
   // leaves turn, then the written entries appear (the `flipping` reveal).
   layer.innerHTML =
-    '<div class="book-board"></div>' +
     '<div class="book-cover"><span class="cover-rule"></span><span class="cover-title">Codex of Jargon</span><span class="cover-rule"></span></div>' +
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
   spread.appendChild(layer);
   book.classList.add("flipping");
-  // Cover lifts open (~1.05s), then the leaves turn (last ≈ 1.55 + 1.15 ≈ 2.7s);
-  // reveal the entries as the last leaf lands. (Shared timer so a quick re-open
-  // can't reveal early.)
+  // Cover lifts open (~0.9s), then the leaves turn (last ≈ 1.35 + 1.0 ≈ 2.35s)
+  // over the parchment spread; reveal the entries as the last leaf lands.
+  // (Shared timer so a quick re-open can't reveal early.)
   window.clearTimeout(flipTimer);
   flipTimer = window.setTimeout(() => {
     layer.remove();
     book.classList.remove("flipping");
-  }, 2700);
+  }, 2400);
 }
 
 /** Open the Codex focused on a specific term (from a lesson chip). */
