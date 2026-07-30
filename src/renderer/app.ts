@@ -1168,17 +1168,21 @@ function playBookFlip(): void {
   const layer = document.createElement("div");
   layer.className = "flip-layer";
   layer.setAttribute("aria-hidden", "true");
+  // The full rite: the tooled leather cover swings open first, then the blank
+  // leaves turn, then the written entries appear (the `flipping` reveal).
   layer.innerHTML =
+    '<div class="book-board"></div>' +
+    '<div class="book-cover"><span class="cover-rule"></span><span class="cover-title">Codex of Jargon</span><span class="cover-rule"></span></div>' +
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
   spread.appendChild(layer);
   book.classList.add("flipping");
-  // Last leaf: 0.75s delay + 1.15s turn ≈ 1.9s; reveal just as it lands.
-  // (A shared timer so a quick re-open can't reveal the new flip early.)
+  // Cover: ~1.1s. Leaves: last starts at 1.55s + 1.15s turn ≈ 2.7s; reveal as
+  // it lands. (A shared timer so a quick re-open can't reveal early.)
   window.clearTimeout(flipTimer);
   flipTimer = window.setTimeout(() => {
     layer.remove();
     book.classList.remove("flipping");
-  }, 1900);
+  }, 2700);
 }
 
 /** Open the Codex focused on a specific term (from a lesson chip). */
