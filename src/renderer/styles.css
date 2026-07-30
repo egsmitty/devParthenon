@@ -663,7 +663,17 @@ html[data-motion="reduce"] text.mastery-crown { animation: none; opacity: 0.9; }
   stroke-width: 1.4;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
 }
-.herc-doorway { fill: #0a0d13; stroke: var(--brass-dark); stroke-width: 1; }
+.herc-doorway { fill: #07090d; stroke: var(--brass-dark); stroke-width: 1; }
+.herc-arch { filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6)); }
+.herc-voussoir { stroke: var(--gold-deep); stroke-width: 1; opacity: 0.55; }
+.herc-brazier-bowl { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 0.8; }
+.herc-shield { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 1.4; }
+.herc-shield-boss { fill: var(--gold-hi); }
+.herc-ground-glow {
+  fill: url(#grad-torch-glow);
+  opacity: 0.55;
+  animation: herc-glow 3s ease-in-out infinite;
+}
 .herc-gate-glow { opacity: 0.45; animation: herc-glow 3s ease-in-out infinite; }
 .herc-sign { fill: url(#grad-stone-warm); stroke: var(--gold-deep); stroke-width: 1.4; }
 .herc-sign-text {
