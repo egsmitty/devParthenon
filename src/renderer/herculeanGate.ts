@@ -19,25 +19,70 @@ export function isHerculeanGateOpen(): boolean {
   return !gateRoot().hasAttribute("hidden");
 }
 
-/** Crossed spears over a round shield — the martial crest above the sign. */
-const CROSSED_ARMS = `<svg class="hg-crest" viewBox="0 0 240 120" aria-hidden="true">
-  <line x1="30" y1="112" x2="196" y2="14" stroke="#8a5a13" stroke-width="5"/>
-  <line x1="210" y1="112" x2="44" y2="14" stroke="#8a5a13" stroke-width="5"/>
-  <path d="M196 14 l 12 -6 l -4 13 z" fill="#e6c063"/>
-  <path d="M44 14 l -12 -6 l 4 13 z" fill="#e6c063"/>
-  <circle cx="120" cy="70" r="30" fill="url(#hg-shield)" stroke="#e6c063" stroke-width="3"/>
-  <circle cx="120" cy="70" r="20" fill="none" stroke="#8a5a13" stroke-width="2"/>
-  <circle cx="120" cy="70" r="6" fill="#e6c063"/>
-  <defs><radialGradient id="hg-shield"><stop offset="0" stop-color="#3a2f1c"/><stop offset="1" stop-color="#1a130a"/></radialGradient></defs>
+/** Crossed spears behind a bossed hoplite shield — the crest above the sign. */
+const CROSSED_ARMS = `<svg class="hg-crest" viewBox="0 0 240 130" aria-hidden="true">
+  <defs>
+    <radialGradient id="hg-shield" cx="0.42" cy="0.36" r="0.85">
+      <stop offset="0" stop-color="#5a4426"/><stop offset="0.65" stop-color="#332512"/><stop offset="1" stop-color="#1a130a"/>
+    </radialGradient>
+    <linearGradient id="hg-shaft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9c6a24"/><stop offset="0.5" stop-color="#6b4a1f"/><stop offset="1" stop-color="#4a3212"/>
+    </linearGradient>
+    <linearGradient id="hg-blade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdf3cf"/><stop offset="0.5" stop-color="#e6c063"/><stop offset="1" stop-color="#b3841f"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#hg-shaft)" stroke-width="5.5" stroke-linecap="round">
+    <line x1="36" y1="116" x2="196" y2="22"/>
+    <line x1="204" y1="116" x2="44" y2="22"/>
+  </g>
+  <g stroke="#3a2810" stroke-width="1" fill="none" opacity="0.6">
+    <line x1="36" y1="116" x2="196" y2="22"/><line x1="204" y1="116" x2="44" y2="22"/>
+  </g>
+  <path d="M60 96 l 6 3.6 M 72 89 l 6 3.6 M 168 96 l -6 3.6 M 156 89 l -6 3.6" stroke="#c9a24a" stroke-width="2"/>
+  <path d="M196 22 C 202 14 212 10 218 9 C 214 17 212 25 206 28 C 203 24 199 23 196 22 Z" fill="url(#hg-blade)" stroke="#8a5a13" stroke-width="1"/>
+  <path d="M44 22 C 38 14 28 10 22 9 C 26 17 28 25 34 28 C 37 24 41 23 44 22 Z" fill="url(#hg-blade)" stroke="#8a5a13" stroke-width="1"/>
+  <circle cx="36" cy="116" r="4" fill="#8a5a13"/><circle cx="204" cy="116" r="4" fill="#8a5a13"/>
+  <circle cx="120" cy="72" r="36" fill="url(#hg-shield)" stroke="#e6c063" stroke-width="3.4"/>
+  <circle cx="120" cy="72" r="29" fill="none" stroke="#8a5a13" stroke-width="1.6" opacity="0.9"/>
+  <path d="M99 72 h5 v-5 h5 v10 h5 v-10 h5 v10 h5 v-10 h5 v10 h5 v-10 h5 v5 h2"
+    fill="none" stroke="#c9a24a" stroke-width="1.6" opacity="0.85"/>
+  <circle cx="120" cy="72" r="10" fill="url(#hg-blade)" stroke="#8a5a13" stroke-width="1.4"/>
+  <path d="M117 65 l 7 6 l -5 0 l 6 8 l -9 -6 l 5 0 z" fill="#4a2c0a"/>
+  <path d="M96 52 A 32 32 0 0 1 132 42" fill="none" stroke="#fdf3cf" stroke-width="2" opacity="0.28"/>
 </svg>`;
 
-/** A stone brazier with a live flame, flanking the arena doors. */
-const BRAZIER = `<svg class="hg-brazier" viewBox="0 0 60 130" aria-hidden="true">
-  <rect x="24" y="46" width="12" height="70" fill="#241c10" stroke="#4a3a1c" stroke-width="2"/>
-  <rect x="14" y="112" width="32" height="10" rx="2" fill="#2c2212" stroke="#4a3a1c" stroke-width="2"/>
-  <path d="M14 46 L46 46 L40 34 L20 34 Z" fill="#2c2212" stroke="#4a3a1c" stroke-width="2"/>
-  <path d="M30 6 C 40 18 40 26 34 34 C 44 30 44 20 40 14 C 48 24 46 40 30 44 C 14 40 12 24 20 14 C 16 20 16 30 26 34 C 20 26 20 18 30 6 Z" fill="url(#hg-flame)" class="hg-fire"/>
-  <defs><linearGradient id="hg-flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="0.5" stop-color="#f59e0b"/><stop offset="1" stop-color="#c0432a"/></linearGradient></defs>
+/** A bronze tripod brazier, coals glowing, with a layered living flame. */
+const BRAZIER = `<svg class="hg-brazier" viewBox="0 0 70 150" aria-hidden="true">
+  <defs>
+    <linearGradient id="hg-flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/><stop offset="0.55" stop-color="#f59e0b"/><stop offset="1" stop-color="#c0432a"/>
+    </linearGradient>
+    <linearGradient id="hg-flame-core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffbe8"/><stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="hg-bronze" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6a2e"/><stop offset="0.5" stop-color="#5c451c"/><stop offset="1" stop-color="#3a2c12"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="35" cy="60" rx="30" ry="34" fill="#f59e0b" opacity="0.13"/>
+  <g class="hg-fire">
+    <path d="M35 14 C 47 30 48 42 40 52 C 52 48 54 34 49 26 C 60 38 58 58 38 64 L 32 64 C 12 58 10 38 21 26 C 16 34 18 48 30 52 C 22 42 23 30 35 14 Z" fill="url(#hg-flame)"/>
+    <path d="M35 34 C 41 43 41 51 35 57 C 29 51 29 43 35 34 Z" fill="url(#hg-flame-core)"/>
+  </g>
+  <ellipse cx="35" cy="66" rx="17" ry="4.5" fill="#c0432a"/>
+  <circle cx="28" cy="65" r="2" fill="#fbbf24"/><circle cx="36" cy="67" r="1.7" fill="#fde68a"/><circle cx="43" cy="65" r="1.9" fill="#f59e0b"/>
+  <path d="M13 66 L 57 66 L 51 82 L 19 82 Z" fill="url(#hg-bronze)" stroke="#2b1f0c" stroke-width="1.6"/>
+  <path d="M17 71 h 36" stroke="#c9a24a" stroke-width="1.4" opacity="0.7"/>
+  <path d="M22 75 h 4 v-3 h 4 v3 h 4 v-3 h 4 v3 h 4 v-3 h 4 v3 h 2" fill="none" stroke="#c9a24a" stroke-width="1.1" opacity="0.55"/>
+  <g stroke="url(#hg-bronze)" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M24 82 C 20 100 16 116 13 132"/>
+    <path d="M35 82 L 35 134"/>
+    <path d="M46 82 C 50 100 54 116 57 132"/>
+  </g>
+  <path d="M20 108 h 30" stroke="url(#hg-bronze)" stroke-width="3.4"/>
+  <ellipse cx="35" cy="138" rx="27" ry="6" fill="#241a0c" stroke="#3a2c12" stroke-width="1.6"/>
+  <circle cx="13" cy="132" r="3.4" fill="#8a6a2e"/><circle cx="35" cy="134" r="3.4" fill="#8a6a2e"/><circle cx="57" cy="132" r="3.4" fill="#8a6a2e"/>
 </svg>`;
 
 export function openHerculeanGate(conquered: boolean, onEnter: () => void): void {

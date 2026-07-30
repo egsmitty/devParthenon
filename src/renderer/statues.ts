@@ -166,29 +166,166 @@ export const STATUE_ZEUS = `<svg viewBox="0 0 140 262" class="statue">${MARBLE_D
   <path d="M56 38 C 62 32 78 32 84 38" fill="none" stroke="#e6c063" stroke-width="2"/>
 </svg>`;
 
-/* Boss-fight combatant portraits (circular medallions, not marble statues). */
+/* Boss-fight combatant portraits (circular medallions, not marble statues).
+   Each uses uniquely-prefixed gradient/clip ids (hp-/hc-) so the two can sit
+   side by side in one document without id collisions. */
 
-/** You — a laurel-crowned hero medallion. */
+/** You — the spitting image of Augustus: comma-lock fringe, aquiline nose,
+ *  stern thin mouth, laurel crown, muscle cuirass under a red paludamentum. */
 export const HERO_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
-  <circle cx="60" cy="60" r="56" fill="#1b2331" stroke="#e6c063" stroke-width="3"/>
-  <path d="M60 40 C 48 40 44 52 44 62 C 44 76 52 86 60 86 C 68 86 76 76 76 62 C 76 52 72 40 60 40 Z" fill="#e9e3d2"/>
-  <path d="M50 60 q -6 -3 -6 -10 M70 60 q 6 -3 6 -10" fill="none" stroke="#0d1017" stroke-width="2"/>
-  <circle cx="52" cy="60" r="2.4" fill="#0d1017"/><circle cx="68" cy="60" r="2.4" fill="#0d1017"/>
-  <path d="M54 74 q 6 5 12 0" fill="none" stroke="#0d1017" stroke-width="2"/>
-  <path d="M40 44 C 34 34 44 26 54 30 M80 44 C 86 34 76 26 66 30" fill="none" stroke="#e6c063" stroke-width="3"/>
-  <path d="M42 40 l -5 -3 M48 34 l -3 -5 M78 40 l 5 -3 M72 34 l 3 -5" stroke="#e6c063" stroke-width="2.4"/>
+  <defs>
+    <radialGradient id="hp-bg" cx="0.5" cy="0.36" r="0.9">
+      <stop offset="0" stop-color="#33415c"/><stop offset="0.7" stop-color="#1c2536"/><stop offset="1" stop-color="#111724"/>
+    </radialGradient>
+    <linearGradient id="hp-skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2e2c4"/><stop offset="1" stop-color="#d3b183"/>
+    </linearGradient>
+    <linearGradient id="hp-hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6437"/><stop offset="1" stop-color="#503a1f"/>
+    </linearGradient>
+    <linearGradient id="hp-cuirass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b0925a"/><stop offset="1" stop-color="#6e5730"/>
+    </linearGradient>
+    <linearGradient id="hp-cloak" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a63a2c"/><stop offset="1" stop-color="#611f16"/>
+    </linearGradient>
+    <clipPath id="hp-clip"><circle cx="60" cy="60" r="52"/></clipPath>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#hp-bg)"/>
+  <g clip-path="url(#hp-clip)">
+    <path d="M10 118 C 18 90 38 82 60 82 C 82 82 102 90 110 118 Z" fill="url(#hp-cuirass)"/>
+    <path d="M46 88 C 52 94 68 94 74 88 M 42 98 C 50 106 70 106 78 98" fill="none" stroke="#4a3a1c" stroke-width="1.8" opacity="0.8"/>
+    <path d="M60 84 v 30" stroke="#4a3a1c" stroke-width="1.4" opacity="0.6"/>
+    <circle cx="60" cy="94" r="4.2" fill="#e6c063" stroke="#8a5a13" stroke-width="1"/>
+    <path d="M4 118 C 8 96 20 84 42 82 C 34 92 32 104 34 118 Z" fill="url(#hp-cloak)"/>
+    <path d="M10 108 C 15 96 24 88 34 85 M 18 114 C 22 102 28 94 38 90" fill="none" stroke="#4a160f" stroke-width="1.6" opacity="0.8"/>
+    <path d="M116 118 C 112 96 100 84 78 82 C 86 92 88 104 86 118 Z" fill="url(#hp-cloak)"/>
+    <path d="M110 108 C 105 96 96 88 86 85" fill="none" stroke="#4a160f" stroke-width="1.6" opacity="0.8"/>
+    <circle cx="80" cy="87" r="4.4" fill="#e6c063" stroke="#8a5a13" stroke-width="1"/>
+    <circle cx="80" cy="87" r="1.5" fill="#8a5a13"/>
+    <path d="M53 68 h 14 v 15 c -4.5 4.5 -9.5 4.5 -14 0 Z" fill="url(#hp-skin)"/>
+    <path d="M53 71 c 4.5 3.6 9.5 3.6 14 0" fill="none" stroke="#b28e58" stroke-width="1.3" opacity="0.7"/>
+    <ellipse cx="42" cy="52" rx="3.8" ry="5.8" fill="url(#hp-skin)"/>
+    <ellipse cx="78" cy="52" rx="3.8" ry="5.8" fill="url(#hp-skin)"/>
+    <path d="M44 46 C 44 30 51 23 60 23 C 69 23 76 30 76 46 C 76 58 72 66 68 70 C 65 72.6 62.5 73.5 60 73.5 C 57.5 73.5 55 72.6 52 70 C 48 66 44 58 44 46 Z" fill="url(#hp-skin)"/>
+    <path d="M43 46 C 42 27 50 20 60 20 C 70 20 78 27 77 46 C 77 41 76 37 74 34.5 L 46 34.5 C 44 37 43 41 43 46 Z" fill="url(#hp-hair)"/>
+    <path d="M46 34 q 2.5 4.5 0.5 7.5 M 51.5 34 q 2 4.5 0 7 M 57 34 q 2 4 0.5 6.5 M 60.5 34 q -1.5 4 0.5 6.5 M 65 34 q -2 4.5 0 7 M 70.5 34 q -2.5 4.5 -0.5 7.5"
+      fill="none" stroke="url(#hp-hair)" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M47 27 q 3 -2 6 -1 M 55 24.5 q 3 -1.4 6 0 M 63 25 q 3 -1 6 1" fill="none" stroke="#5d4526" stroke-width="1.4" opacity="0.8"/>
+    <path d="M48.5 47.5 q 5 -2.2 9 -0.2 M 62.5 47.3 q 5 -2 9 0.2" fill="none" stroke="#6b4f2c" stroke-width="1.9"/>
+    <path d="M50.5 52 q 4 -2.4 7.4 0 q -3.4 2.6 -7.4 0 Z" fill="#fdfbf4"/>
+    <circle cx="54.2" cy="51.8" r="1.6" fill="#4a3820"/>
+    <path d="M62.1 52 q 4 -2.4 7.4 0 q -3.4 2.6 -7.4 0 Z" fill="#fdfbf4"/>
+    <circle cx="65.8" cy="51.8" r="1.6" fill="#4a3820"/>
+    <path d="M59.4 50 L 58.2 61.5 q 0.6 1.4 2 1.6 L 61.8 62.6 q 0.8 -0.6 0.4 -1.4" fill="none" stroke="#b28e58" stroke-width="1.5"/>
+    <path d="M60.6 55.5 q 1.2 0.6 1.4 2" fill="none" stroke="#c8a26c" stroke-width="1" opacity="0.7"/>
+    <path d="M55 67 h 10" stroke="#8f5c3c" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M56.4 70.2 q 3.6 1 7.2 0" fill="none" stroke="#b28e58" stroke-width="1" opacity="0.7"/>
+    <path d="M60 63.6 v 2.2" stroke="#c8a26c" stroke-width="1" opacity="0.7"/>
+    <g fill="#e6c063" stroke="#a37419" stroke-width="0.6">
+      <ellipse cx="43.5" cy="42" rx="4.6" ry="1.9" transform="rotate(-64 43.5 42)"/>
+      <ellipse cx="45.5" cy="35" rx="4.6" ry="1.9" transform="rotate(-46 45.5 35)"/>
+      <ellipse cx="50" cy="29" rx="4.6" ry="1.9" transform="rotate(-28 50 29)"/>
+      <ellipse cx="56" cy="25.2" rx="4.6" ry="1.9" transform="rotate(-11 56 25.2)"/>
+      <ellipse cx="76.5" cy="42" rx="4.6" ry="1.9" transform="rotate(64 76.5 42)"/>
+      <ellipse cx="74.5" cy="35" rx="4.6" ry="1.9" transform="rotate(46 74.5 35)"/>
+      <ellipse cx="70" cy="29" rx="4.6" ry="1.9" transform="rotate(28 70 29)"/>
+      <ellipse cx="64" cy="25.2" rx="4.6" ry="1.9" transform="rotate(11 64 25.2)"/>
+    </g>
+    <circle cx="60" cy="23.6" r="1.8" fill="#e6c063" stroke="#a37419" stroke-width="0.6"/>
+  </g>
+  <circle cx="60" cy="60" r="57" fill="none" stroke="#e6c063" stroke-width="3"/>
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#e6c063" stroke-width="1" opacity="0.45"/>
 </svg>`;
 
-/** Hercules — a fierce bearded head hooded in the Nemean lion pelt. */
+/** Hercules — wrathful beneath the Nemean lion's-head hood: slammed brows, a
+ *  bared-teeth snarl, wild mane and beard, his knotted club over one shoulder. */
 export const HERCULES_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
-  <circle cx="60" cy="60" r="56" fill="#2a1512" stroke="#e6c063" stroke-width="3"/>
-  <path d="M32 52 C 28 30 48 20 60 20 C 72 20 92 30 88 52 C 96 46 98 60 90 64 C 92 74 84 78 80 74 M40 64 C 26 66 30 50 30 50" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
-  <path d="M40 34 l -8 -12 l 14 6 Z M80 34 l 8 -12 l -14 6 Z" fill="#caa15a" stroke="#7a5321" stroke-width="2"/>
-  <path d="M46 44 C 44 40 40 40 38 44 M74 44 C 76 40 80 40 82 44" fill="none" stroke="#3a2a12" stroke-width="2.4"/>
-  <path d="M56 58 C 52 74 50 84 60 88 C 70 84 68 74 64 58 Z" fill="#e9d9be"/>
-  <circle cx="52" cy="54" r="2.6" fill="#2a1512"/><circle cx="68" cy="54" r="2.6" fill="#2a1512"/>
-  <path d="M46 84 C 54 96 66 96 74 84 C 66 90 54 90 46 84 Z" fill="#8a6a2e"/>
-  <path d="M40 70 q 20 10 40 0" fill="none" stroke="#6b4a1f" stroke-width="2"/>
+  <defs>
+    <radialGradient id="hc-bg" cx="0.5" cy="0.36" r="0.9">
+      <stop offset="0" stop-color="#5a2416"/><stop offset="0.7" stop-color="#2e120b"/><stop offset="1" stop-color="#1a0a06"/>
+    </radialGradient>
+    <linearGradient id="hc-skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d29a62"/><stop offset="1" stop-color="#96602f"/>
+    </linearGradient>
+    <linearGradient id="hc-pelt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d0a057"/><stop offset="1" stop-color="#8f6428"/>
+    </linearGradient>
+    <linearGradient id="hc-mane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a4763a"/><stop offset="1" stop-color="#63421a"/>
+    </linearGradient>
+    <linearGradient id="hc-beard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4c3520"/><stop offset="1" stop-color="#26180c"/>
+    </linearGradient>
+    <linearGradient id="hc-club" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c5a2e"/><stop offset="1" stop-color="#4a3212"/>
+    </linearGradient>
+    <clipPath id="hc-clip"><circle cx="60" cy="60" r="52"/></clipPath>
+  </defs>
+  <circle cx="60" cy="60" r="57" fill="url(#hc-bg)"/>
+  <g clip-path="url(#hc-clip)">
+    <path d="M78 96 L 104 26 C 108 18 116 20 114 30 L 90 100 Z" fill="url(#hc-club)" stroke="#33220c" stroke-width="1.4"/>
+    <circle cx="102" cy="34" r="2.2" fill="#33220c"/><circle cx="97" cy="48" r="2" fill="#33220c"/><circle cx="93" cy="62" r="1.8" fill="#33220c"/>
+    <path d="M6 118 C 14 88 34 78 60 78 C 86 78 106 88 114 118 Z" fill="url(#hc-pelt)"/>
+    <path d="M12 110 q 7 -9 15 -4 q -9 1.5 -11 9 M 108 110 q -7 -9 -15 -4 q 9 1.5 11 9 M 32 92 q 6 -7 13 -2.5 q -8 1 -10 8 M 88 92 q -6 -7 -13 -2.5 q 8 1 10 8" fill="none" stroke="#77521f" stroke-width="1.6"/>
+    <g fill="url(#hc-pelt)" stroke="#6e4a1e" stroke-width="1.2">
+      <path d="M45 95 c -4 9 -1 15 6 17 c -1.5 -6 0.5 -9 4.5 -10 Z"/>
+      <path d="M75 95 c 4 9 1 15 -6 17 c 1.5 -6 -0.5 -9 -4.5 -10 Z"/>
+    </g>
+    <g fill="#f2e9d8" stroke="#a08c6a" stroke-width="0.6">
+      <path d="M48 108 l 2.6 6.4 l 2.6 -6 z"/><path d="M54.5 110.5 l 2.4 5.8 l 2.4 -5.4 z"/>
+      <path d="M67 108 l -2.6 6.4 l -2.6 -6 z"/><path d="M62 110.5 l -2.4 5.8 l -2.4 -5.4 z"/>
+    </g>
+    <g fill="url(#hc-mane)" stroke="#52350f" stroke-width="1">
+      <path d="M29 70 c -10 -1 -15 -10 -11 -19 c 2.5 5.5 7 7.5 11.5 7 Z"/>
+      <path d="M25 53 c -9 -4 -11 -14 -4 -21 c 0.5 6 4 9 8.5 10 Z"/>
+      <path d="M28 36 c -6 -8 -3 -17 5 -20 c -2 5.5 -1 10 2.5 13.5 Z"/>
+      <path d="M38 24 c -3 -9 2 -16 11 -17 c -4 5 -4.5 9.5 -2 13.5 Z"/>
+      <path d="M91 70 c 10 -1 15 -10 11 -19 c -2.5 5.5 -7 7.5 -11.5 7 Z"/>
+      <path d="M95 53 c 9 -4 11 -14 4 -21 c -0.5 6 -4 9 -8.5 10 Z"/>
+      <path d="M92 36 c 6 -8 3 -17 -5 -20 c 2 5.5 1 10 -2.5 13.5 Z"/>
+      <path d="M82 24 c 3 -9 -2 -16 -11 -17 c 4 5 4.5 9.5 2 13.5 Z"/>
+      <path d="M53 17 c -1 -7 5 -12 12 -11 c -4 3.5 -5 7.5 -3 11 Z"/>
+    </g>
+    <path d="M32 60 C 28 32 42 18 60 18 C 78 18 92 32 88 60 C 86 72 76 80 60 80 C 44 80 34 72 32 60 Z" fill="url(#hc-pelt)"/>
+    <path d="M39 28 l -7 -10 l 12 4.5 Z M81 28 l 7 -10 l -12 4.5 Z" fill="url(#hc-pelt)" stroke="#6e4a1e" stroke-width="1.4"/>
+    <path d="M42 27 l -3.5 -5 l 6 2.2 Z M78 27 l 3.5 -5 l -6 2.2 Z" fill="#3a260f"/>
+    <path d="M48 30 C 48 20 54 16 60 16 C 66 16 72 20 72 30 C 72 35 67 38.5 60 38.5 C 53 38.5 48 35 48 30 Z" fill="#b9863e" stroke="#6e4a1e" stroke-width="1.2"/>
+    <path d="M56 19 L 64 19 L 62 25.5 L 58 25.5 Z" fill="#2d1c0c"/>
+    <path d="M60 25.5 v 4" stroke="#6e4a1e" stroke-width="1.2"/>
+    <circle cx="53" cy="27" r="1.2" fill="#2d1c0c"/><circle cx="67" cy="27" r="1.2" fill="#2d1c0c"/>
+    <circle cx="50.5" cy="31" r="0.9" fill="#6e4a1e"/><circle cx="54" cy="32.5" r="0.9" fill="#6e4a1e"/>
+    <circle cx="69.5" cy="31" r="0.9" fill="#6e4a1e"/><circle cx="66" cy="32.5" r="0.9" fill="#6e4a1e"/>
+    <g fill="#f2e9d8" stroke="#b3a081" stroke-width="0.5">
+      <path d="M49.5 36 l 2.6 7.5 l 3 -7 z"/>
+      <path d="M56.8 38 l 3.2 8 l 3.2 -7.8 z"/>
+      <path d="M64.9 36 l 2.6 7.5 l 3 -7 z"/>
+    </g>
+    <path d="M42 45 C 42 61 46 74 60 74 C 74 74 78 61 78 45 C 72 41 66 39.5 60 39.5 C 54 39.5 48 41 42 45 Z" fill="url(#hc-skin)"/>
+    <path d="M44.5 47 L 57 52.5 M 75.5 47 L 63 52.5" stroke="#3f2712" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M58 50 l -1.2 5 M 62 50 l 1.2 5" stroke="#7c5230" stroke-width="1.5"/>
+    <path d="M48 54.5 l 8 1.8 l -0.4 2 l -7.3 -1.2 Z" fill="#f2e6d0"/>
+    <circle cx="53.4" cy="56.3" r="1.5" fill="#140c05"/>
+    <path d="M72 54.5 l -8 1.8 l 0.4 2 l 7.3 -1.2 Z" fill="#f2e6d0"/>
+    <circle cx="66.6" cy="56.3" r="1.5" fill="#140c05"/>
+    <path d="M60 54 L 58.4 62 q 0.7 1.4 2.2 1.6 L 62 63.4 q 0.9 -0.7 0.3 -1.6" fill="none" stroke="#6b4626" stroke-width="1.8"/>
+    <path d="M56.8 62.6 q -1.4 0.4 -2 1.6 M 63.2 62.6 q 1.4 0.4 2 1.6" fill="none" stroke="#6b4626" stroke-width="1.3"/>
+    <path d="M70 44 l 6 13" stroke="#c98f5f" stroke-width="1.5" opacity="0.9"/>
+    <path d="M46 50 l 4 6" stroke="#c98f5f" stroke-width="1.2" opacity="0.7"/>
+    <path d="M43 58 C 38 74 44 88 60 89 C 76 88 82 74 77 58 C 76 66 72 70 68 70.5 L 52 70.5 C 48 70 44 66 43 58 Z" fill="url(#hc-beard)"/>
+    <path d="M46 72 l -2 8 l 4.5 -5.5 l 0.5 8 l 4 -6.5 l 1.5 8 l 3.5 -7 l 2 8 l 2 -8 l 3.5 7 l 1.5 -8 l 4 6.5 l 0.5 -8 l 4.5 5.5 l -2 -8"
+      fill="none" stroke="#1c1207" stroke-width="1.3" opacity="0.85"/>
+    <path d="M50 66 q 10 7 20 0 l -1.6 4.4 q -8.4 5 -16.8 0 Z" fill="#1a0f06"/>
+    <g fill="#efe5d2">
+      <path d="M52.5 67.6 l 2.6 0.9 l -0.1 2.6 l -2.5 -1.2 z"/>
+      <path d="M56.6 68.9 l 2.6 0.5 l 0 2.7 l -2.6 -0.8 z"/>
+      <path d="M60.8 69.4 l 2.6 -0.5 l 0 2.7 l -2.6 0.5 z"/>
+      <path d="M64.9 68.5 l 2.6 -0.9 l -0.1 2.6 l -2.5 1 z"/>
+    </g>
+    <path d="M49 64 q 5 3.4 11 3.4 q 6 0 11 -3.4" fill="none" stroke="#2d1c0e" stroke-width="2.6"/>
+  </g>
+  <circle cx="60" cy="60" r="57" fill="none" stroke="#e6c063" stroke-width="3"/>
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#e6c063" stroke-width="1" opacity="0.45"/>
 </svg>`;
 
 /** One trophy definition: the god, a one-line epithet, and the marble art,
