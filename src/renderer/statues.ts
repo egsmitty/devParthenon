@@ -191,11 +191,18 @@ export const HERCULES_PORTRAIT = `<svg viewBox="0 0 120 120" aria-hidden="true">
   <path d="M40 70 q 20 10 40 0" fill="none" stroke="#6b4a1f" stroke-width="2"/>
 </svg>`;
 
-/** One trophy definition: the god, a one-line epithet, and the marble art. */
+/** One trophy definition: the god, a one-line epithet, and the marble art,
+ *  plus a short bio and a fun fact about the realm it was earned from. */
 export interface TrophyDef {
   god: string;
   epithet: string;
   art: string;
+  /** The module this trophy is earned from (display name). */
+  realm: string;
+  /** Two or three sentences on the god and why they patron this realm. */
+  bio: string;
+  /** A genuinely interesting fact about the realm's subject. */
+  fact: string;
 }
 
 /**
@@ -205,15 +212,78 @@ export interface TrophyDef {
  * renderer's presentation map (Progression & Trophies plan, Phase B).
  */
 export const TROPHY: Record<string, TrophyDef> = {
-  foundation: { god: "Hermes", epithet: "Messenger of the Wire", art: STATUE_HERMES },
-  "pillar-react": { god: "Apollo", epithet: "Light of the Interface", art: STATUE_APOLLO },
-  "pillar-nextjs": { god: "Hephaestus", epithet: "Master of the Forge", art: STATUE_HEPHAESTUS },
-  "pillar-node": { god: "Poseidon", epithet: "Depths of the Engine", art: STATUE_POSEIDON },
-  "pillar-databases": { god: "Mnemosyne", epithet: "Keeper of Memory", art: STATUE_MUSE },
-  "pillar-tailwind": { god: "Aphrodite", epithet: "Beauty & Form", art: STATUE_APHRODITE },
-  "pillar-git": { god: "Chronos", epithet: "Keeper of History", art: STATUE_CHRONOS },
-  pediment: { god: "Athena", epithet: "Wisdom Under Pressure", art: STATUE_ATHENA },
-  herculean: { god: "Zeus", epithet: "King of the Pantheon", art: STATUE_ZEUS },
+  foundation: {
+    god: "Hermes",
+    epithet: "Messenger of the Wire",
+    art: STATUE_HERMES,
+    realm: "Web Foundations",
+    bio: "Hermes, the swift messenger of Olympus, carried words between gods and mortals — the original request and response. He patrons the foundations: the protocols, names, and round-trips that move every byte across the wire.",
+    fact: "DNS is a global, cached phone book: your browser may ask a chain of servers to turn 'example.com' into an IP, but the answer is remembered (per its TTL) so the next lookup is instant.",
+  },
+  "pillar-react": {
+    god: "Apollo",
+    epithet: "Light of the Interface",
+    art: STATUE_APOLLO,
+    realm: "React & the UI",
+    bio: "Apollo, god of light, music, and harmony, brought order and beauty into form. He watches over the interface layer, where scattered state is composed into a single, coherent view the user can see.",
+    fact: "React never touches the real DOM directly on every change — it diffs a lightweight virtual tree and applies only the minimal set of real mutations, which is why re-rendering 'everything' can still be cheap.",
+  },
+  "pillar-nextjs": {
+    god: "Hephaestus",
+    epithet: "Master of the Forge",
+    art: STATUE_HEPHAESTUS,
+    realm: "Next.js & Frameworks",
+    bio: "Hephaestus, the master smith, built the machinery of the gods at his forge. He rules the framework layer — the build tooling and rendering machinery that shapes raw components into a shipped application.",
+    fact: "The same React component can run in three places in Next.js — at build time (static), on the server per request (SSR), or in the browser — and picking which is mostly a data-freshness decision, not a code rewrite.",
+  },
+  "pillar-node": {
+    god: "Poseidon",
+    epithet: "Depths of the Engine",
+    art: STATUE_POSEIDON,
+    realm: "Node.js & the Backend",
+    bio: "Poseidon commands the vast deep beneath the surface — unseen, powerful, and always in motion. He governs the backend: the single-threaded engine whose currents (the event loop) carry thousands of requests at once.",
+    fact: "Node handles huge concurrency on one JavaScript thread because most requests spend their lives waiting on I/O — the event loop simply fills that waiting with other requests' work.",
+  },
+  "pillar-databases": {
+    god: "Mnemosyne",
+    epithet: "Keeper of Memory",
+    art: STATUE_MUSE,
+    realm: "Databases",
+    bio: "Mnemosyne, the Titaness of memory and mother of the Muses, is remembrance itself. She keeps the data layer, where the application's truth is stored, indexed, and recalled long after any single request has ended.",
+    fact: "A query that's instant in development can crawl in production for one reason above all: a missing index turns a fast lookup into a full scan of every row, and that cost only shows up at real data volume.",
+  },
+  "pillar-tailwind": {
+    god: "Aphrodite",
+    epithet: "Beauty & Form",
+    art: STATUE_APHRODITE,
+    realm: "CSS & Tailwind",
+    bio: "Aphrodite, goddess of beauty and form, gives things their pleasing shape. She presides over styling — the layout, rhythm, and restraint that turn a working page into one people actually want to use.",
+    fact: "Utility CSS keeps a large UI consistent by construction: every spacing and colour comes from one small, fixed scale, so the ad-hoc '13px here, #4a90d9 there' values that cause drift simply never get typed.",
+  },
+  "pillar-git": {
+    god: "Chronos",
+    epithet: "Keeper of History",
+    art: STATUE_CHRONOS,
+    realm: "Git & CI",
+    bio: "Chronos is time itself — the keeper of every moment that has passed. He guards version control and delivery: the history of every change, and the gates that decide what is allowed to ship.",
+    fact: "A Git merge conflict isn't an error — it's Git asking a question. It merges cleanly when changes touch different lines; only overlapping edits need a human to decide which version wins.",
+  },
+  pediment: {
+    god: "Athena",
+    epithet: "Wisdom Under Pressure",
+    art: STATUE_ATHENA,
+    realm: "The Capstone",
+    bio: "Athena, goddess of wisdom and strategic war, is clear thinking when it matters most. She crowns the temple as the patron of the interview itself — reasoning aloud, under time, with the whole craft in play.",
+    fact: "The strongest interview answer to an open design question isn't a verdict — it's naming the axis the decision turns on, making a call from the requirements, and saying what would change your mind.",
+  },
+  herculean: {
+    god: "Zeus",
+    epithet: "King of the Pantheon",
+    art: STATUE_ZEUS,
+    realm: "The Herculean Trial",
+    bio: "Zeus, king of the gods, sits above the whole pantheon — the apex earned only by mastering every domain at once. His trophy is the reward for felling Hercules across the entire craft in a single trial.",
+    fact: "Real full-stack skill is mostly localization: a symptom in one layer (a slow page, a 500, stale data) almost always has its cause in another, and the craft is reading the evidence to jump straight to it.",
+  },
 };
 
 /** Trophy ids in temple order — the Trophy Case grid follows this. */
