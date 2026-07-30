@@ -1,6 +1,6 @@
 /**
- * Welcome rite — a ceremonial overlay introducing the temple. Shown on every
- * launch, and on demand from Settings → Replay welcome.
+ * Welcome rite — a ceremonial overlay introducing the temple, shown on every
+ * launch.
  */
 import type { ParthenonApi } from "../types/schema.js";
 import { updateSettings } from "./settings.js";

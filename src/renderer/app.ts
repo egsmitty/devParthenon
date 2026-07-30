@@ -39,7 +39,6 @@ import {
   isSettingsOpen,
   motionReduced,
   openSettings,
-  setReplayWelcome,
   settings,
 } from "./settings.js";
 import { initWelcome, openWelcome } from "./welcome.js";
@@ -1385,7 +1384,6 @@ async function offerResume(): Promise<void> {
 async function init(): Promise<void> {
   await initSettings(api);
   initWelcome(api);
-  setReplayWelcome(openWelcome);
   wireTitlebar();
   wireReset();
   wireReview();

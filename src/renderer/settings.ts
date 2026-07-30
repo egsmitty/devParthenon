@@ -12,11 +12,6 @@ import { playCue, setSoundEnabled } from "./sound.js";
 let current: Settings | null = null;
 let apiRef: ParthenonApi;
 let onSettingsChange: (() => void) | null = null;
-/** Set by app.ts so the settings panel can offer "Replay welcome". */
-let replayWelcome: (() => void) | null = null;
-export function setReplayWelcome(fn: () => void): void {
-  replayWelcome = fn;
-}
 
 export function settings(): Settings {
   if (!current) throw new Error("settings not initialised");
@@ -145,10 +140,6 @@ function renderSettingsPanel(): void {
         <span class="toggle-knob"></span>
       </button>
     </div>
-    <div class="settings-row">
-      <div class="settings-label"><h3>Welcome</h3><p>Revisit the opening rite.</p></div>
-      <button class="ghost-btn gold-btn" id="set-replay">Replay welcome</button>
-    </div>
   `;
 
   card.querySelector('[data-action="close"]')!.addEventListener("click", closeSettings);
@@ -182,11 +173,6 @@ function renderSettingsPanel(): void {
     await updateSettings({ sound: !settings().sound });
     if (settings().sound) playCue("correct"); // a taste of what you enabled
     renderSettingsPanel();
-  });
-
-  card.querySelector("#set-replay")!.addEventListener("click", () => {
-    closeSettings();
-    replayWelcome?.();
   });
 
   settingsRoot().replaceChildren(card);
