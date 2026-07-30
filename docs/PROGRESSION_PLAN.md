@@ -19,21 +19,29 @@ this doc is the map for the rest.
 >   *completed AND mastered*. Node re-entry (a passed-but-unmastered stone
 >   launches its Mastery Test, with a "prove it" cue) keeps it soft-lock-free. ✅
 > - **Trophy Case (Phase B)**: `#trophy-case-root` hall of the nine gods —
->   earned = lit statue, sealed = silhouette. Footer entry. ✅
-> - **Herculean Test (Phase C)**: a thunderbolt marker beside the pediment; a
->   25-question timed trial (seen + new bank), ≥85%; pass → Zeus trophy, fail →
->   weak-area side-quest (Review drill over the missed keys). ✅
+>   earned = lit statue (click for bio + fun fact); sealed = silhouette that
+>   names its trial ("Lay the Foundation…", the `unlock` field); **Zeus is a
+>   hidden "???" secret** (`secret: true`), never a silhouette. Footer entry. ✅
+> - **Herculean Test (Phase C)**: unlocks when the temple is whole; a 25-question
+>   timed trial (seen + new bank), ≥85%; pass → Zeus trophy, fail → weak-area
+>   side-quest (Review drill over the missed keys). ✅
 > - **Gauntlet**: `buildGauntlet` caps capstone sampling to 5, so it stays 17 Qs
 >   as the capstone grows. ✅
-> - **Boss fight (Phase D)**: the Herculean is now a VS duel — a torch-lit
->   temple *gateway* → a full-page antechamber (`herculeanGate.ts`) → an arena
->   with two HP bars (correct answers strike Hercules, wrong ones strike you;
->   HP is a skin over the same ≥85% scoring), win/lose screens, 45-min timer. ✅
-> - **Lit crown**: the entablature/frieze lights to marble once the pediment is
->   set. **Trophy Case bios**: click a god for its story + a fun fact. ✅
+> - **Boss fight (Phase D)**: the Herculean is a full VS duel — a **monument arch
+>   entrance** on the temple (widened viewBox 1260, cx 1150) → a full-page
+>   **antechamber** (`herculeanGate.ts`) → a **full-screen arena**
+>   (`#modal-root.arena-mode`, Street-Fighter HP bars + VS + 45-min timer); HP is
+>   a skin over the same ≥85% scoring; win/lose screens. Portraits: **Augustus**
+>   vs a **wrathful Hercules**. ✅
+> - **Reveal portal**: the first time the temple becomes whole, a red/black
+>   swirling black-hole portal tears open and the arch **materializes** out of it
+>   (one-shot, `buildHerculeanPortal` + `lastHerculeanUnlocked` in renderTemple). ✅
+> - **Lit crown**: the entablature lights to marble once the pediment is set.
+>   Wider lesson cards; the every-launch welcome; and the **codex opening rite**
+>   (cover lifts open → inside leather → leaves flip → entries appear). ✅
 >
 > Only remaining optional polish: **character customization** (name + cosmetics
-> unlocked by trophies). The core loop and the boss fight are complete.
+> unlocked by trophies). The core loop, boss fight, and all art/animation are done.
 
 ---
 

@@ -38,22 +38,38 @@ questions**). Save schema is **v4**.
   soft-locks. The header guide surfaces a due Mastery Test as the next step.
 - **Overview page** (`overview.ts`): a "what you now know" recap offered on the
   graded-pass screen — section headings + "In short" summaries + Codex terms.
-- **Trophy Case** (`trophyCase.ts`): a nine-niche hall — earned = lit statue +
-  god/epithet, sealed = silhouette. Footer entry; roster + all statue SVGs in
-  `statues.ts`.
-- **The Herculean final** (Phases C+D): a torch-lit **gateway** beside the
-  temple (shown once every stone stands; parallel to the roof, never gating it)
-  → a full-page **antechamber** (`herculeanGate.ts`: crossed spears, braziers,
-  the VS reveal) → the **boss fight**. The arena is a 25-question **timed**
-  (45-min) duel drawing half fresh cross-topic questions (`herculean.json`) and
-  half canonical questions from every bank; two **HP bars** drain as correct
-  answers strike Hercules and wrong ones strike you (a presentation skin over
-  the same ≥85% correct/total scoring — an early KO ends it). Win → the ultimate
-  **Zeus** trophy + celebration; loss → a **weak-area side-quest** (a Review
-  drill over exactly the missed keys) before the retry.
-- **Lit crown**: the entablature/frieze lights to marble once the pediment is
-  set, so a finished temple gleams end to end. **Trophy Case bios**: clicking an
-  earned god opens its page — statue, mythological bio, realm, and a fun fact.
+- **Trophy Case** (`trophyCase.ts`): a nine-niche hall — earned = lit statue you
+  can click for the god's **bio + a "Did you know?" fact**; sealed = silhouette
+  that names its trial (the `unlock` field, e.g. "Lay the Foundation to reveal
+  this god"). **Zeus is a hidden secret** — a red "???" niche (`secret: true`),
+  never a silhouette, until the temple stands whole. Footer entry; roster + all
+  statue SVGs (incl. bios/facts) in `statues.ts`.
+- **The Herculean final** (Phases C+D): a **monument arch entrance** beside the
+  temple (arena-temple façade — pediment + gold-bolt tympanum, HERACLES frieze,
+  fluted columns, torches, red banners, arched mouth; `buildHerculeanGate`,
+  cx 1150 in a widened `viewBox "0 0 1260 720"`) → a full-page **antechamber**
+  (`herculeanGate.ts`: crossed-spear crest, tripod braziers, the VS reveal) → a
+  **full-screen arena** (`#modal-root.arena-mode`). The arena is a 25-question
+  **timed** (45-min, `HERCULEAN_TOTAL_SECONDS`) duel drawing half fresh
+  cross-topic questions (`herculean.json`) and half canonical from every bank; a
+  Street-Fighter HUD with two **HP bars** draining toward a center VS as correct
+  answers strike Hercules and wrong ones strike you (a skin over the same ≥85%
+  scoring — early KO ends it). Combatants: **Augustus** vs a **wrathful
+  Hercules**. Win → the ultimate **Zeus** trophy; loss → a **weak-area
+  side-quest**.
+- **Herculean reveal**: the first time the temple becomes whole, a one-shot
+  red/black swirling black-hole **portal** (`buildHerculeanPortal`) tears open
+  where the gateway stands and the arch **materializes** out of it
+  (`.herc-gate.materializing`); fires on the false→true transition
+  (`lastHerculeanUnlocked` in `renderTemple`), reduced-motion skips it.
+- **Lit crown**: the entablature lights to marble once the pediment is set
+  (`.entablature.lit`), so a finished temple gleams end to end.
+- **Codex opening rite** (`playBookFlip`): the titled leather **cover lifts open**
+  around the spine and fades at edge-on, the LEFT becomes the cover's **inside
+  leather** (`.book-inside`) then fades to the glossary, blank vellum **leaves
+  flip** over the parchment spread, and the entries + spine statues appear as it
+  settles (`.codex-book.flipping`, ~2.4s). The **welcome rite plays every
+  launch** — Playwright/audit must dismiss it (`.welcome-enter`) first.
 
 **Replay & retention**
 - **Practice mode**: click a completed (marble) node to re-run it with random

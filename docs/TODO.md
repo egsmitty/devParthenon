@@ -1,45 +1,38 @@
 # Dev Parthenon — open ToDo (handoff to next session)
 
 Read `CLAUDE.md` first (guardrails, gate, gotchas), then this. Everything is
-committed and pushed to `main`; the tree is clean. Gate = `npm run verify`
-(build + 38 tests + two-pass smoke); for visual work also `npm run audit:ux`
-and eyeball `audit/shots/`. Commit in small slices, gate green each time.
-**Gotcha reminder:** no inline `style=` attributes (CSP — use `element.style`
-via CSSOM; a test enforces this). Capture transient UI with a throwaway
-Playwright script that does NOT emulate reduced motion. The window enforces
-`minWidth: 980` (main.ts) — modal breakpoints below that are dead code.
+committed and pushed to `main`; the tree is clean and even with origin. Gate =
+`npm run verify` (build + **48 tests** + two-pass smoke); for visual work also
+`npm run audit:ux` and eyeball `audit/shots/` (21 shots). Commit in small
+slices, gate green each time. **Gotcha reminders:** no inline `style=`
+attributes (CSP — use `element.style` via CSSOM; a test enforces this); capture
+transient UI with a throwaway Playwright script that does NOT emulate reduced
+motion (and set `NODE_PATH` to the project `node_modules`); the window enforces
+`minWidth: 980`. **The welcome rite now plays every launch** — any Playwright
+script (and the audit) must click `.welcome-enter` before touching the temple.
 
-## Recently shipped (this session)
+## Big initiative: Progression & Trophies — COMPLETE, plus all boss/visual polish
 
-All four items that were "in progress / next up" are done and verified:
-1. **Two-column lesson layout** — graded/practice `renderLesson` is now lesson
-   text (left) beside a squarish "Your turn" panel (right); stacks to one
-   centered column ≤1080px. Redemption + gauntlet stay single-column.
-2. **Codex Flashcards** — a flip-card drill over the glossary (term ⇄
-   definition, Prev/Next/Shuffle, Space/arrows/Esc). New `flashcards.ts`,
-   launched from a button in the Codex headband.
-3. **Full-bleed temple scene** — the sky/sun/hills now fill a framed
-   `#temple-stage` behind the temple and footer (see `buildScene()` +
-   `#temple-scene`), instead of being letterboxed inside the temple SVG.
-4. **Fancify** — torch light-pools, a breathing sun/moon halo, and per-pillar
-   topic-tint hover glow (`--pillar-tint`).
+**Shipped end to end and pushed.** See **[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)**.
+Delivered: the tested v4 spine; content expansion (foundation + 6 pillars +
+**capstone now 10** — 93 sections, 372 questions); the **Mastery Test**; the
+**Overview page**; **the gate is ON** (unlock requires completed AND mastered)
+with soft-lock-free **node re-entry** (a passed-but-unmastered stone launches its
+Mastery Test, "prove it" cue); the **Trophy Case** (nine gods; click a god for
+bio + fun fact; sealed niches name their trial; **Zeus is a hidden "???"
+secret**); the **Herculean boss fight** — a monument arch **entrance** on the
+temple (widened viewBox 1260, cx 1150) → full-page **antechamber**
+(`herculeanGate.ts`) → a **full-screen Street-Fighter arena** (`#modal-root.arena-mode`,
+HP bars + VS + 45-min clock) → Zeus trophy or a weak-area **side-quest**; and a
+**reveal portal** (red/black black-hole → the arch materializes) the first time
+the temple becomes whole. Combatant portraits: **Augustus** vs a **wrathful
+Hercules**. Plus: lit entablature crown, wider lesson cards, the every-launch
+welcome, and the **codex opening rite** (cover lifts open → inside leather →
+leaves flip → entries appear). `record-mastery-result` / `record-herculean-result`
+IPC run the sweep / stash weak areas.
 
-## Big active initiative: Progression & Trophies
-
-**COMPLETE — the whole Progression & Trophies initiative shipped.** See
-**[`docs/PROGRESSION_PLAN.md`](PROGRESSION_PLAN.md)** for the full map. Delivered:
-the tested v4 spine; content expansion (foundation + 6 pillars + **capstone now
-10** — 93 sections, 372 questions); the **Mastery Test**; the **Overview page**;
-**the gate is ON** (unlock requires completed AND mastered) with soft-lock-free
-**node re-entry** (a passed-but-unmastered stone launches its Mastery Test, with
-a "prove it" cue); the **Trophy Case** (nine gods, footer entry); the **Herculean
-Test** (thunderbolt marker → 25-question timed trial → Zeus trophy or a weak-area
-side-quest); and a **gauntlet cap** keeping it at 17 Qs. `record-mastery-result`
-and `record-herculean-result` IPC both run the unlock sweep / stash weak areas.
-48 unit tests + all 21 audit shots green.
-
-Only optional Phase D polish remains (see the plan): the Hercules HP-bar boss
-skin and character customization — pure gamification, not required for the loop.
+**Only optional item left from the whole plan: character customization** (name +
+trophy-unlocked cosmetics) — pure gamification, not required for the loop.
 
 ## Next up (menu — pick by value; nothing committed to)
 
