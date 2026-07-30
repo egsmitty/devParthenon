@@ -25,9 +25,15 @@ this doc is the map for the rest.
 >   weak-area side-quest (Review drill over the missed keys). ✅
 > - **Gauntlet**: `buildGauntlet` caps capstone sampling to 5, so it stays 17 Qs
 >   as the capstone grows. ✅
+> - **Boss fight (Phase D)**: the Herculean is now a VS duel — a torch-lit
+>   temple *gateway* → a full-page antechamber (`herculeanGate.ts`) → an arena
+>   with two HP bars (correct answers strike Hercules, wrong ones strike you;
+>   HP is a skin over the same ≥85% scoring), win/lose screens, 45-min timer. ✅
+> - **Lit crown**: the entablature/frieze lights to marble once the pediment is
+>   set. **Trophy Case bios**: click a god for its story + a fun fact. ✅
 >
-> Optional future polish only (Phase D): the Hercules HP-bar boss skin and
-> character customization. The core loop is complete.
+> Only remaining optional polish: **character customization** (name + cosmetics
+> unlocked by trophies). The core loop and the boss fight are complete.
 
 ---
 

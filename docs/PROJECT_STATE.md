@@ -41,12 +41,19 @@ questions**). Save schema is **v4**.
 - **Trophy Case** (`trophyCase.ts`): a nine-niche hall — earned = lit statue +
   god/epithet, sealed = silhouette. Footer entry; roster + all statue SVGs in
   `statues.ts`.
-- **The Herculean final** (Phase C): a thunderbolt marker beside the pediment,
-  shown once every stone stands (parallel to the roof, never gating it). A
-  25-question **timed** trial (half fresh cross-topic from `herculean.json`,
-  half canonical questions from every bank), ≥85% to pass. Pass → the ultimate
-  **Zeus** trophy; fail → the missed concepts become a **weak-area side-quest**
-  (a Review drill over exactly those keys) before the retry.
+- **The Herculean final** (Phases C+D): a torch-lit **gateway** beside the
+  temple (shown once every stone stands; parallel to the roof, never gating it)
+  → a full-page **antechamber** (`herculeanGate.ts`: crossed spears, braziers,
+  the VS reveal) → the **boss fight**. The arena is a 25-question **timed**
+  (45-min) duel drawing half fresh cross-topic questions (`herculean.json`) and
+  half canonical questions from every bank; two **HP bars** drain as correct
+  answers strike Hercules and wrong ones strike you (a presentation skin over
+  the same ≥85% correct/total scoring — an early KO ends it). Win → the ultimate
+  **Zeus** trophy + celebration; loss → a **weak-area side-quest** (a Review
+  drill over exactly the missed keys) before the retry.
+- **Lit crown**: the entablature/frieze lights to marble once the pediment is
+  set, so a finished temple gleams end to end. **Trophy Case bios**: clicking an
+  earned god opens its page — statue, mythological bio, realm, and a fun fact.
 
 **Replay & retention**
 - **Practice mode**: click a completed (marble) node to re-run it with random
