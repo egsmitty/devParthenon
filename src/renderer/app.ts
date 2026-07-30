@@ -385,8 +385,8 @@ function seal(cx: number, cy: number, score: number | null, pending = false): SV
  */
 function buildHerculeanGate(): SVGGElement {
   const passed = herculeanPassed();
-  // Its own ground in the widened canvas, clear of the temple.
-  const cx = 1024;
+  // Its own ground in the widened canvas, well clear of the temple on the right.
+  const cx = 1062;
   const springY = 448; // where the arch curve springs from the legs
   const baseY = 560;
   const g = el("g");
