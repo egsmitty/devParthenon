@@ -1171,6 +1171,7 @@ function playBookFlip(): void {
   // The full rite: the tooled leather cover swings open first, then the blank
   // leaves turn, then the written entries appear (the `flipping` reveal).
   layer.innerHTML =
+    '<div class="book-inside"></div>' +
     '<div class="book-cover"><span class="cover-rule"></span><span class="cover-title">Codex of Jargon</span><span class="cover-rule"></span></div>' +
     '<div class="flip-page"></div><div class="flip-page"></div><div class="flip-page"></div>';
   spread.appendChild(layer);

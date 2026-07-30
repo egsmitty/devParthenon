@@ -967,9 +967,38 @@ html[data-motion="reduce"] .hg-fire { animation: none; }
 
 /* Staggered leaf widths so the flourish reads as a stack of pages turning.
    Delays wait out the cover lifting open first. */
-.flip-page:nth-child(2) { animation-delay: 0.85s; width: 45%; }
-.flip-page:nth-child(3) { animation-delay: 1.1s; width: 43.2%; }
-.flip-page:nth-child(4) { animation-delay: 1.35s; width: 41.5%; }
+.flip-page:nth-child(3) { animation-delay: 0.85s; width: 45%; }
+.flip-page:nth-child(4) { animation-delay: 1.1s; width: 43.2%; }
+.flip-page:nth-child(5) { animation-delay: 1.35s; width: 41.5%; }
+
+/* The inside of the front cover — matching tooled leather on the LEFT, so the
+   opening reads as one leather book: closed = both leather halves; open = the
+   front cover lifts and this inside face remains, until it fades to reveal the
+   glossary page. */
+.book-inside {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  z-index: 3;
+  border: 2px solid #6b4a1f;
+  border-radius: 8px 0 0 8px;
+  background:
+    radial-gradient(120% 90% at 72% 20%, rgba(140, 90, 30, 0.22), transparent 55%),
+    linear-gradient(225deg, #3a2410 0%, #241505 45%, #1a0e04 100%);
+  box-shadow:
+    inset 0 0 0 10px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 12px rgba(201, 162, 74, 0.32),
+    inset 0 0 60px rgba(0, 0, 0, 0.55),
+    14px 0 30px rgba(0, 0, 0, 0.5);
+  animation: inside-reveal 2.4s ease forwards;
+}
+/* Hold as the inside cover through the flip, then fade to the glossary page. */
+@keyframes inside-reveal {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 /* The tooled front cover lifts open around the center spine and fades as it
    passes edge-on — so its back never faces us (no mirrored-title bleed). */
