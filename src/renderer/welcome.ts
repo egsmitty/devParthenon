@@ -1,11 +1,12 @@
 /**
- * First-run welcome rite — a ceremonial overlay introducing the temple.
- * Shown once (until introSeen), or on demand from Settings → Replay welcome.
+ * Welcome rite — a ceremonial overlay introducing the temple. Shown on every
+ * launch, and on demand from Settings → Replay welcome.
  */
 import type { ParthenonApi } from "../types/schema.js";
 import { updateSettings } from "./settings.js";
 
 let apiRef: ParthenonApi;
+let onCloseCb: (() => void) | undefined;
 
 export function initWelcome(api: ParthenonApi): void {
   apiRef = api;
@@ -32,14 +33,15 @@ const CREST = `<svg viewBox="0 0 220 140" class="welcome-crest" aria-hidden="tru
   <rect x="14" y="124" width="192" height="7" fill="url(#wc-gold)" opacity="0.65"/>
 </svg>`;
 
-export function openWelcome(): void {
+export function openWelcome(onClose?: () => void): void {
+  onCloseCb = onClose;
   const root = welcomeRoot();
   root.hidden = false;
   root.innerHTML = `
     <div class="welcome-card">
       ${CREST}
       <h1 class="welcome-title">Dev Parthenon</h1>
-      <p class="welcome-tag">From first principles to interview-ready — one temple, raised stone by stone.</p>
+      <p class="welcome-tag">From first principles to interview-ready.</p>
       <div class="welcome-steps">
         <div class="welcome-step">
           <span class="ws-num">I</span>
@@ -70,4 +72,7 @@ function closeWelcome(): void {
     root.hidden = true;
     root.replaceChildren();
   }, 420);
+  const cb = onCloseCb;
+  onCloseCb = undefined;
+  cb?.();
 }

@@ -1402,8 +1402,9 @@ async function init(): Promise<void> {
   configureOverview((quiz) => openOverview(quiz, glossary));
   configureHerculean((keys) => void openHerculeanSideQuest(keys));
   if (!api.isSmoke) {
-    if (!settings().introSeen) openWelcome();
-    else await offerResume();
+    // The welcome rite plays on every launch; a mid-module resume (if any) is
+    // offered once the learner enters the temple.
+    openWelcome(() => void offerResume());
   }
 }
 
